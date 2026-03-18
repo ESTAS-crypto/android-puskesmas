@@ -1,0 +1,45 @@
+name: laporan_kunjungan
+description: "Aplikasi Laporan Kunjungan Rumah - Offline First"
+publish_to: 'none'
+version: 2.1.0+2
+
+environment:
+  sdk: ^3.8.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+  speech_to_text: ^7.0.0
+  pdf: ^3.11.1
+  shared_preferences: ^2.3.3
+  path_provider: ^2.1.5
+  permission_handler: ^11.3.1
+  open_file: ^3.5.10
+  intl: ^0.19.0
+  google_fonts: ^6.2.1
+  image_picker: ^1.1.2
+  uuid: ^4.5.1
+  archive: ^3.6.1
+  lottie: ^3.3.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+  flutter_launcher_icons: ^0.14.4
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/template.docx
+    - assets/icon.png
+    - assets/hospital.json
+
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: false
+  image_path: "assets/icon.png"
+  min_sdk_android: 21
