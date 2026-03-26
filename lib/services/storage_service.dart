@@ -2,10 +2,12 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user_session.dart';
 import '../models/report.dart';
+import '../models/resident_exam.dart';
 
 class StorageService {
   static const String _sessionKey = 'user_session';
   static const String _reportsKey = 'reports';
+  static const String _draftKey = 'draft_report';
 
   // User Session
   static Future<void> saveSession(UserSession session) async {
@@ -59,6 +61,42 @@ class StorageService {
     final prefs = await SharedPreferences.getInstance();
     final jsonList = reports.map((r) => r.toJson()).toList();
     await prefs.setString(_reportsKey, jsonEncode(jsonList));
+  }
+
+  // Drafts
+  static Future<void> saveDraft(Report report) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_draftKey, report.toJsonString());
+  }
+
+  static Future<Report?> getDraft() async {
+    final prefs = await SharedPreferences.getInstance();
+    final draftStr = prefs.getString(_draftKey);
+    if (draftStr == null) return null;
+    try {
+      return Report.fromJsonString(draftStr);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static Future<void> clearDraft() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_draftKey);
+  }
+
+  // Auto-complete Helpers
+  static Future<List<ResidentExam>> getAllResidents() async {
+    final reports = await getReports();
+    final Map<String, ResidentExam> uniqueMap = {};
+    for (final r in reports) {
+      for (final exam in r.exams) {
+        final key = exam.nama.trim().toLowerCase();
+        // Keep the latest if there are duplicates
+        uniqueMap[key] = exam;
+      }
+    }
+    return uniqueMap.values.toList();
   }
 
   static Future<int> getNextReportNo() async {

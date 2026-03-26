@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:open_file/open_file.dart';
+import 'package:share_plus/share_plus.dart';
 import '../theme/app_theme.dart';
 import '../models/report.dart';
 import '../models/user_session.dart';
@@ -26,6 +27,23 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen> {
   List<Report> _reports = [];
   bool _isLoading = true;
   bool _isExporting = false;
+  String _searchQuery = '';
+
+  List<Report> get _filteredReports {
+    if (_searchQuery.isEmpty) return _reports;
+    final query = _searchQuery.toLowerCase();
+    return _reports.where((report) {
+      if (report.summaryNames.toLowerCase().contains(query)) return true;
+      for (final exam in report.exams) {
+        if (exam.nama.toLowerCase().contains(query) ||
+            exam.alamat.toLowerCase().contains(query) ||
+            exam.tanggal.toLowerCase().contains(query)) {
+          return true;
+        }
+      }
+      return false;
+    }).toList();
+  }
 
   @override
   void initState() {
@@ -54,7 +72,7 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text('Hapus Laporan?', style: TextStyle(color: AppTheme.textPrimary)),
         content: Text(
-          'Laporan ${report.nama} akan dihapus permanen.',
+          'Laporan ${report.no} — ${report.totalPasien} pasien — akan dihapus permanen.',
           style: const TextStyle(color: AppTheme.textSecondary),
         ),
         actions: [
@@ -137,7 +155,7 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        '${selectedIds.length} dari ${_reports.length} laporan dipilih',
+                        '${selectedIds.length} dari ${_filteredReports.length} laporan dipilih',
                         style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13),
                       ),
                       const SizedBox(height: 12),
@@ -152,7 +170,7 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen> {
                                   if (allSelected) {
                                     selectedIds.clear();
                                   } else {
-                                    selectedIds.addAll(_reports.map((r) => r.id));
+                                    selectedIds.addAll(_filteredReports.map((r) => r.id));
                                   }
                                 });
                               },
@@ -183,9 +201,9 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen> {
                       Expanded(
                         child: ListView.builder(
                           controller: scrollController,
-                          itemCount: _reports.length,
+                          itemCount: _filteredReports.length,
                           itemBuilder: (context, index) {
-                            final report = _reports[index];
+                            final report = _filteredReports[index];
                             final isSelected = selectedIds.contains(report.id);
 
                             return Container(
@@ -269,16 +287,18 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen> {
                                           child: Column(
                                             crossAxisAlignment: CrossAxisAlignment.start,
                                             children: [
-                                              Text(
-                                                report.nama,
+                                               Text(
+                                                report.summaryNames,
                                                 style: const TextStyle(
                                                   color: AppTheme.textPrimary,
                                                   fontSize: 14,
                                                   fontWeight: FontWeight.w500,
                                                 ),
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
                                               ),
                                               Text(
-                                                '${report.tanggal} • ${report.alamat}',
+                                                '${report.tanggalDisplay} • ${report.totalPasien} Pasien',
                                                 style: const TextStyle(
                                                   color: AppTheme.textSecondary,
                                                   fontSize: 11,
@@ -311,7 +331,7 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen> {
                               color: const Color(0xFFFF5252),
                               enabled: !noneSelected,
                               onTap: () {
-                                final selectedReports = _reports
+                                final selectedReports = _filteredReports
                                     .where((r) => selectedIds.contains(r.id))
                                     .toList();
                                 Navigator.pop(ctx);
@@ -327,7 +347,7 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen> {
                               color: const Color(0xFF448AFF),
                               enabled: !noneSelected,
                               onTap: () {
-                                final selectedReports = _reports
+                                final selectedReports = _filteredReports
                                     .where((r) => selectedIds.contains(r.id))
                                     .toList();
                                 Navigator.pop(ctx);
@@ -458,7 +478,7 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              path.split('/').last,
+              path.split(RegExp(r'[\\/]')).last,
               style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12),
               textAlign: TextAlign.center,
             ),
@@ -468,10 +488,10 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen> {
               child: ElevatedButton.icon(
                 onPressed: () {
                   Navigator.pop(ctx);
-                  OpenFile.open(path);
+                  Share.shareXFiles([XFile(path)]);
                 },
-                icon: const Icon(Icons.open_in_new_rounded),
-                label: const Text('Buka File'),
+                icon: const Icon(Icons.share_rounded),
+                label: const Text('Bagikan File'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppTheme.accentTeal,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -479,6 +499,22 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen> {
               ),
             ),
             const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  OpenFile.open(path);
+                },
+                icon: const Icon(Icons.open_in_new_rounded, color: AppTheme.accentTeal),
+                label: const Text('Buka File', style: TextStyle(color: AppTheme.accentTeal)),
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: AppTheme.accentTeal),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ),
+            const SizedBox(height: 4),
             TextButton(
               onPressed: () => Navigator.pop(ctx),
               child: const Text('Tutup', style: TextStyle(color: AppTheme.textSecondary)),
@@ -520,7 +556,7 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen> {
                         style: TextStyle(color: AppTheme.textPrimary, fontSize: 20, fontWeight: FontWeight.w600),
                       ),
                     ),
-                    if (_reports.isNotEmpty)
+                    if (_filteredReports.isNotEmpty)
                       IconButton(
                         onPressed: _isExporting ? null : _showExportDialog,
                         icon: Container(
@@ -533,6 +569,27 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen> {
                         ),
                       ),
                   ],
+                ),
+              ),
+
+              // Search Bar
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                child: TextField(
+                  onChanged: (val) => setState(() => _searchQuery = val),
+                  style: const TextStyle(color: AppTheme.textPrimary, fontSize: 14),
+                  decoration: InputDecoration(
+                    hintText: 'Cari nama, alamat, atau tanggal...',
+                    hintStyle: const TextStyle(color: AppTheme.textHint),
+                    prefixIcon: const Icon(Icons.search_rounded, color: AppTheme.textHint),
+                    filled: true,
+                    fillColor: AppTheme.cardDark,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
                 ),
               ),
 
@@ -550,25 +607,25 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen> {
               Expanded(
                 child: _isLoading
                     ? const Center(child: CircularProgressIndicator(color: AppTheme.accentTeal))
-                    : _reports.isEmpty
+                    : _filteredReports.isEmpty
                         ? Center(
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Icon(Icons.inbox_rounded, size: 64, color: AppTheme.textHint),
+                                Icon(Icons.search_off_rounded, size: 64, color: AppTheme.textHint),
                                 const SizedBox(height: 16),
-                                const Text(
-                                  'Belum ada laporan',
-                                  style: TextStyle(color: AppTheme.textSecondary, fontSize: 16),
+                                Text(
+                                  _reports.isEmpty ? 'Belum ada laporan' : 'Laporan tidak ditemukan',
+                                  style: const TextStyle(color: AppTheme.textSecondary, fontSize: 16),
                                 ),
                               ],
                             ),
                           )
                         : ListView.builder(
-                            padding: const EdgeInsets.all(16),
-                            itemCount: _reports.length,
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            itemCount: _filteredReports.length,
                             itemBuilder: (context, index) {
-                              final report = _reports[index];
+                              final report = _filteredReports[index];
                               return _buildReportCard(report);
                             },
                           ),
@@ -620,16 +677,18 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        report.nama,
+                        report.summaryNames,
                         style: const TextStyle(
                           color: AppTheme.textPrimary,
                           fontSize: 15,
                           fontWeight: FontWeight.w600,
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        '${report.tanggal} • ${report.alamat}',
+                        '${report.tanggalDisplay} • ${report.totalPasien} Pasien',
                         style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,

@@ -1,4 +1,3 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 import '../theme/app_theme.dart';
@@ -299,7 +298,7 @@ class _SplashScreenState extends State<SplashScreen>
                                     fontSize: 11,
                                     letterSpacing: 1)),
                             SizedBox(height: 4),
-                            Text('v2.1',
+                            Text('v2.3',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                     color: AppTheme.textHint, fontSize: 10)),

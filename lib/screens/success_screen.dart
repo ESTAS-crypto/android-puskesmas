@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:open_file/open_file.dart';
+import 'package:share_plus/share_plus.dart';
 import '../theme/app_theme.dart';
 import '../models/report.dart';
 import '../models/user_session.dart';
@@ -111,20 +112,74 @@ class _SuccessScreenState extends State<SuccessScreen>
   }
 
   void _showSuccess(String path, String type) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            const Icon(Icons.check_circle_rounded, color: AppTheme.success),
-            const SizedBox(width: 8),
-            Expanded(child: Text('File $type berhasil dibuat!')),
-          ],
-        ),
+    final fileName = path.split(RegExp(r'[\\/]')).last;
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
         backgroundColor: AppTheme.cardDark,
-        action: SnackBarAction(
-          label: 'Buka',
-          textColor: AppTheme.accentTeal,
-          onPressed: () => OpenFile.open(path),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                color: AppTheme.success.withValues(alpha: 0.15),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.check_circle_rounded, color: AppTheme.success, size: 40),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'File $type Berhasil Dibuat!',
+              style: const TextStyle(color: AppTheme.textPrimary, fontSize: 18, fontWeight: FontWeight.w600),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              fileName,
+              style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  Share.shareXFiles([XFile(path)]);
+                },
+                icon: const Icon(Icons.share_rounded),
+                label: const Text('Bagikan File'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.accentTeal,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  OpenFile.open(path);
+                },
+                icon: const Icon(Icons.open_in_new_rounded, color: AppTheme.accentTeal),
+                label: const Text('Buka File', style: TextStyle(color: AppTheme.accentTeal)),
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: AppTheme.accentTeal),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ),
+            const SizedBox(height: 4),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Tutup', style: TextStyle(color: AppTheme.textSecondary)),
+            ),
+          ],
         ),
       ),
     );
@@ -181,7 +236,7 @@ class _SuccessScreenState extends State<SuccessScreen>
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Data kunjungan ${widget.report.nama} berhasil disimpan',
+                        '${widget.report.totalPasien} data pasien berhasil disimpan dalam laporan ini',
                         style: const TextStyle(color: AppTheme.textSecondary, fontSize: 14),
                         textAlign: TextAlign.center,
                       ),
@@ -195,11 +250,9 @@ class _SuccessScreenState extends State<SuccessScreen>
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            _buildSummaryRow('Nama', widget.report.nama),
-                            _buildSummaryRow('Tanggal', widget.report.tanggal),
-                            _buildSummaryRow('Alamat', widget.report.alamat),
-                            _buildSummaryRow('Keluhan', '${widget.report.keluhan.length} item'),
-                            _buildSummaryRow('Tindak Lanjut', '${widget.report.tindakLanjut.length} item'),
+                            _buildSummaryRow('Pasien', '${widget.report.totalPasien} Orang'),
+                            _buildSummaryRow('Tanggal', widget.report.tanggalDisplay),
+                            _buildSummaryRow('Nama', widget.report.summaryNames),
                           ],
                         ),
                       ),

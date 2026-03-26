@@ -3,18 +3,49 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../theme/app_theme.dart';
 
 class ChangelogDialog {
-  static const String _currentVersion = '2.1.0';
+  static const String _currentVersion = '2.4.0';
   static const String _seenVersionKey = 'changelog_seen_version';
 
   static final List<Map<String, dynamic>> _changelog = [
     {
+      'version': '2.4.0',
+      'date': '19 Maret 2026',
+      'changes': [
+        {'icon': Icons.badge_rounded, 'text': 'Penambahan kolom NIK pada identitas pasien', 'type': 'new'},
+        {'icon': Icons.share_rounded, 'text': 'Bagikan file hasil export langsung ke WhatsApp & aplikasi lain', 'type': 'new'},
+        {'icon': Icons.drag_handle_rounded, 'text': 'Urutan Keluhan & Tindak Lanjut kini bisa digeser (drag & drop)', 'type': 'new'},
+        {'icon': Icons.edit_document, 'text': 'Penyempurnaan seluruh istilah "Warga" menjadi "Pasien"', 'type': 'improve'},
+      ],
+    },
+    {
+      'version': '2.3.0',
+      'date': '15 Maret 2026',
+      'changes': [
+        {'icon': Icons.calendar_month_rounded, 'text': 'Tanggal kunjungan terpisah per warga', 'type': 'new'},
+        {'icon': Icons.search_rounded, 'text': 'Pencarian & filter riwayat laporan (offline)', 'type': 'new'},
+        {'icon': Icons.auto_awesome_rounded, 'text': 'Auto-complete nama warga & isi otomatis semua data sebelumnya', 'type': 'new'},
+        {'icon': Icons.save_rounded, 'text': 'Auto-save draf laporan — progres tidak hilang', 'type': 'new'},
+        {'icon': Icons.description_rounded, 'text': 'PDF & DOCX: setiap warga kini di halaman terpisah', 'type': 'improve'},
+        {'icon': Icons.speed_rounded, 'text': 'Optimasi ukuran aplikasi — lebih ringan & cepat', 'type': 'improve'},
+      ],
+    },
+    {
+      'version': '2.2.0',
+      'date': '11 Maret 2026',
+      'changes': [
+        {'icon': Icons.people_alt_rounded, 'text': '1 Laporan bisa berisi banyak warga sekaligus', 'type': 'new'},
+        {'icon': Icons.drag_handle_rounded, 'text': 'Urutan warga bisa diatur ulang (drag & drop)', 'type': 'new'},
+        {'icon': Icons.table_chart_rounded, 'text': 'PDF & DOCX otomatis memuat semua warga dalam 1 dokumen', 'type': 'improve'},
+        {'icon': Icons.cloud_done_rounded, 'text': 'Data lama otomatis dimigrasi ke format baru', 'type': 'fix'},
+      ],
+    },
+    {
       'version': '2.1.0',
-      'date': '16 Maret 2026',
+      'date': '6 Maret 2026',
       'changes': [
         {'icon': Icons.add_circle_outline, 'text': 'Custom pengukuran — buat field sendiri di Data Pengukuran', 'type': 'new'},
-        {'icon': Icons.description_outlined, 'text': 'DOCX bisa dibuka di MS Word Android', 'type': 'fix'},
+        {'icon': Icons.description_outlined, 'text': 'DOCX kompatibel dengan MS Word Android', 'type': 'fix'},
         {'icon': Icons.animation, 'text': 'Splash screen lebih cepat & mulus', 'type': 'improve'},
-        {'icon': Icons.cleaning_services, 'text': 'File tidak perlu dihapus, app lebih ringan', 'type': 'improve'},
       ],
     },
     {

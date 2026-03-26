@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../models/user_session.dart';
+import '../models/resident_exam.dart';
 import '../services/storage_service.dart';
 import '../widgets/changelog_dialog.dart';
 import 'login_screen.dart';
@@ -91,11 +92,54 @@ class _DashboardScreenState extends State<DashboardScreen>
     }
   }
 
-  void _navigateToForm() {
+  Future<void> _navigateToForm() async {
+    final draft = await StorageService.getDraft();
+    if (draft != null && draft.exams.isNotEmpty) {
+      if (!mounted) return;
+      final confirm = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: AppTheme.cardDark,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Text('Lanjutkan Draf?', style: TextStyle(color: AppTheme.textPrimary)),
+          content: Text(
+            'Ada draf laporan sebelumnya dengan ${draft.totalPasien} pasien yang belum disimpan. Ingin melanjutkannya?',
+            style: const TextStyle(color: AppTheme.textSecondary),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () async {
+                await StorageService.clearDraft();
+                if (ctx.mounted) Navigator.pop(ctx, false);
+              },
+              child: const Text('Hapus & Buat Baru', style: TextStyle(color: AppTheme.error)),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Lanjutkan', style: TextStyle(color: AppTheme.accentTeal)),
+            ),
+          ],
+        ),
+      );
+
+      if (confirm == true) {
+        _openForm(initialExams: draft.exams);
+        return;
+      } else if (confirm == null) {
+        return; // Dialog dismissed
+      }
+    }
+    _openForm();
+  }
+
+  void _openForm({List<ResidentExam>? initialExams}) {
     Navigator.push(
       context,
       PageRouteBuilder(
-        pageBuilder: (_, __, ___) => ReportFormScreen(session: widget.session),
+        pageBuilder: (_, __, ___) => ReportFormScreen(
+          session: widget.session,
+          initialExams: initialExams,
+        ),
         transitionsBuilder: (_, anim, __, child) {
           return FadeTransition(
             opacity: anim,

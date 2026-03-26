@@ -12,7 +12,7 @@ class DocxService {
     required UserSession session,
   }) async {
     try {
-      print('[DOCX] Starting DOCX generation...');
+      // Debug logging removed for production
       final dir = await _getOutputDir();
       final fileName = 'Laporan_Kunjungan_Rumah_${session.bulan}_${session.tahun}_${DateTime.now().millisecondsSinceEpoch}.docx';
       final filePath = '${dir.path}/$fileName';
@@ -22,106 +22,149 @@ class DocxService {
       final imageParts = <String, Uint8List>{};
       int imageIndex = 1;
 
-      // Build table rows XML
-      final rowsXml = StringBuffer();
+      final bodyXml = StringBuffer();
+      
+      int rowNo = 1;
+      int totalExams = reports.fold(0, (sum, r) => sum + r.exams.length);
+      int currentExam = 0;
 
-      // Header row (gray background)
-      rowsXml.write('<w:tr><w:trPr><w:trHeight w:val="400"/></w:trPr>');
-      rowsXml.write(_headerCell('NO', 'center'));
-      rowsXml.write(_headerCell('TANGGAL', 'center'));
-      rowsXml.write(_headerCell('HASIL', 'center'));
-      rowsXml.write(_headerCell('FOTO GEOTAG', 'center'));
-      rowsXml.write('</w:tr>');
-
-      // Data rows
       for (final report in reports) {
-        final hasil = StringBuffer();
+        for (final exam in report.exams) {
+          currentExam++;
+          
+          bodyXml.write('<w:p><w:pPr><w:spacing w:after="60" w:line="240" w:lineRule="auto"/><w:jc w:val="center"/></w:pPr>');
+          bodyXml.write('<w:r><w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri"/><w:b/><w:sz w:val="24"/><w:szCs w:val="24"/></w:rPr>');
+          bodyXml.write('<w:t>LAPORAN KUNJUNGAN RUMAH</w:t></w:r></w:p>');
 
-        // 1. Identitas Pasien:
-        hasil.write(_sectionHeader('Identitas Pasien:'));
-        hasil.write(_labelValue('Nama:', report.nama));
-        hasil.write(_labelValue('Usia:', report.usia));
-        hasil.write(_labelValue('Alamat:', report.alamat));
-        hasil.write(_spacer());
+          bodyXml.write('<w:p><w:pPr><w:spacing w:after="60" w:line="240" w:lineRule="auto"/><w:jc w:val="center"/></w:pPr>');
+          bodyXml.write('<w:r><w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri"/><w:b/><w:sz w:val="24"/><w:szCs w:val="24"/></w:rPr>');
+          bodyXml.write('<w:t>PUSKESMAS ${_esc(session.puskesmas.toUpperCase())}</w:t></w:r></w:p>');
 
-        // 2. Kategori Keluarga:
-        hasil.write(_sectionHeader('Kategori Keluarga:'));
-        if (report.kategoriKeluarga.isNotEmpty) {
-          hasil.write(_bulletItem(report.kategoriKeluarga));
-        } else {
-          hasil.write(_bulletItem('-'));
-        }
-        hasil.write(_spacer());
+          bodyXml.write('<w:p><w:pPr><w:spacing w:after="200" w:line="240" w:lineRule="auto"/><w:jc w:val="center"/></w:pPr>');
+          bodyXml.write('<w:r><w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri"/><w:b/><w:sz w:val="24"/><w:szCs w:val="24"/></w:rPr>');
+          bodyXml.write('<w:t>BULAN ${_esc(session.bulan.toUpperCase())} TAHUN ${_esc(session.tahun)}</w:t></w:r></w:p>');
 
-        // 3. Keluhan/Permasalahan:
-        hasil.write(_sectionHeader('Keluhan/Permasalahan:'));
-        if (report.keluhan.isNotEmpty) {
-          for (final k in report.keluhan) {
-            hasil.write(_bulletItem(k));
+          bodyXml.write('<w:p><w:pPr><w:spacing w:after="120" w:line="240" w:lineRule="auto"/></w:pPr>');
+          bodyXml.write('<w:r><w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri"/><w:sz w:val="22"/><w:szCs w:val="22"/></w:rPr>');
+          bodyXml.write('<w:t xml:space="preserve">Kader yang melakukan kunjungan rumah: ${_esc(session.nama)}</w:t></w:r></w:p>');
+
+          bodyXml.write('''
+    <w:tbl>
+      <w:tblPr>
+        <w:tblStyle w:val="TableGrid"/>
+        <w:tblW w:w="9026" w:type="dxa"/>
+        <w:tblBorders>
+          <w:top w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+          <w:left w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+          <w:bottom w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+          <w:right w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+          <w:insideH w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+          <w:insideV w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+        </w:tblBorders>
+        <w:tblLayout w:type="fixed"/>
+        <w:tblLook w:val="04A0" w:firstRow="1" w:lastRow="0" w:firstColumn="1" w:lastColumn="0" w:noHBand="0" w:noVBand="1"/>
+      </w:tblPr>
+      <w:tblGrid>
+        <w:gridCol w:w="500"/>
+        <w:gridCol w:w="1200"/>
+        <w:gridCol w:w="4826"/>
+        <w:gridCol w:w="2500"/>
+      </w:tblGrid>
+          ''');
+
+          bodyXml.write('<w:tr><w:trPr><w:trHeight w:val="400"/></w:trPr>');
+          bodyXml.write(_headerCell('NO', 'center'));
+          bodyXml.write(_headerCell('TANGGAL', 'center'));
+          bodyXml.write(_headerCell('HASIL', 'center'));
+          bodyXml.write(_headerCell('FOTO GEOTAG', 'center'));
+          bodyXml.write('</w:tr>');
+
+          final hasil = StringBuffer();
+          
+          hasil.write(_sectionHeader('Identitas Pasien:'));
+          hasil.write(_labelValue('Nama:', exam.nama));
+          hasil.write(_labelValue('Alamat:', exam.alamat));
+          hasil.write(_labelValue('NIK:', exam.nik.isNotEmpty ? exam.nik : '-'));
+          hasil.write(_labelValue('Usia:', exam.usia));
+          hasil.write(_spacer());
+
+          hasil.write(_sectionHeader('Kategori Keluarga:'));
+          if (exam.kategoriKeluarga.isNotEmpty) {
+            hasil.write(_bulletItem(exam.kategoriKeluarga));
+          } else {
+            hasil.write(_bulletItem('-'));
           }
-        } else {
-          hasil.write(_bulletItem('-'));
-        }
-        hasil.write(_spacer());
+          hasil.write(_spacer());
 
-        // 4. Hasil Pemeriksaan:
-        hasil.write(_sectionHeader('Hasil Pemeriksaan:'));
-        if (report.bb.isNotEmpty) hasil.write(_bulletItem('BB : ${report.bb} kg'));
-        if (report.tb.isNotEmpty) hasil.write(_bulletItem('TB : ${report.tb} cm'));
-        if (report.lingkarPinggang.isNotEmpty) hasil.write(_bulletItem('LP : ${report.lingkarPinggang} cm'));
-        if (report.lila.isNotEmpty) hasil.write(_bulletItem('LILA : ${report.lila} cm'));
-        if (report.lika.isNotEmpty) hasil.write(_bulletItem('LiKa : ${report.lika} cm'));
-        hasil.write(_bulletItem('Tensi : ${report.tensi}'));
-        if (report.gulaDarah.isNotEmpty) hasil.write(_bulletItem('Gula Darah : ${report.gulaDarah} mg/dL'));
-        // Custom fields
-        for (final entry in report.customFields.entries) {
-          hasil.write(_bulletItem('${entry.key} : ${entry.value}'));
-        }
-        hasil.write(_spacer());
-
-        // 5. Tindak Lanjut:
-        hasil.write(_sectionHeader('Tindak Lanjut:'));
-        if (report.tindakLanjut.isNotEmpty) {
-          for (int i = 0; i < report.tindakLanjut.length; i++) {
-            hasil.write(_normalText('${i + 1}. ${report.tindakLanjut[i]}'));
+          hasil.write(_sectionHeader('Keluhan/Permasalahan:'));
+          if (exam.keluhan.isNotEmpty) {
+            for (final k in exam.keluhan) {
+              hasil.write(_bulletItem(k));
+            }
+          } else {
+            hasil.write(_bulletItem('-'));
           }
-        } else {
-          hasil.write(_normalText('-'));
-        }
+          hasil.write(_spacer());
 
-        // Build foto cell
-        String fotoCellContent;
-        if (report.fotoPath != null && File(report.fotoPath!).existsSync()) {
-          try {
-            final imageBytes = File(report.fotoPath!).readAsBytesSync();
-            final imgId = 'rId${10 + imageIndex}';
-            final imgFile = 'image$imageIndex.jpg';
-            imageParts['word/media/$imgFile'] = Uint8List.fromList(imageBytes);
-            imageRelationships.write(
-              '<Relationship Id="$imgId" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/$imgFile"/>');
-            // Image ~1.4in x 1.86in fits in 1.74in column (minus padding)
-            fotoCellContent = _imageCellXml(imgId, imageIndex);
-            imageIndex++;
-          } catch (_) {
+          hasil.write(_sectionHeader('Hasil Pemeriksaan:'));
+          if (exam.bb.isNotEmpty) hasil.write(_bulletItem('BB : ${exam.bb} kg'));
+          if (exam.tb.isNotEmpty) hasil.write(_bulletItem('TB : ${exam.tb} cm'));
+          if (exam.lingkarPinggang.isNotEmpty) hasil.write(_bulletItem('LP : ${exam.lingkarPinggang} cm'));
+          if (exam.lila.isNotEmpty) hasil.write(_bulletItem('LILA : ${exam.lila} cm'));
+          if (exam.lika.isNotEmpty) hasil.write(_bulletItem('LiKa : ${exam.lika} cm'));
+          if (exam.tensi.isNotEmpty) hasil.write(_bulletItem('Tensi : ${exam.tensi}'));
+          if (exam.gulaDarah.isNotEmpty) hasil.write(_bulletItem('Gula Darah : ${exam.gulaDarah} mg/dL'));
+          for (final entry in exam.customFields.entries) {
+            hasil.write(_bulletItem('${entry.key} : ${entry.value}'));
+          }
+          hasil.write(_spacer());
+
+          hasil.write(_sectionHeader('Tindak Lanjut:'));
+          if (exam.tindakLanjut.isNotEmpty) {
+            for (int i = 0; i < exam.tindakLanjut.length; i++) {
+              hasil.write(_normalText('${i + 1}. ${exam.tindakLanjut[i]}'));
+            }
+          } else {
+            hasil.write(_normalText('-'));
+          }
+
+          String fotoCellContent;
+          if (exam.fotoPath != null && File(exam.fotoPath!).existsSync()) {
+            try {
+              final imageBytes = File(exam.fotoPath!).readAsBytesSync();
+              final imgId = 'rId${10 + imageIndex}';
+              final imgFile = 'image$imageIndex.jpg';
+              imageParts['word/media/$imgFile'] = Uint8List.fromList(imageBytes);
+              imageRelationships.write(
+                '<Relationship Id="$imgId" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/$imgFile"/>');
+              fotoCellContent = _imageCellXml(imgId, imageIndex);
+              imageIndex++;
+            } catch (_) {
+              fotoCellContent = _dataCell(_centeredText('-'));
+            }
+          } else {
             fotoCellContent = _dataCell(_centeredText('-'));
           }
-        } else {
-          fotoCellContent = _dataCell(_centeredText('-'));
+
+          bodyXml.write('<w:tr>');
+          bodyXml.write(_dataCell(_centeredText(rowNo.toString())));
+          bodyXml.write(_dataCell(_centeredText(exam.tanggal)));
+          bodyXml.write(_dataCell(hasil.toString()));
+          bodyXml.write(fotoCellContent);
+          bodyXml.write('</w:tr>');
+
+          bodyXml.write('</w:tbl>');
+          
+          if (currentExam < totalExams) {
+             bodyXml.write('<w:p><w:r><w:br w:type="page"/></w:r></w:p>');
+          }
+
+
+          rowNo++;
         }
-
-        // Build the complete row
-        rowsXml.write('<w:tr>');
-        rowsXml.write(_dataCell(_centeredText(report.no.toString())));
-        rowsXml.write(_dataCell(_centeredText(report.tanggal)));
-        rowsXml.write(_dataCell(hasil.toString()));
-        rowsXml.write(fotoCellContent);
-        rowsXml.write('</w:tr>');
-
-        print('[DOCX] Row ${report.no} added');
       }
 
-      // Build document XML
-      final documentXml = _buildDocumentXml(session, rowsXml.toString());
+      final documentXml = _buildDocumentXml(bodyXml.toString());
       final relsXml = _buildDocumentRels(imageRelationships.toString());
 
       // Create the DOCX (ZIP) archive
@@ -143,13 +186,12 @@ class DocxService {
       final encodedZip = ZipEncoder().encode(archive);
       if (encodedZip != null) {
         await File(filePath).writeAsBytes(encodedZip);
-        print('[DOCX] File saved to: $filePath');
+
       }
 
       return filePath;
-    } catch (e, stackTrace) {
-      print('[DOCX] ❌ ERROR: $e');
-      print('[DOCX] ❌ STACK TRACE: $stackTrace');
+    } catch (e) {
+
       rethrow;
     }
   }
@@ -198,8 +240,11 @@ class DocxService {
       '<w:r><w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri"/><w:b/><w:sz w:val="22"/><w:szCs w:val="22"/></w:rPr>'
       '<w:t>${_esc(text)}</w:t></w:r></w:p></w:tc>';
 
-  static String _dataCell(String paragraphsXml) =>
-      '<w:tc><w:tcPr><w:vAlign w:val="top"/></w:tcPr>$paragraphsXml</w:tc>';
+  static String _dataCell(String paragraphsXml) {
+    return '''
+      <w:tc><w:tcPr><w:vAlign w:val="top"/></w:tcPr>$paragraphsXml</w:tc>
+    ''';
+  }
 
   // Image cell — fits within 2500 dxa column (~1.74in)
   // Image size: 1.4in x 1.86in = 1280160 x 1700784 EMU
@@ -243,10 +288,7 @@ class DocxService {
 
   // ====== Document Structure ======
 
-  static String _buildDocumentXml(UserSession session, String tableRowsXml) {
-    // A4: 11906 x 16838 twips, margins: 1440 (1 inch) each
-    // Available width: 11906 - 2*1440 = 9026 twips
-    // Column widths: NO=500, TGL=1200, HASIL=4826, FOTO=2500 = total 9026
+  static String _buildDocumentXml(String bodyContentXml) {
     return '''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <w:document xmlns:wpc="http://schemas.microsoft.com/office/word/2010/wordprocessingCanvas"
   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
@@ -265,48 +307,7 @@ class DocxService {
   xmlns:wps="http://schemas.microsoft.com/office/word/2010/wordprocessingShape"
   mc:Ignorable="w14 wp14">
   <w:body>
-    <w:p><w:pPr><w:spacing w:after="60" w:line="240" w:lineRule="auto"/><w:jc w:val="center"/></w:pPr>
-    <w:r><w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri"/><w:b/><w:sz w:val="24"/><w:szCs w:val="24"/></w:rPr>
-    <w:t>LAPORAN KUNJUNGAN RUMAH</w:t></w:r></w:p>
-
-    <w:p><w:pPr><w:spacing w:after="60" w:line="240" w:lineRule="auto"/><w:jc w:val="center"/></w:pPr>
-    <w:r><w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri"/><w:b/><w:sz w:val="24"/><w:szCs w:val="24"/></w:rPr>
-    <w:t>PUSKESMAS ${_esc(session.puskesmas.toUpperCase())}</w:t></w:r></w:p>
-
-    <w:p><w:pPr><w:spacing w:after="200" w:line="240" w:lineRule="auto"/><w:jc w:val="center"/></w:pPr>
-    <w:r><w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri"/><w:b/><w:sz w:val="24"/><w:szCs w:val="24"/></w:rPr>
-    <w:t>BULAN ${_esc(session.bulan.toUpperCase())} TAHUN ${_esc(session.tahun)}</w:t></w:r></w:p>
-
-    <w:p><w:pPr><w:spacing w:after="120" w:line="240" w:lineRule="auto"/></w:pPr>
-    <w:r><w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri"/><w:sz w:val="22"/><w:szCs w:val="22"/></w:rPr>
-    <w:t xml:space="preserve">Kader yang melakukan kunjungan rumah : ${_esc(session.nama)}</w:t></w:r></w:p>
-
-    <w:tbl>
-      <w:tblPr>
-        <w:tblStyle w:val="TableGrid"/>
-        <w:tblW w:w="9026" w:type="dxa"/>
-        <w:tblBorders>
-          <w:top w:val="single" w:sz="4" w:space="0" w:color="000000"/>
-          <w:left w:val="single" w:sz="4" w:space="0" w:color="000000"/>
-          <w:bottom w:val="single" w:sz="4" w:space="0" w:color="000000"/>
-          <w:right w:val="single" w:sz="4" w:space="0" w:color="000000"/>
-          <w:insideH w:val="single" w:sz="4" w:space="0" w:color="000000"/>
-          <w:insideV w:val="single" w:sz="4" w:space="0" w:color="000000"/>
-        </w:tblBorders>
-        <w:tblLayout w:type="fixed"/>
-        <w:tblLook w:val="04A0" w:firstRow="1" w:lastRow="0" w:firstColumn="1" w:lastColumn="0" w:noHBand="0" w:noVBand="1"/>
-      </w:tblPr>
-      <w:tblGrid>
-        <w:gridCol w:w="500"/>
-        <w:gridCol w:w="1200"/>
-        <w:gridCol w:w="4826"/>
-        <w:gridCol w:w="2500"/>
-      </w:tblGrid>
-      $tableRowsXml
-    </w:tbl>
-
-    <w:p><w:pPr><w:spacing w:after="0"/></w:pPr></w:p>
-
+    $bodyContentXml
     <w:sectPr>
       <w:pgSz w:w="11906" w:h="16838"/>
       <w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440" w:header="708" w:footer="708" w:gutter="0"/>
@@ -316,6 +317,7 @@ class DocxService {
   </w:body>
 </w:document>''';
   }
+
 
   static String _buildDocumentRels(String imageRels) {
     return '''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
