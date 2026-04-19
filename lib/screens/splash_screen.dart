@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 import '../theme/app_theme.dart';
 import '../services/storage_service.dart';
+import '../services/supabase_service.dart';
 import 'login_screen.dart';
 import 'dashboard_screen.dart';
 
@@ -115,13 +116,19 @@ class _SplashScreenState extends State<SplashScreen>
     if (!mounted || _navigated) return;
     _navigated = true;
 
-    final session = await StorageService.getSession();
+    // Cek 1: Apakah Supabase auth session masih aktif?
+    // Cek 2: Apakah ada session lokal di SharedPreferences? (offline fallback)
+    final localSession = await StorageService.getSession();
+    final isSupabaseLoggedIn = SupabaseService.isLoggedIn;
+
+    Widget destination;
+    if (localSession != null && (isSupabaseLoggedIn || localSession.userId.isNotEmpty)) {
+      destination = DashboardScreen(session: localSession);
+    } else {
+      destination = const LoginScreen();
+    }
+
     if (!mounted) return;
-
-    final destination = session != null
-        ? DashboardScreen(session: session)
-        : const LoginScreen();
-
     await _exitCtrl.forward();
     if (!mounted) return;
 
@@ -298,7 +305,7 @@ class _SplashScreenState extends State<SplashScreen>
                                     fontSize: 11,
                                     letterSpacing: 1)),
                             SizedBox(height: 4),
-                            Text('v2.3',
+                            Text('v2.5',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                     color: AppTheme.textHint, fontSize: 10)),

@@ -33,6 +33,7 @@ class _ResidentExamFormScreenState extends State<ResidentExamFormScreen> {
   late TextEditingController _namaCtrl;
   late TextEditingController _nikCtrl;
   late String _tanggal;
+  late TextEditingController _tanggalLahirCtrl;
   late TextEditingController _usiaCtrl;
   late TextEditingController _alamatCtrl;
   late TextEditingController _kategoriKeluargaCtrl;
@@ -59,6 +60,7 @@ class _ResidentExamFormScreenState extends State<ResidentExamFormScreen> {
     _namaCtrl = TextEditingController(text: e?.nama ?? '');
     _nikCtrl = TextEditingController(text: e?.nik ?? '');
     _tanggal = e?.tanggal ?? DateFormat('dd.MM.yy').format(DateTime.now());
+    _tanggalLahirCtrl = TextEditingController(text: e?.tanggalLahir ?? '');
     _usiaCtrl = TextEditingController(text: e?.usia ?? '');
     _alamatCtrl = TextEditingController(text: e?.alamat ?? '');
     _kategoriKeluargaCtrl = TextEditingController(text: e?.kategoriKeluarga ?? '');
@@ -101,7 +103,7 @@ class _ResidentExamFormScreenState extends State<ResidentExamFormScreen> {
 
   @override
   void dispose() {
-    _namaCtrl.dispose(); _nikCtrl.dispose(); _usiaCtrl.dispose(); _alamatCtrl.dispose();
+    _namaCtrl.dispose(); _nikCtrl.dispose(); _tanggalLahirCtrl.dispose(); _usiaCtrl.dispose(); _alamatCtrl.dispose();
     _kategoriKeluargaCtrl.dispose(); _bbCtrl.dispose(); _tbCtrl.dispose();
     _lpCtrl.dispose(); _tensiCtrl.dispose(); _lilaCtrl.dispose();
     _likaCtrl.dispose(); _gulaDarahCtrl.dispose();
@@ -162,7 +164,7 @@ class _ResidentExamFormScreenState extends State<ResidentExamFormScreen> {
       ),
     );
     if (source == null) return;
-    final picked = await _imagePicker.pickImage(source: source, maxWidth: 1200, maxHeight: 1200, imageQuality: 80);
+    final picked = await _imagePicker.pickImage(source: source, maxWidth: 1600, maxHeight: 1600, imageQuality: 80);
     if (picked != null) setState(() => _fotoPath = picked.path);
   }
 
@@ -181,6 +183,7 @@ class _ResidentExamFormScreenState extends State<ResidentExamFormScreen> {
     final exam = ResidentExam(
       id: widget.existingExam?.id,
       tanggal: _tanggal,
+      tanggalLahir: _tanggalLahirCtrl.text.trim(),
       nama: _namaCtrl.text.trim(),
       nik: _nikCtrl.text.trim(),
       usia: _usiaCtrl.text.trim(),
@@ -307,6 +310,7 @@ class _ResidentExamFormScreenState extends State<ResidentExamFormScreen> {
                         onSelected: (selection) {
                           setState(() {
                             _nikCtrl.text = selection.nik;
+                            _tanggalLahirCtrl.text = selection.tanggalLahir;
                             _usiaCtrl.text = selection.usia;
                             _alamatCtrl.text = selection.alamat;
                             _kategoriKeluargaCtrl.text = selection.kategoriKeluarga;
@@ -385,6 +389,70 @@ class _ResidentExamFormScreenState extends State<ResidentExamFormScreen> {
                       _voiceField('alamat', 'Alamat Lengkap', _alamatCtrl, Icons.location_on_outlined, required_: true),
                       const SizedBox(height: 12),
                       _voiceField('nik', 'NIK', _nikCtrl, Icons.badge_outlined),
+                      const SizedBox(height: 12),
+                      // -- Tanggal Lahir --
+                      InkWell(
+                        onTap: () async {
+                          DateTime initDate = DateTime(1990);
+                          if (_tanggalLahirCtrl.text.isNotEmpty) {
+                            try {
+                              initDate = DateFormat('dd.MM.yy').parse(_tanggalLahirCtrl.text);
+                            } catch (_) {}
+                          }
+                          final picked = await showDatePicker(
+                            context: context,
+                            initialDate: initDate,
+                            firstDate: DateTime(1900),
+                            lastDate: DateTime.now(),
+                            builder: (ctx, child) => Theme(
+                              data: Theme.of(ctx).copyWith(
+                                colorScheme: const ColorScheme.dark(
+                                  primary: AppTheme.accentTeal,
+                                  surface: AppTheme.cardDark,
+                                  onSurface: AppTheme.textPrimary,
+                                ),
+                              ),
+                              child: child!,
+                            ),
+                          );
+                          if (picked != null) {
+                            setState(() {
+                              _tanggalLahirCtrl.text = DateFormat('dd.MM.yy').format(picked);
+                              // Auto calculate age
+                              final now = DateTime.now();
+                              int age = now.year - picked.year;
+                              if (now.month < picked.month || (now.month == picked.month && now.day < picked.day)) {
+                                age--;
+                              }
+                              _usiaCtrl.text = age.toString();
+                            });
+                          }
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                          decoration: BoxDecoration(
+                            color: AppTheme.surfaceDark,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: AppTheme.divider),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.cake_rounded, color: AppTheme.accentTeal),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text('Tanggal Lahir', style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+                                    Text(_tanggalLahirCtrl.text.isEmpty ? 'Pilih Tanggal' : _tanggalLahirCtrl.text, style: TextStyle(color: _tanggalLahirCtrl.text.isEmpty ? AppTheme.textHint : AppTheme.textPrimary, fontSize: 16)),
+                                  ],
+                                ),
+                              ),
+                              const Icon(Icons.edit_calendar_rounded, color: AppTheme.textHint, size: 20),
+                            ],
+                          ),
+                        ),
+                      ),
                       const SizedBox(height: 12),
                       Row(children: [
                         Expanded(child: _smallField('Usia', _usiaCtrl)),

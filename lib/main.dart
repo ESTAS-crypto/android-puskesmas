@@ -1,10 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'theme/app_theme.dart';
 import 'screens/splash_screen.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Inisialisasi Supabase
+  await Supabase.initialize(
+    url: 'https://pndkpooxkbmkgmcgqygl.supabase.co',
+    anonKey: 'sb_publishable_3HttqlKQ2iv-CLGJyv-AjA_-AmS663B',
+  );
+
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,

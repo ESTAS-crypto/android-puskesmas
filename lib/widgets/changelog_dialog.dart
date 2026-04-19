@@ -3,10 +3,24 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../theme/app_theme.dart';
 
 class ChangelogDialog {
-  static const String _currentVersion = '2.4.0';
+  static const String _currentVersion = '2.5.0';
   static const String _seenVersionKey = 'changelog_seen_version';
 
   static final List<Map<String, dynamic>> _changelog = [
+    {
+      'version': '2.5.0',
+      'date': '27 Maret 2026',
+      'changes': [
+        {'icon': Icons.cloud_sync_rounded, 'text': 'Sinkronisasi data ke cloud — akses laporan dari device manapun', 'type': 'new'},
+        {'icon': Icons.login_rounded, 'text': 'Login hybrid: bisa pakai Username atau Email', 'type': 'new'},
+        {'icon': Icons.pin_rounded, 'text': 'Konfirmasi akun & reset password via kode OTP 6-angka (tanpa link)', 'type': 'new'},
+        {'icon': Icons.public_rounded, 'text': 'Global Search — cari riwayat pasien dari semua petugas (online)', 'type': 'new'},
+        {'icon': Icons.wifi_rounded, 'text': 'Notifikasi status koneksi (online/offline) otomatis', 'type': 'new'},
+        {'icon': Icons.person_add_rounded, 'text': 'Registrasi akun dengan verifikasi email OTP', 'type': 'new'},
+        {'icon': Icons.search_rounded, 'text': 'Pencarian lokal kini mendukung NIK', 'type': 'improve'},
+        {'icon': Icons.cleaning_services_rounded, 'text': 'Hapus field Bulan & Tahun dari form registrasi', 'type': 'improve'},
+      ],
+    },
     {
       'version': '2.4.0',
       'date': '19 Maret 2026',

@@ -1,0 +1,1685 @@
+import 'dart:io';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../theme/app_theme.dart';
+import '../models/user_session.dart';
+import '../services/supabase_service.dart';
+
+class AdminPanelScreen extends StatefulWidget {
+  final UserSession session;
+  const AdminPanelScreen({super.key, required this.session});
+
+  @override
+  State<AdminPanelScreen> createState() => _AdminPanelScreenState();
+}
+
+class _AdminPanelScreenState extends State<AdminPanelScreen>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+
+  List<Map<String, dynamic>> _users = [];
+  List<Map<String, dynamic>> _reports = [];
+  List<Map<String, dynamic>> _photos = [];
+  bool _loadingUsers = false;
+  bool _loadingReports = false;
+  bool _loadingPhotos = false;
+  int _totalStorageUsedBytes = 0;
+  int _totalExamCount = 0;
+
+  // Auto-delete settings (terpisah foto & laporan) — SERVER/CLOUD
+  int _photoDeleteValue = 0;   // 0 = nonaktif
+  String _photoDeleteUnit = 'bulan'; // hari, minggu, bulan
+  int _reportDeleteValue = 0;
+  String _reportDeleteUnit = 'bulan';
+
+  // Auto-delete LOKAL (HP petugas) — via remote config
+  int _localDeleteValue = 0;
+  String _localDeleteUnit = 'hari';
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 3, vsync: this);
+    _tabController.addListener(() {
+      if (!_tabController.indexIsChanging) _loadTabData(_tabController.index);
+    });
+    _loadTabData(0);
+    _loadAutoDeleteSettings();
+    _loadLocalDeleteConfig();
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  // ═══════════════════════════════════════════════
+  // AUTO-DELETE SETTINGS
+  // ═══════════════════════════════════════════════
+
+  Future<void> _loadAutoDeleteSettings() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (mounted) {
+      setState(() {
+        _photoDeleteValue = prefs.getInt('ad_photo_val') ?? 0;
+        _photoDeleteUnit = prefs.getString('ad_photo_unit') ?? 'bulan';
+        _reportDeleteValue = prefs.getInt('ad_report_val') ?? 0;
+        _reportDeleteUnit = prefs.getString('ad_report_unit') ?? 'bulan';
+      });
+    }
+  }
+
+  Future<void> _savePhotoDeleteSetting(int value, String unit) async {
+    value = value.clamp(0, 365); // Batas wajar
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('ad_photo_val', value);
+    await prefs.setString('ad_photo_unit', unit);
+    if (mounted) setState(() { _photoDeleteValue = value; _photoDeleteUnit = unit; });
+  }
+
+  Future<void> _saveReportDeleteSetting(int value, String unit) async {
+    value = value.clamp(0, 365); // Batas wajar
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('ad_report_val', value);
+    await prefs.setString('ad_report_unit', unit);
+    if (mounted) setState(() { _reportDeleteValue = value; _reportDeleteUnit = unit; });
+  }
+
+  Future<void> _loadLocalDeleteConfig() async {
+    final prefs = await SharedPreferences.getInstance();
+    int val = prefs.getInt('local_ad_val') ?? 0;
+    String unit = prefs.getString('local_ad_unit') ?? 'hari';
+    if (mounted) setState(() { _localDeleteValue = val; _localDeleteUnit = unit; });
+    try {
+      final result = await SupabaseService.fetchAndCacheLocalDeleteConfig();
+      if (result > 0 && mounted) {
+        final freshPrefs = await SharedPreferences.getInstance();
+        setState(() {
+          _localDeleteValue = freshPrefs.getInt('local_ad_val') ?? val;
+          _localDeleteUnit = freshPrefs.getString('local_ad_unit') ?? unit;
+        });
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _saveLocalDeleteConfig(int value, String unit) async {
+    setState(() { _localDeleteValue = value; _localDeleteUnit = unit; });
+    final error = await SupabaseService.saveLocalDeleteConfig(value, unit);
+    if (!mounted) return;
+    if (error != null) {
+      _showSnack(error, isError: true);
+    } else {
+      final prefs = await SharedPreferences.getInstance();
+      int days = value;
+      if (unit == 'minggu') days = value * 7;
+      if (unit == 'bulan') days = value * 30;
+      await prefs.setInt('local_ad_days', days);
+      await prefs.setInt('local_ad_val', value);
+      await prefs.setString('local_ad_unit', unit);
+      _showSnack('Pengaturan auto-delete lokal tersimpan ke server');
+    }
+  }
+
+  Widget _buildLocalDeleteCard() {
+    final valCtrl = TextEditingController(text: _localDeleteValue > 0 ? '$_localDeleteValue' : '');
+    String selectedUnit = _localDeleteUnit;
+
+    return StatefulBuilder(builder: (context, setLocal) {
+      return Container(
+        margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [const Color(0xFF4CAF50).withValues(alpha: 0.12), const Color(0xFF00BCD4).withValues(alpha: 0.08)],
+            begin: Alignment.topLeft, end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFF4CAF50).withValues(alpha: 0.3)),
+        ),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(color: const Color(0xFF4CAF50).withValues(alpha: 0.2), borderRadius: BorderRadius.circular(10)),
+              child: const Icon(Icons.phone_android_rounded, color: Color(0xFF4CAF50), size: 18),
+            ),
+            const SizedBox(width: 10),
+            const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('Auto-Delete Lokal (HP Petugas)', style: TextStyle(color: AppTheme.textPrimary, fontSize: 13, fontWeight: FontWeight.w700)),
+              Text('Hapus laporan & foto lama dari HP petugas', style: TextStyle(color: AppTheme.textHint, fontSize: 10)),
+            ])),
+          ]),
+          const SizedBox(height: 10),
+          Row(children: [
+            SizedBox(
+              width: 60,
+              child: TextField(
+                controller: valCtrl,
+                keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: AppTheme.textPrimary, fontSize: 14, fontWeight: FontWeight.w600),
+                decoration: InputDecoration(
+                  hintText: '0', hintStyle: const TextStyle(color: AppTheme.textHint),
+                  filled: true, fillColor: AppTheme.surfaceDark,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              decoration: BoxDecoration(color: AppTheme.surfaceDark, borderRadius: BorderRadius.circular(10)),
+              child: DropdownButton<String>(
+                value: selectedUnit,
+                dropdownColor: AppTheme.cardDark,
+                style: const TextStyle(color: AppTheme.textPrimary, fontSize: 13),
+                underline: const SizedBox(),
+                items: ['hari', 'minggu', 'bulan'].map((u) => DropdownMenuItem(value: u, child: Text(u.toUpperCase()))).toList(),
+                onChanged: (v) { if (v != null) setLocal(() => selectedUnit = v); },
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  final val = int.tryParse(valCtrl.text) ?? 0;
+                  _saveLocalDeleteConfig(val, selectedUnit);
+                },
+                icon: const Icon(Icons.cloud_upload_rounded, size: 16),
+                label: const Text('Simpan', style: TextStyle(fontSize: 12)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF4CAF50), foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+              ),
+            ),
+          ]),
+          if (_localDeleteValue > 0) ...[
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(color: const Color(0xFF4CAF50).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
+              child: Row(children: [
+                const Icon(Icons.info_outline_rounded, color: Color(0xFF4CAF50), size: 14),
+                const SizedBox(width: 6),
+                Expanded(child: Text(
+                  'Saat petugas online, laporan & foto lokal > $_localDeleteValue $_localDeleteUnit akan otomatis terhapus dari HP mereka.',
+                  style: const TextStyle(color: Color(0xFF4CAF50), fontSize: 10),
+                )),
+              ]),
+            ),
+          ],
+        ]),
+      );
+    });
+  }
+
+  int _unitToDays(int value, String unit) {
+    if (value <= 0) return 0;
+    switch (unit) {
+      case 'hari': return value;
+      case 'minggu': return value * 7;
+      case 'bulan': return value * 30;
+      default: return value * 30;
+    }
+  }
+
+  // ═══════════════════════════════════════════════
+  // DATA LOADING
+  // ═══════════════════════════════════════════════
+
+  Future<void> _loadTabData(int index) async {
+    switch (index) {
+      case 0: if (_users.isEmpty) _loadUsers(); break;
+      case 1: if (_reports.isEmpty) _loadReports(); break;
+      case 2: if (_photos.isEmpty) _loadPhotos(); break;
+    }
+  }
+
+  Future<void> _loadUsers() async {
+    setState(() => _loadingUsers = true);
+    final users = await SupabaseService.adminGetAllUsers();
+    if (mounted) setState(() { _users = users; _loadingUsers = false; });
+  }
+
+  Future<void> _loadReports() async {
+    setState(() => _loadingReports = true);
+    final reports = await SupabaseService.adminGetAllReports();
+    final examCount = await SupabaseService.adminCountExams();
+    if (mounted) setState(() { _reports = reports; _totalExamCount = examCount; _loadingReports = false; });
+  }
+
+
+  Future<void> _loadPhotos() async {
+    setState(() => _loadingPhotos = true);
+    final photos = await SupabaseService.adminListPhotos();
+    int bytes = 0;
+    for (final p in photos) {
+      if (p['size'] != null && p['size'] is int) bytes += p['size'] as int;
+    }
+    if (mounted) setState(() { _photos = photos; _totalStorageUsedBytes = bytes; _loadingPhotos = false; });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppTheme.primaryDark,
+      appBar: AppBar(
+        backgroundColor: AppTheme.primaryDark,
+        elevation: 0,
+        leading: IconButton(
+          onPressed: () => Navigator.pop(context),
+          icon: const Icon(Icons.arrow_back_ios_rounded, color: AppTheme.textPrimary, size: 20),
+        ),
+        title: const Row(children: [
+          Icon(Icons.admin_panel_settings_rounded, color: Color(0xFFE040FB), size: 22),
+          SizedBox(width: 8),
+          Text('Admin Panel', style: TextStyle(color: AppTheme.textPrimary, fontSize: 18, fontWeight: FontWeight.w700)),
+        ]),
+        bottom: TabBar(
+          controller: _tabController,
+          indicatorColor: const Color(0xFFE040FB),
+          indicatorWeight: 3,
+          labelColor: const Color(0xFFE040FB),
+          unselectedLabelColor: AppTheme.textHint,
+          labelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+          tabs: const [
+            Tab(icon: Icon(Icons.people_rounded, size: 20), text: 'User'),
+            Tab(icon: Icon(Icons.description_rounded, size: 20), text: 'Laporan'),
+            Tab(icon: Icon(Icons.photo_library_rounded, size: 20), text: 'Foto'),
+          ],
+        ),
+      ),
+      body: TabBarView(
+        controller: _tabController,
+        children: [
+          _buildUsersTab(),
+          _buildReportsTab(),
+          _buildPhotosTab(),
+        ],
+      ),
+    );
+  }
+
+  // ═══════════════════════════════════════════════
+  // TAB 1: KELOLA USER
+  // ═══════════════════════════════════════════════
+
+  Widget _buildUsersTab() {
+    if (_loadingUsers) return _buildLoading();
+    if (_users.isEmpty) return _buildEmpty('Tidak ada data user');
+
+    return RefreshIndicator(
+      color: const Color(0xFFE040FB),
+      onRefresh: _loadUsers,
+      child: ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: _users.length,
+        itemBuilder: (context, index) {
+          final user = _users[index];
+          final nama = user['nama'] as String? ?? 'Tanpa Nama';
+          final email = user['email'] as String? ?? '';
+          final username = user['username'] as String? ?? '';
+          final puskesmas = user['puskesmas'] as String? ?? '';
+          final role = user['role'] as String? ?? 'user';
+          final userId = user['id'] as String? ?? '';
+          final isCurrentUser = userId == widget.session.userId;
+          final isAdmin = role == 'admin';
+
+          return Container(
+            margin: const EdgeInsets.only(bottom: 10),
+            decoration: BoxDecoration(
+              color: AppTheme.cardDark,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: isAdmin ? const Color(0xFFE040FB).withValues(alpha: 0.3) : AppTheme.divider),
+            ),
+            child: ListTile(
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              leading: Container(
+                width: 44, height: 44,
+                decoration: BoxDecoration(
+                  gradient: isAdmin
+                      ? const LinearGradient(colors: [Color(0xFF9C27B0), Color(0xFFE040FB)])
+                      : AppTheme.primaryGradient,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                alignment: Alignment.center,
+                child: Text(nama.isNotEmpty ? nama[0].toUpperCase() : '?',
+                    style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700)),
+              ),
+              title: Row(children: [
+                Expanded(child: Text(nama, style: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w600))),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: isAdmin ? const Color(0xFFE040FB).withValues(alpha: 0.15) : AppTheme.surfaceDark,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(isAdmin ? 'ADMIN' : 'USER',
+                      style: TextStyle(color: isAdmin ? const Color(0xFFE040FB) : AppTheme.textHint, fontSize: 10, fontWeight: FontWeight.w700)),
+                ),
+              ]),
+              subtitle: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                const SizedBox(height: 4),
+                if (username.isNotEmpty) Text('@$username', style: const TextStyle(color: AppTheme.accentTeal, fontSize: 12)),
+                Text(email, style: const TextStyle(color: AppTheme.textHint, fontSize: 12)),
+                if (puskesmas.isNotEmpty) Text('PKM $puskesmas', style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+              ]),
+              trailing: isCurrentUser
+                  ? const Tooltip(message: 'Akun Anda', child: Icon(Icons.person_pin_rounded, color: AppTheme.accentTeal))
+                  : PopupMenuButton<String>(
+                      icon: const Icon(Icons.more_vert_rounded, color: AppTheme.textHint),
+                      color: AppTheme.cardDark,
+                      onSelected: (value) {
+                        if (value == 'edit') {
+                          _showEditUserDialog(userId, nama, email, puskesmas);
+                        } else if (value == 'reset_pw') {
+                          _resetUserPassword(email, nama);
+                        } else {
+                          _onRoleAction(value, userId, nama, role);
+                        }
+                      },
+                      itemBuilder: (_) => [
+                        const PopupMenuItem(value: 'edit', child: Row(children: [
+                          Icon(Icons.edit_rounded, color: AppTheme.accentTeal, size: 18), SizedBox(width: 8),
+                          Text('Edit Profil', style: TextStyle(color: AppTheme.textPrimary)),
+                        ])),
+                        PopupMenuItem(value: isAdmin ? 'demote' : 'promote', child: Row(children: [
+                          Icon(isAdmin ? Icons.remove_moderator_rounded : Icons.shield_rounded,
+                              color: isAdmin ? AppTheme.warning : const Color(0xFFE040FB), size: 18),
+                          const SizedBox(width: 8),
+                          Text(isAdmin ? 'Jadikan User' : 'Jadikan Admin', style: const TextStyle(color: AppTheme.textPrimary)),
+                        ])),
+                        const PopupMenuItem(value: 'reset_pw', child: Row(children: [
+                          Icon(Icons.lock_reset_rounded, color: AppTheme.warning, size: 18), SizedBox(width: 8),
+                          Text('Reset Password', style: TextStyle(color: AppTheme.textPrimary)),
+                        ])),
+                      ],
+                    ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Future<void> _showEditUserDialog(String userId, String nama, String email, String puskesmas) async {
+    final namaCtrl = TextEditingController(text: nama);
+    final emailCtrl = TextEditingController(text: email);
+    final pkmCtrl = TextEditingController(text: puskesmas);
+    final pwCtrl = TextEditingController();
+    bool showPw = false;
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          backgroundColor: AppTheme.cardDark,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Text('Edit Profil User', style: TextStyle(color: AppTheme.textPrimary, fontSize: 16)),
+          content: SingleChildScrollView(
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              _dialogField(namaCtrl, 'Nama', Icons.person_rounded),
+              const SizedBox(height: 12),
+              _dialogField(emailCtrl, 'Email', Icons.email_rounded),
+              const SizedBox(height: 12),
+              _dialogField(pkmCtrl, 'Puskesmas', Icons.local_hospital_rounded),
+              const SizedBox(height: 12),
+              TextField(
+                controller: pwCtrl, obscureText: !showPw,
+                style: const TextStyle(color: AppTheme.textPrimary, fontSize: 14),
+                decoration: InputDecoration(
+                  labelText: 'Password Baru (opsional)', labelStyle: const TextStyle(color: AppTheme.textHint, fontSize: 13),
+                  hintText: 'Kosongkan jika tidak diubah', hintStyle: const TextStyle(color: AppTheme.textHint, fontSize: 12),
+                  prefixIcon: const Icon(Icons.lock_rounded, color: AppTheme.warning, size: 18),
+                  suffixIcon: IconButton(
+                    icon: Icon(showPw ? Icons.visibility_off_rounded : Icons.visibility_rounded, color: AppTheme.textHint, size: 18),
+                    onPressed: () => setDialogState(() => showPw = !showPw),
+                  ),
+                  filled: true, fillColor: AppTheme.surfaceDark,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppTheme.divider)),
+                  focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppTheme.warning)),
+                ),
+              ),
+            ]),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Batal', style: TextStyle(color: AppTheme.textSecondary))),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              style: ElevatedButton.styleFrom(backgroundColor: AppTheme.accentTeal, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+              child: const Text('Simpan', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (result != true) return;
+    final error = await SupabaseService.adminUpdateProfile(userId,
+        nama: namaCtrl.text.trim(), email: emailCtrl.text.trim(), puskesmas: pkmCtrl.text.trim());
+    if (!mounted) return;
+    if (error != null) { _showSnack(error, isError: true); return; }
+
+    if (pwCtrl.text.trim().isNotEmpty) {
+      final pwError = await SupabaseService.adminChangePassword(userId, pwCtrl.text.trim());
+      if (!mounted) return;
+      if (pwError != null) { _showSnack('Profil tersimpan, tapi password gagal: $pwError', isError: true); _loadUsers(); return; }
+    }
+    _showSnack('Profil berhasil diperbarui'); _loadUsers();
+  }
+
+  Widget _dialogField(TextEditingController ctrl, String label, IconData icon) {
+    return TextField(
+      controller: ctrl,
+      style: const TextStyle(color: AppTheme.textPrimary, fontSize: 14),
+      decoration: InputDecoration(
+        labelText: label, labelStyle: const TextStyle(color: AppTheme.textHint, fontSize: 13),
+        prefixIcon: Icon(icon, color: AppTheme.accentTeal, size: 18),
+        filled: true, fillColor: AppTheme.surfaceDark,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppTheme.divider)),
+        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppTheme.accentTeal)),
+      ),
+    );
+  }
+
+  Future<void> _onRoleAction(String action, String userId, String nama, String currentRole) async {
+    final newRole = action == 'promote' ? 'admin' : 'user';
+    final confirm = await _confirmDialog('Ubah Role', 'Jadikan "$nama" sebagai ${newRole == 'admin' ? 'Admin' : 'User biasa'}?');
+    if (confirm != true) return;
+    final error = await SupabaseService.adminUpdateUserRole(userId, newRole);
+    if (!mounted) return;
+    if (error != null) { _showSnack(error, isError: true); } else { _showSnack('Role berhasil diubah'); _loadUsers(); }
+  }
+
+  Future<void> _resetUserPassword(String email, String nama) async {
+    if (email.isEmpty) { _showSnack('User tidak punya email', isError: true); return; }
+    final confirm = await _confirmDialog('Reset Password', 'Kirim email reset password ke "$nama" ($email)?');
+    if (confirm != true) return;
+    final error = await SupabaseService.resetPassword(email);
+    if (!mounted) return;
+    if (error != null) { _showSnack(error, isError: true); } else { _showSnack('Email reset password terkirim ke $email'); }
+  }
+
+  // ═══════════════════════════════════════════════
+  // TAB 2: KELOLA LAPORAN + AUTO-DELETE
+  // ═══════════════════════════════════════════════
+
+  Widget _buildDatabaseDashboard() {
+    final usedMB = _totalStorageUsedBytes / (1024 * 1024);
+    const double dbLimitMB = 500; // Supabase free tier DB limit
+    // Rough estimate: ~2KB per exam row
+    final dbUsedMB = (_totalExamCount * 2.0) / 1024 + (_reports.length * 0.5) / 1024;
+    final dbPercent = (dbUsedMB / dbLimitMB).clamp(0.0, 1.0);
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [const Color(0xFFE040FB).withValues(alpha: 0.08), const Color(0xFF00BCD4).withValues(alpha: 0.06)],
+          begin: Alignment.topLeft, end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppTheme.divider),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        // Title
+        const Row(children: [
+          Icon(Icons.dashboard_rounded, color: Color(0xFFE040FB), size: 16),
+          SizedBox(width: 8),
+          Text('Ringkasan Database', style: TextStyle(color: AppTheme.textPrimary, fontSize: 13, fontWeight: FontWeight.w700)),
+        ]),
+        const SizedBox(height: 12),
+        // 3 stat tiles
+        Row(children: [
+          Expanded(child: _statTile(Icons.description_rounded, '${_reports.length}', 'Laporan', const Color(0xFFE040FB))),
+          const SizedBox(width: 8),
+          Expanded(child: _statTile(Icons.people_rounded, '$_totalExamCount', 'Data Pasien', const Color(0xFF00BCD4))),
+          const SizedBox(width: 8),
+          Expanded(child: _statTile(Icons.cloud_rounded, '${usedMB.toStringAsFixed(1)} MB', 'Foto Storage', const Color(0xFF4CAF50))),
+        ]),
+        const SizedBox(height: 12),
+        // DB progress
+        Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+          Text('Database: ${dbUsedMB.toStringAsFixed(2)} MB / ${dbLimitMB.toInt()} MB', style: const TextStyle(color: AppTheme.textHint, fontSize: 10)),
+          Text('${(dbPercent * 100).toStringAsFixed(2)}%', style: const TextStyle(color: AppTheme.textHint, fontSize: 10, fontWeight: FontWeight.w600)),
+        ]),
+        const SizedBox(height: 4),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(6),
+          child: LinearProgressIndicator(
+            value: dbPercent,
+            minHeight: 6,
+            backgroundColor: AppTheme.surfaceDark,
+            valueColor: AlwaysStoppedAnimation<Color>(dbPercent > 0.9 ? AppTheme.error : (dbPercent > 0.7 ? const Color(0xFFFF9800) : const Color(0xFFE040FB))),
+          ),
+        ),
+      ]),
+    );
+  }
+
+  Widget _statTile(IconData icon, String value, String label, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(color: AppTheme.cardDark, borderRadius: BorderRadius.circular(12)),
+      child: Column(children: [
+        Icon(icon, color: color, size: 18),
+        const SizedBox(height: 4),
+        Text(value, style: const TextStyle(color: AppTheme.textPrimary, fontSize: 14, fontWeight: FontWeight.w700)),
+        Text(label, style: const TextStyle(color: AppTheme.textHint, fontSize: 9)),
+      ]),
+    );
+  }
+
+  Widget _buildReportsTab() {
+    if (_loadingReports) return _buildLoading();
+
+    final deleteDays = _unitToDays(_reportDeleteValue, _reportDeleteUnit);
+    final oldReports = _reports.where((r) {
+      if (deleteDays <= 0) return false;
+      final ca = r['created_at'] as String? ?? '';
+      if (ca.isEmpty) return false;
+      try { return DateTime.now().difference(DateTime.parse(ca)).inDays > deleteDays; } catch (_) { return false; }
+    }).toList();
+
+    return RefreshIndicator(
+      color: const Color(0xFFE040FB),
+      onRefresh: _loadReports,
+      child: CustomScrollView(
+        slivers: [
+          // ── Dashboard Summary ──
+          SliverToBoxAdapter(child: _buildDatabaseDashboard()),
+          // ── Pengaturan (collapsible) ──
+          SliverToBoxAdapter(
+            child: Container(
+              margin: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+              decoration: BoxDecoration(color: AppTheme.cardDark, borderRadius: BorderRadius.circular(16), border: Border.all(color: AppTheme.divider)),
+              child: Theme(
+                data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+                child: ExpansionTile(
+                  tilePadding: const EdgeInsets.symmetric(horizontal: 14),
+                  leading: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(color: const Color(0xFFE040FB).withValues(alpha: 0.15), borderRadius: BorderRadius.circular(8)),
+                    child: const Icon(Icons.settings_rounded, color: Color(0xFFE040FB), size: 16),
+                  ),
+                  title: const Text('Pengaturan Auto-Delete', style: TextStyle(color: AppTheme.textPrimary, fontSize: 13, fontWeight: FontWeight.w600)),
+                  subtitle: Text(
+                    'Server: ${_reportDeleteValue > 0 ? "$_reportDeleteValue $_reportDeleteUnit" : "Nonaktif"} • Lokal: ${_localDeleteValue > 0 ? "$_localDeleteValue $_localDeleteUnit" : "Nonaktif"}',
+                    style: const TextStyle(color: AppTheme.textHint, fontSize: 10),
+                  ),
+                  iconColor: AppTheme.textHint,
+                  collapsedIconColor: AppTheme.textHint,
+                  children: [
+                    const Divider(color: AppTheme.divider, height: 1),
+                    _buildAutoDeleteCard(
+                      icon: Icons.cloud_rounded,
+                      title: 'Auto-Delete Server',
+                      value: _reportDeleteValue,
+                      unit: _reportDeleteUnit,
+                      oldCount: oldReports.length,
+                      onSave: _saveReportDeleteSetting,
+                      onDeleteOld: () => _deleteOldReports(oldReports),
+                    ),
+                    _buildLocalDeleteCard(),
+                    const SizedBox(height: 8),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          // ── Daftar Laporan ──
+          SliverToBoxAdapter(child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+            child: Row(children: [
+              const Icon(Icons.list_alt_rounded, color: AppTheme.textHint, size: 16),
+              const SizedBox(width: 6),
+              Text('Daftar Laporan (${_reports.length})', style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12, fontWeight: FontWeight.w600)),
+            ]),
+          )),
+          if (_reports.isEmpty)
+            const SliverFillRemaining(child: Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+              Icon(Icons.inbox_rounded, size: 48, color: AppTheme.textHint), SizedBox(height: 12),
+              Text('Tidak ada laporan', style: TextStyle(color: AppTheme.textSecondary, fontSize: 14)),
+            ])))
+          else
+            SliverList(delegate: SliverChildBuilderDelegate(
+              (context, index) => _buildReportCard(_reports[index], deleteDays),
+              childCount: _reports.length,
+            )),
+          const SliverToBoxAdapter(child: SizedBox(height: 20)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildReportCard(Map<String, dynamic> report, int deleteDays) {
+    final reportId = report['id'] as String? ?? '';
+    final no = report['no'] as int? ?? 0;
+    final owner = report['user_nama'] as String? ?? 'Petugas';
+    final pkm = report['user_puskesmas'] as String? ?? '';
+    final createdAt = report['created_at'] as String? ?? '';
+    String dateDisplay = '';
+    bool isOld = false;
+    try {
+      final dt = DateTime.parse(createdAt);
+      dateDisplay = '${dt.day}/${dt.month}/${dt.year}';
+      if (deleteDays > 0) isOld = DateTime.now().difference(dt).inDays > deleteDays;
+    } catch (_) { dateDisplay = createdAt; }
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+      decoration: BoxDecoration(
+        color: AppTheme.cardDark,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: isOld ? AppTheme.error.withValues(alpha: 0.4) : AppTheme.divider),
+      ),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        leading: Stack(children: [
+          Container(
+            width: 44, height: 44,
+            decoration: BoxDecoration(gradient: AppTheme.primaryGradient, borderRadius: BorderRadius.circular(14)),
+            alignment: Alignment.center,
+            child: Text('#$no', style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w700)),
+          ),
+          if (isOld) Positioned(top: -2, right: -2, child: Container(
+            padding: const EdgeInsets.all(2),
+            decoration: const BoxDecoration(color: AppTheme.error, shape: BoxShape.circle),
+            child: const Icon(Icons.schedule_rounded, color: Colors.white, size: 10),
+          )),
+        ]),
+        title: Text('Laporan #$no', style: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w600)),
+        subtitle: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const SizedBox(height: 4),
+          Row(children: [
+            const Icon(Icons.calendar_today_rounded, size: 12, color: AppTheme.textHint),
+            const SizedBox(width: 4),
+            Text(dateDisplay, style: const TextStyle(color: AppTheme.textHint, fontSize: 12)),
+            if (isOld) ...[
+              const SizedBox(width: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                decoration: BoxDecoration(color: AppTheme.error.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(4)),
+                child: const Text('LAMA', style: TextStyle(color: AppTheme.error, fontSize: 9, fontWeight: FontWeight.w700)),
+              ),
+            ],
+          ]),
+          Row(children: [
+            const Icon(Icons.person_outline_rounded, size: 14, color: AppTheme.textHint), const SizedBox(width: 4),
+            Expanded(child: Text('$owner${pkm.isNotEmpty ? ' • PKM $pkm' : ''}', style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12))),
+          ]),
+        ]),
+        onTap: () => _showReportDetail(reportId, no),
+        trailing: IconButton(
+          icon: const Icon(Icons.delete_outline_rounded, color: AppTheme.error, size: 20),
+          onPressed: () => _deleteReport(reportId, no),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showReportDetail(String reportId, int no) async {
+    showModalBottomSheet(
+      context: context, backgroundColor: AppTheme.cardDark, isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (_) => _ReportDetailSheet(reportId: reportId, no: no, photos: _photos),
+    );
+  }
+
+  Future<void> _deleteReport(String reportId, int no) async {
+    final confirm = await _confirmDialog('Hapus Laporan', 'Hapus Laporan #$no beserta semua data pasien?\n\nTidak bisa dibatalkan.');
+    if (confirm != true) return;
+    final error = await SupabaseService.adminDeleteReport(reportId);
+    if (!mounted) return;
+    if (error != null) { _showSnack(error, isError: true); } else { _showSnack('Laporan #$no dihapus'); _loadReports(); }
+  }
+
+  Future<void> _deleteOldReports(List<Map<String, dynamic>> oldReports) async {
+    final confirm = await _confirmDialog(
+      'Hapus Laporan Lama',
+      'Hapus ${oldReports.length} laporan yang lebih dari $_reportDeleteValue $_reportDeleteUnit?\n\nSemua data pasien dalam laporan ini ikut terhapus.\n\nTidak bisa dibatalkan.',
+    );
+    if (confirm != true) return;
+    int deleted = 0;
+    for (final r in oldReports) {
+      final id = r['id'] as String? ?? '';
+      if (id.isEmpty) continue;
+      final err = await SupabaseService.adminDeleteReport(id);
+      if (err == null) deleted++;
+    }
+    if (!mounted) return;
+    _showSnack('$deleted laporan lama dihapus');
+    _loadReports();
+  }
+
+  // ═══════════════════════════════════════════════
+  // TAB 3: KELOLA FOTO + AUTO-DELETE
+  // ═══════════════════════════════════════════════
+
+  Widget _buildPhotosTab() {
+    if (_loadingPhotos) return _buildLoading();
+
+    final deleteDays = _unitToDays(_photoDeleteValue, _photoDeleteUnit);
+    final oldPhotos = _photos.where((p) {
+      if (deleteDays <= 0) return false;
+      final ca = p['created_at'];
+      if (ca == null || ca.toString().isEmpty) return false;
+      try { return DateTime.now().difference(DateTime.parse(ca.toString())).inDays > deleteDays; } catch (_) { return false; }
+    }).toList();
+
+    return RefreshIndicator(
+      color: const Color(0xFFE040FB),
+      onRefresh: _loadPhotos,
+      child: CustomScrollView(
+        slivers: [
+          SliverToBoxAdapter(
+            child: _buildStorageCard(),
+          ),
+          SliverToBoxAdapter(
+            child: _buildAutoDeleteCard(
+              icon: Icons.photo_library_rounded,
+              title: 'Auto-Delete Foto',
+              value: _photoDeleteValue,
+              unit: _photoDeleteUnit,
+              oldCount: oldPhotos.length,
+              onSave: _savePhotoDeleteSetting,
+              onDeleteOld: () => _deleteOldPhotos(oldPhotos),
+            ),
+          ),
+          if (_photos.isEmpty)
+            const SliverFillRemaining(child: Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+              Icon(Icons.photo_library_rounded, size: 48, color: AppTheme.textHint), SizedBox(height: 12),
+              Text('Tidak ada foto di storage', style: TextStyle(color: AppTheme.textSecondary, fontSize: 14)),
+            ])))
+          else
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              sliver: SliverGrid(
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: MediaQuery.of(context).size.width > 600 ? 3 : 2,
+                  mainAxisSpacing: 12, crossAxisSpacing: 12, childAspectRatio: 0.75,
+                ),
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) => _buildPhotoCard(_photos[index], deleteDays),
+                  childCount: _photos.length,
+                ),
+              ),
+            ),
+          const SliverToBoxAdapter(child: SizedBox(height: 20)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPhotoCard(Map<String, dynamic> photo, int deleteDays) {
+    final name = photo['name'] as String? ?? '';
+    final url = photo['url'] as String? ?? '';
+    final size = photo['size'];
+    final createdAt = photo['created_at'];
+    String sizeStr = '-';
+    if (size != null && size is int && size > 0) {
+      sizeStr = size > 1024 * 1024 ? '${(size / 1024 / 1024).toStringAsFixed(1)} MB' : '${(size / 1024).toStringAsFixed(0)} KB';
+    }
+    String dateStr = '-';
+    bool isOld = false;
+    if (createdAt != null && createdAt.toString().isNotEmpty) {
+      try {
+        final dt = DateTime.parse(createdAt.toString());
+        dateStr = '${dt.day}/${dt.month}/${dt.year}';
+        if (deleteDays > 0) isOld = DateTime.now().difference(dt).inDays > deleteDays;
+      } catch (_) {}
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: AppTheme.cardDark, borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: isOld ? AppTheme.error.withValues(alpha: 0.4) : AppTheme.divider),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Expanded(child: Stack(children: [
+          GestureDetector(
+            onTap: url.isNotEmpty ? () => _showPhotoPreview(context, url, name) : null,
+            child: ClipRRect(
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
+              child: url.isNotEmpty
+                  ? Image.network(url, fit: BoxFit.cover, width: double.infinity, cacheWidth: 300,
+                      errorBuilder: (_, __, ___) => const Center(child: Icon(Icons.broken_image_rounded, color: AppTheme.textHint, size: 40)))
+                  : const Center(child: Icon(Icons.image_rounded, color: AppTheme.textHint, size: 40)),
+            ),
+          ),
+          if (url.isNotEmpty) Positioned(bottom: 6, right: 6, child: Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(6)),
+            child: const Icon(Icons.zoom_in_rounded, color: Colors.white, size: 16),
+          )),
+          if (isOld) Positioned(top: 6, right: 6, child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(color: AppTheme.error, borderRadius: BorderRadius.circular(6)),
+            child: const Text('LAMA', style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w700)),
+          )),
+        ])),
+        Padding(padding: const EdgeInsets.all(10), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(name.length > 18 ? '${name.substring(0, 15)}...' : name,
+              style: const TextStyle(color: AppTheme.textPrimary, fontSize: 11, fontWeight: FontWeight.w500)),
+          const SizedBox(height: 2),
+          Row(children: [
+            const Icon(Icons.calendar_today_rounded, size: 10, color: AppTheme.textHint), const SizedBox(width: 4),
+            Text(dateStr, style: const TextStyle(color: AppTheme.textHint, fontSize: 10)),
+            const Spacer(),
+            Text(sizeStr, style: const TextStyle(color: AppTheme.textHint, fontSize: 10)),
+          ]),
+          const SizedBox(height: 6),
+          SizedBox(width: double.infinity, height: 28, child: ElevatedButton.icon(
+            onPressed: () => _deletePhoto(name),
+            icon: const Icon(Icons.delete_outline_rounded, size: 14),
+            label: const Text('Hapus', style: TextStyle(fontSize: 11)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.error.withValues(alpha: 0.1), foregroundColor: AppTheme.error,
+              elevation: 0, padding: EdgeInsets.zero,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+          )),
+        ])),
+      ]),
+    );
+  }
+
+  void _showPhotoPreview(BuildContext ctx, String url, String title) {
+    showDialog(
+      context: ctx,
+      builder: (_) => _PhotoPreviewDialog(url: url, title: title),
+    );
+  }
+
+  Future<void> _deleteOldPhotos(List<Map<String, dynamic>> oldPhotos) async {
+    final confirm = await _confirmDialog(
+      'Hapus Foto Lama',
+      'Hapus ${oldPhotos.length} foto yang lebih dari $_photoDeleteValue $_photoDeleteUnit?\n\nTidak bisa dibatalkan.',
+    );
+    if (confirm != true) return;
+    int deleted = 0;
+    for (final p in oldPhotos) {
+      final name = p['name'] as String? ?? '';
+      if (name.isEmpty) continue;
+      final err = await SupabaseService.adminDeletePhoto(name);
+      if (err == null) deleted++;
+    }
+    if (!mounted) return;
+    _showSnack('$deleted foto lama dihapus');
+    _loadPhotos();
+  }
+
+  Future<void> _deletePhoto(String fileName) async {
+    final confirm = await _confirmDialog('Hapus Foto', 'Hapus "$fileName"?\n\nTidak bisa dibatalkan.');
+    if (confirm != true) return;
+    final error = await SupabaseService.adminDeletePhoto(fileName);
+    if (!mounted) return;
+    if (error != null) { _showSnack(error, isError: true); } else { _showSnack('Foto dihapus'); _loadPhotos(); }
+  }
+
+  // ═══════════════════════════════════════════════
+  // SHARED: AUTO-DELETE & STORAGE CARDS
+  // ═══════════════════════════════════════════════
+
+  Widget _buildStorageCard() {
+    const double maxBytes = 1024 * 1024 * 1024; // 1 GB (Supabase free tier limit)
+    final double percent = (_totalStorageUsedBytes / maxBytes).clamp(0.0, 1.0);
+    final usedMB = _totalStorageUsedBytes / (1024 * 1024);
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.cardDark,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppTheme.divider),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(color: const Color(0xFF00BCD4).withValues(alpha: 0.15), borderRadius: BorderRadius.circular(10)),
+            child: const Icon(Icons.storage_rounded, color: Color(0xFF00BCD4), size: 20),
+          ),
+          const SizedBox(width: 12),
+          const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('Kapasitas Server', style: TextStyle(color: AppTheme.textPrimary, fontSize: 14, fontWeight: FontWeight.w700)),
+            Text('Batas gratis Supabase (1 GB)', style: TextStyle(color: AppTheme.textHint, fontSize: 11)),
+          ])),
+        ]),
+        const SizedBox(height: 16),
+        Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+          Text('${usedMB.toStringAsFixed(1)} MB terpakai', style: const TextStyle(color: AppTheme.textPrimary, fontSize: 13, fontWeight: FontWeight.w600)),
+          Text('${(percent * 100).toStringAsFixed(1)}%', style: TextStyle(color: percent > 0.9 ? AppTheme.error : const Color(0xFF00BCD4), fontSize: 12, fontWeight: FontWeight.w700)),
+        ]),
+        const SizedBox(height: 8),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(10),
+          child: LinearProgressIndicator(
+            value: percent,
+            minHeight: 10,
+            backgroundColor: AppTheme.surfaceDark,
+            valueColor: AlwaysStoppedAnimation<Color>(percent > 0.9 ? AppTheme.error : (percent > 0.7 ? const Color(0xFFFF9800) : const Color(0xFF00BCD4))),
+          ),
+        ),
+      ]),
+    );
+  }
+
+  Widget _buildAutoDeleteCard({
+    required IconData icon,
+    required String title,
+    required int value,
+    required String unit,
+    required int oldCount,
+    required Future<void> Function(int, String) onSave,
+    required VoidCallback onDeleteOld,
+  }) {
+    final valueCtrl = TextEditingController(text: value > 0 ? '$value' : '');
+    final units = ['hari', 'minggu', 'bulan'];
+
+    return StatefulBuilder(
+      builder: (context, setCardState) => Container(
+        margin: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(colors: [Color(0xFF1E2D3D), Color(0xFF162232)]),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFE040FB).withValues(alpha: 0.2)),
+        ),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            Icon(Icons.auto_delete_rounded, color: const Color(0xFFE040FB), size: 20),
+            const SizedBox(width: 8),
+            Text(title, style: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w600, fontSize: 14)),
+          ]),
+          const SizedBox(height: 4),
+          const Text('Atur waktu otomatis hapus data lama', style: TextStyle(color: AppTheme.textHint, fontSize: 11)),
+          const SizedBox(height: 12),
+          // Input row: [angka] [unit selector] [tombol simpan]
+          // Input row: [angka] [unit selector] [tombol simpan]
+          Wrap(
+            spacing: 6,
+            runSpacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              // Number input
+              SizedBox(
+                width: 60,
+                height: 36,
+                child: TextField(
+                  controller: valueCtrl,
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: AppTheme.textPrimary, fontSize: 13, fontWeight: FontWeight.w600),
+                  decoration: InputDecoration(
+                    hintText: '0',
+                    hintStyle: const TextStyle(color: AppTheme.textHint),
+                    filled: true, fillColor: AppTheme.surfaceDark,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppTheme.divider)),
+                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: Color(0xFFE040FB))),
+                  ),
+                ),
+              ),
+              // Unit chips
+              ...units.map((u) {
+                final isSelected = unit == u;
+                return GestureDetector(
+                  onTap: () {
+                    final val = int.tryParse(valueCtrl.text) ?? 0;
+                    onSave(val, u);
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: isSelected ? const Color(0xFFE040FB).withValues(alpha: 0.2) : AppTheme.surfaceDark,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: isSelected ? const Color(0xFFE040FB) : AppTheme.divider),
+                    ),
+                    child: Text(u.substring(0, 1).toUpperCase() + u.substring(1),
+                        style: TextStyle(color: isSelected ? const Color(0xFFE040FB) : AppTheme.textSecondary, fontSize: 11, fontWeight: FontWeight.w500)),
+                  ),
+                );
+              }),
+              // Save button
+              GestureDetector(
+                onTap: () {
+                  final val = int.tryParse(valueCtrl.text) ?? 0;
+                  onSave(val, unit);
+                  _showSnack(val > 0 ? 'Auto-delete: $val $unit' : 'Auto-delete nonaktif');
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(color: const Color(0xFFE040FB).withValues(alpha: 0.15), borderRadius: BorderRadius.circular(10)),
+                  child: const Icon(Icons.save_rounded, color: Color(0xFFE040FB), size: 18),
+                ),
+              ),
+            ],
+          ),
+          // Status & action
+          if (value > 0 && oldCount > 0) ...[
+            const SizedBox(height: 12),
+            SizedBox(width: double.infinity, child: ElevatedButton.icon(
+              onPressed: onDeleteOld,
+              icon: const Icon(Icons.delete_sweep_rounded, size: 18),
+              label: Text('Hapus $oldCount data lama sekarang'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.error.withValues(alpha: 0.15), foregroundColor: AppTheme.error,
+                elevation: 0, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            )),
+          ],
+          if (value > 0 && oldCount == 0) ...[
+            const SizedBox(height: 8),
+            Text('✅ Tidak ada data lebih dari $value $unit', style: const TextStyle(color: AppTheme.textHint, fontSize: 12)),
+          ],
+          if (value <= 0) ...[
+            const SizedBox(height: 8),
+            const Text('⏸ Auto-delete nonaktif. Masukkan angka dan pilih satuan.', style: TextStyle(color: AppTheme.textHint, fontSize: 11)),
+          ],
+        ]),
+      ),
+    );
+  }
+
+  // ═══════════════════════════════════════════════
+  // COMMON
+  // ═══════════════════════════════════════════════
+
+  Widget _buildLoading() => const Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+    CircularProgressIndicator(color: Color(0xFFE040FB)), SizedBox(height: 16),
+    Text('Memuat data...', style: TextStyle(color: AppTheme.textSecondary)),
+  ]));
+
+  Widget _buildEmpty(String msg) => Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+    const Icon(Icons.inbox_rounded, size: 48, color: AppTheme.textHint), const SizedBox(height: 12),
+    Text(msg, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 14)),
+  ]));
+
+  Future<bool?> _confirmDialog(String title, String message) => showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      backgroundColor: AppTheme.cardDark,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      title: Text(title, style: const TextStyle(color: AppTheme.textPrimary)),
+      content: Text(message, style: const TextStyle(color: AppTheme.textSecondary)),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Batal', style: TextStyle(color: AppTheme.textSecondary))),
+        TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Ya, Lanjutkan', style: TextStyle(color: AppTheme.error))),
+      ],
+    ),
+  );
+
+  void _showSnack(String message, {bool isError = false}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(message),
+      backgroundColor: isError ? AppTheme.error : const Color(0xFF4CAF50),
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    ));
+  }
+}
+
+// ═══════════════════════════════════════════════
+// Report Detail Sheet
+// ═══════════════════════════════════════════════
+
+class _ReportDetailSheet extends StatefulWidget {
+  final String reportId;
+  final int no;
+  final List<Map<String, dynamic>> photos;
+  const _ReportDetailSheet({required this.reportId, required this.no, required this.photos});
+
+  @override
+  State<_ReportDetailSheet> createState() => _ReportDetailSheetState();
+}
+
+class _ReportDetailSheetState extends State<_ReportDetailSheet> {
+  List<Map<String, dynamic>> _exams = [];
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final exams = await SupabaseService.adminGetReportExams(widget.reportId);
+    if (mounted) setState(() { _exams = exams; _loading = false; });
+  }
+
+  String _getValidPhotoUrl(Map<String, dynamic> exam) {
+    String p = exam['foto_path'] as String? ?? '';
+    if (p.startsWith('http')) return p;
+
+    // Fallback: generate URL langsung dari examId (tidak perlu list photos)
+    final examId = exam['id'] as String? ?? '';
+    if (examId.isNotEmpty) {
+      // Coba dari photos list yang sudah diload
+      for (final photo in widget.photos) {
+        final name = photo['name'] as String? ?? '';
+        if (name.contains(examId)) {
+          return photo['url'] as String? ?? '';
+        }
+      }
+      // Fallback terakhir: generate URL langsung dari bucket
+      return SupabaseService.getPhotoPublicUrl(examId) ?? '';
+    }
+    return '';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return DraggableScrollableSheet(
+      initialChildSize: 0.75, minChildSize: 0.4, maxChildSize: 0.92, expand: false,
+      builder: (context, scrollController) => Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(children: [
+          Container(width: 40, height: 4, decoration: BoxDecoration(color: AppTheme.divider, borderRadius: BorderRadius.circular(2))),
+          const SizedBox(height: 16),
+          Row(children: [
+            Container(width: 44, height: 44,
+              decoration: BoxDecoration(gradient: AppTheme.primaryGradient, borderRadius: BorderRadius.circular(14)),
+              alignment: Alignment.center,
+              child: Text('#${widget.no}', style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700)),
+            ),
+            const SizedBox(width: 12),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('Laporan #${widget.no}', style: const TextStyle(color: AppTheme.textPrimary, fontSize: 18, fontWeight: FontWeight.w700)),
+              Text('${_exams.length} Pasien', style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+            ])),
+          ]),
+          const SizedBox(height: 16),
+          Expanded(
+            child: _loading
+              ? const Center(child: CircularProgressIndicator(color: Color(0xFFE040FB)))
+              : _exams.isEmpty
+                ? const Center(child: Text('Tidak ada data pasien', style: TextStyle(color: AppTheme.textHint)))
+                : ListView.builder(controller: scrollController, itemCount: _exams.length, itemBuilder: (_, i) => _card(_exams[i], i)),
+          ),
+        ]),
+      ),
+    );
+  }
+
+  Widget _card(Map<String, dynamic> exam, int index) {
+    final nama = exam['nama'] as String? ?? '-';
+    final nik = exam['nik'] as String? ?? '';
+    final tanggal = exam['tanggal'] as String? ?? '-';
+    final tglLahir = exam['tanggal_lahir'] as String? ?? '';
+    final usia = exam['usia'] as String? ?? '';
+    final alamat = exam['alamat'] as String? ?? '';
+    final tensi = exam['tensi'] as String? ?? '';
+    final bb = exam['bb'] as String? ?? '';
+    final tb = exam['tb'] as String? ?? '';
+    final lp = exam['lingkar_pinggang'] as String? ?? '';
+    final lila = exam['lila'] as String? ?? '';
+    final lika = exam['lika'] as String? ?? '';
+    final gd = exam['gula_darah'] as String? ?? '';
+    final keluhan = List<String>.from(exam['keluhan'] as List? ?? []);
+    final tindakLanjut = List<String>.from(exam['tindak_lanjut'] as List? ?? []);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(color: AppTheme.surfaceDark, borderRadius: BorderRadius.circular(14), border: Border.all(color: AppTheme.divider)),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Container(width: 28, height: 28,
+            decoration: BoxDecoration(gradient: AppTheme.primaryGradient, borderRadius: BorderRadius.circular(8)),
+            alignment: Alignment.center,
+            child: Text('${index + 1}', style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700)),
+          ),
+          const SizedBox(width: 10),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(nama, style: const TextStyle(color: AppTheme.textPrimary, fontSize: 15, fontWeight: FontWeight.w600)),
+            if (nik.isNotEmpty) Text('NIK: $nik', style: TextStyle(color: AppTheme.accentTeal.withValues(alpha: 0.8), fontSize: 11, fontFamily: 'monospace')),
+          ])),
+          // Edit button
+          IconButton(
+            icon: const Icon(Icons.edit_rounded, color: AppTheme.accentTeal, size: 18),
+            tooltip: 'Edit Data Pasien',
+            visualDensity: VisualDensity.compact,
+            onPressed: () => _showEditExamDialog(exam),
+          ),
+        ]),
+        const SizedBox(height: 8),
+        _row('Tanggal', tanggal),
+        if (tglLahir.isNotEmpty) _row('Tanggal Lahir', tglLahir),
+        if (usia.isNotEmpty) _row('Usia', '$usia tahun'),
+        if (alamat.isNotEmpty) _row('Alamat', alamat),
+        if (tensi.isNotEmpty) _row('Tensi', tensi),
+        if (bb.isNotEmpty) _row('BB', '$bb kg'),
+        if (tb.isNotEmpty) _row('TB', '$tb cm'),
+        if (lp.isNotEmpty) _row('LP', '$lp cm'),
+        if (lila.isNotEmpty) _row('LILA', '$lila cm'),
+        if (lika.isNotEmpty) _row('LIKA', '$lika cm'),
+        if (gd.isNotEmpty) _row('Gula Darah', '$gd mg/dL'),
+        if (keluhan.isNotEmpty) _row('Keluhan', keluhan.join(', ')),
+        if (tindakLanjut.isNotEmpty) _row('Tindak Lanjut', tindakLanjut.join(', ')),
+        // Foto thumbnail
+        Builder(builder: (_) {
+          final fotoUrl = _getValidPhotoUrl(exam);
+          if (fotoUrl.isEmpty || !fotoUrl.startsWith('http')) return const SizedBox();
+          return Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: GestureDetector(
+              onTap: () => showDialog(context: context, builder: (_) => _PhotoPreviewDialog(url: fotoUrl, title: nama)),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: Stack(children: [
+                  Image.network(fotoUrl, height: 120, width: double.infinity, fit: BoxFit.cover, cacheWidth: 400,
+                    errorBuilder: (_, __, ___) => const SizedBox()),
+                  Positioned(bottom: 6, right: 6, child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(6)),
+                    child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                      Icon(Icons.zoom_in_rounded, color: Colors.white, size: 14),
+                      SizedBox(width: 3),
+                      Text('Lihat', style: TextStyle(color: Colors.white, fontSize: 10)),
+                    ]),
+                  )),
+                ]),
+              ),
+            ),
+          );
+        }),
+      ]),
+    );
+  }
+
+  Future<void> _showEditExamDialog(Map<String, dynamic> exam) async {
+    final examId = exam['id'] as String? ?? '';
+    if (examId.isEmpty) return;
+
+    // Controllers
+    final namaCtrl = TextEditingController(text: exam['nama'] as String? ?? '');
+    final nikCtrl = TextEditingController(text: exam['nik'] as String? ?? '');
+    final tglCtrl = TextEditingController(text: exam['tanggal'] as String? ?? '');
+    final tglLahirCtrl = TextEditingController(text: exam['tanggal_lahir'] as String? ?? '');
+    final usiaCtrl = TextEditingController(text: exam['usia'] as String? ?? '');
+    final alamatCtrl = TextEditingController(text: exam['alamat'] as String? ?? '');
+    final tensiCtrl = TextEditingController(text: exam['tensi'] as String? ?? '');
+    final bbCtrl = TextEditingController(text: exam['bb'] as String? ?? '');
+    final tbCtrl = TextEditingController(text: exam['tb'] as String? ?? '');
+    final lpCtrl = TextEditingController(text: exam['lingkar_pinggang'] as String? ?? '');
+    final lilaCtrl = TextEditingController(text: exam['lila'] as String? ?? '');
+    final likaCtrl = TextEditingController(text: exam['lika'] as String? ?? '');
+    final gdCtrl = TextEditingController(text: exam['gula_darah'] as String? ?? '');
+    final keluhanCtrl = TextEditingController(text: (exam['keluhan'] as List? ?? []).join(', '));
+    final tindakCtrl = TextEditingController(text: (exam['tindak_lanjut'] as List? ?? []).join(', '));
+    File? newFotoFile;
+
+    final result = await showModalBottomSheet<bool>(
+      context: context,
+      backgroundColor: AppTheme.cardDark,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.92, minChildSize: 0.5, maxChildSize: 0.95, expand: false,
+        builder: (ctx, scrollCtrl) => Column(children: [
+          // Handle bar
+          const SizedBox(height: 12),
+          Container(width: 40, height: 4, decoration: BoxDecoration(color: AppTheme.divider, borderRadius: BorderRadius.circular(2))),
+          // Header
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 12, 8),
+            child: Row(children: [
+              Container(
+                width: 40, height: 40,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(colors: [Color(0xFF00BCD4), Color(0xFF4CAF50)]),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                alignment: Alignment.center,
+                child: const Icon(Icons.edit_note_rounded, color: Colors.white, size: 22),
+              ),
+              const SizedBox(width: 12),
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('Edit Data Pasien', style: const TextStyle(color: AppTheme.textPrimary, fontSize: 18, fontWeight: FontWeight.w700)),
+                Text(namaCtrl.text, style: TextStyle(color: AppTheme.accentTeal.withValues(alpha: 0.8), fontSize: 13)),
+              ])),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Batal', style: TextStyle(color: AppTheme.textHint)),
+              ),
+            ]),
+          ),
+          const Divider(color: AppTheme.divider, height: 1),
+          // Scrollable content
+          Expanded(child: ListView(controller: scrollCtrl, padding: const EdgeInsets.fromLTRB(20, 12, 20, 20), children: [
+            // ── SECTION 1: Identitas Pasien ──
+            _sectionHeader(Icons.person_rounded, 'Identitas Pasien', const Color(0xFF00BCD4)),
+            const SizedBox(height: 10),
+            _editField(namaCtrl, 'Nama Pasien', Icons.person_outline_rounded),
+            const SizedBox(height: 10),
+            _editField(nikCtrl, 'NIK', Icons.badge_rounded),
+            const SizedBox(height: 10),
+            Row(children: [
+              Expanded(child: _editField(tglCtrl, 'Tanggal', Icons.calendar_today_rounded)),
+              const SizedBox(width: 10),
+              Expanded(child: _editField(tglLahirCtrl, 'Tanggal Lahir', Icons.cake_outlined)),
+            ]),
+            const SizedBox(height: 10),
+            _editField(usiaCtrl, 'Usia', Icons.cake_rounded),
+            const SizedBox(height: 10),
+            _editField(alamatCtrl, 'Alamat', Icons.location_on_outlined, maxLines: 2),
+
+            const SizedBox(height: 20),
+            // ── SECTION: Foto Pasien ──
+            _sectionHeader(Icons.photo_camera_rounded, 'Foto Pasien', const Color(0xFFFF9800)),
+            const SizedBox(height: 10),
+            StatefulBuilder(builder: (ctx2, setPhoto) {
+              final fotoUrl = _getValidPhotoUrl(exam);
+              final hasCloud = fotoUrl.isNotEmpty && fotoUrl.startsWith('http');
+              final hasNewFile = newFotoFile != null;
+
+              return Column(children: [
+                // Preview area
+                Container(
+                  height: hasCloud || hasNewFile ? 160 : 60,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFFFF9800).withValues(alpha: 0.3)),
+                    color: AppTheme.surfaceDark,
+                  ),
+                  child: hasNewFile
+                    ? GestureDetector(
+                        onTap: () => showDialog(context: context, builder: (_) => _PhotoPreviewDialog(url: newFotoFile!.path, title: namaCtrl.text, isLocal: true)),
+                        child: Stack(children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(11),
+                            child: Image.file(newFotoFile!, fit: BoxFit.cover, width: double.infinity, height: 160),
+                          ),
+                          Positioned(top: 6, left: 6, child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(color: const Color(0xFF4CAF50), borderRadius: BorderRadius.circular(6)),
+                            child: const Text('FOTO BARU', style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w700)),
+                          )),
+                        ]),
+                      )
+                    : hasCloud
+                      ? GestureDetector(
+                          onTap: () => showDialog(context: context, builder: (_) => _PhotoPreviewDialog(url: fotoUrl, title: namaCtrl.text)),
+                          child: Stack(children: [
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(11),
+                              child: Image.network(fotoUrl, fit: BoxFit.cover, width: double.infinity, height: 160, cacheWidth: 400,
+                                  errorBuilder: (_, __, ___) => const Center(child: Icon(Icons.broken_image_rounded, color: AppTheme.textHint, size: 40))),
+                            ),
+                            Positioned(bottom: 8, right: 8, child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                              decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(8)),
+                              child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                                Icon(Icons.zoom_in_rounded, color: Colors.white, size: 16),
+                                SizedBox(width: 4),
+                                Text('Lihat Foto', style: TextStyle(color: Colors.white, fontSize: 11)),
+                              ]),
+                            )),
+                          ]),
+                        )
+                      : const Center(child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                          Icon(Icons.image_not_supported_rounded, color: AppTheme.textHint, size: 20),
+                          SizedBox(width: 8),
+                          Text('Tidak ada foto', style: TextStyle(color: AppTheme.textHint, fontSize: 13)),
+                        ])),
+                ),
+                const SizedBox(height: 8),
+                // Ganti Foto button
+                SizedBox(
+                  width: double.infinity, height: 38,
+                  child: OutlinedButton.icon(
+                    onPressed: () async {
+                      final source = await showModalBottomSheet<ImageSource>(
+                        context: context, backgroundColor: AppTheme.cardDark,
+                        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+                        builder: (c) => SafeArea(child: Column(mainAxisSize: MainAxisSize.min, children: [
+                          ListTile(leading: const Icon(Icons.camera_alt_rounded, color: AppTheme.accentTeal),
+                            title: const Text('Kamera', style: TextStyle(color: AppTheme.textPrimary)),
+                            onTap: () => Navigator.pop(c, ImageSource.camera)),
+                          ListTile(leading: const Icon(Icons.photo_library_rounded, color: AppTheme.accentBlue),
+                            title: const Text('Galeri', style: TextStyle(color: AppTheme.textPrimary)),
+                            onTap: () => Navigator.pop(c, ImageSource.gallery)),
+                        ])),
+                      );
+                      if (source == null) return;
+                      final picked = await ImagePicker().pickImage(source: source, maxWidth: 1600, maxHeight: 1600, imageQuality: 80);
+                      if (picked != null) {
+                        setPhoto(() => newFotoFile = File(picked.path));
+                      }
+                    },
+                    icon: Icon(hasNewFile ? Icons.check_circle_rounded : Icons.camera_alt_rounded, size: 16),
+                    label: Text(hasNewFile ? 'Foto diganti ✓ Ketuk untuk ganti lagi' : 'Ganti Foto', style: const TextStyle(fontSize: 12)),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFFFF9800),
+                      side: BorderSide(color: const Color(0xFFFF9800).withValues(alpha: 0.4)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                  ),
+                ),
+              ]);
+            }),
+
+            const SizedBox(height: 20),
+            // ── SECTION 2: Hasil Pemeriksaan ──
+            _sectionHeader(Icons.medical_services_rounded, 'Hasil Pemeriksaan', const Color(0xFF4CAF50)),
+            const SizedBox(height: 10),
+            _editField(tensiCtrl, 'Tensi', Icons.favorite_rounded),
+            const SizedBox(height: 10),
+            Row(children: [
+              Expanded(child: _editField(bbCtrl, 'BB (kg)', Icons.monitor_weight_rounded)),
+              const SizedBox(width: 10),
+              Expanded(child: _editField(tbCtrl, 'TB (cm)', Icons.height_rounded)),
+            ]),
+            const SizedBox(height: 10),
+            Row(children: [
+              Expanded(child: _editField(lpCtrl, 'LP (cm)', Icons.straighten_rounded)),
+              const SizedBox(width: 10),
+              Expanded(child: _editField(lilaCtrl, 'LILA (cm)', Icons.accessibility_rounded)),
+            ]),
+            const SizedBox(height: 10),
+            Row(children: [
+              Expanded(child: _editField(likaCtrl, 'LIKA (cm)', Icons.circle_outlined)),
+              const SizedBox(width: 10),
+              Expanded(child: _editField(gdCtrl, 'Gula Darah', Icons.water_drop_rounded)),
+            ]),
+
+            const SizedBox(height: 20),
+            // ── SECTION 3: Catatan ──
+            _sectionHeader(Icons.note_alt_rounded, 'Catatan', const Color(0xFFE040FB)),
+            const SizedBox(height: 10),
+            _editField(keluhanCtrl, 'Keluhan (pisahkan koma)', Icons.sick_rounded, maxLines: 3),
+            const SizedBox(height: 10),
+            _editField(tindakCtrl, 'Tindak Lanjut (pisahkan koma)', Icons.assignment_turned_in_rounded, maxLines: 3),
+
+            const SizedBox(height: 24),
+            // Save button
+            SizedBox(
+              width: double.infinity, height: 50,
+              child: ElevatedButton.icon(
+                onPressed: () => Navigator.pop(ctx, true),
+                icon: const Icon(Icons.save_rounded, size: 20),
+                label: const Text('Simpan Perubahan', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.accentTeal,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                ),
+              ),
+            ),
+          ])),
+        ]),
+      ),
+    );
+
+    if (result != true) return;
+
+    // Upload foto baru jika ada
+    String? newFotoUrl;
+    if (newFotoFile != null) {
+      newFotoUrl = await SupabaseService.uploadPhoto(newFotoFile!.path, examId);
+    }
+
+    // Build update map
+    final updates = <String, dynamic>{
+      'nama': namaCtrl.text.trim(),
+      'nik': nikCtrl.text.trim(),
+      'tanggal': tglCtrl.text.trim(),
+      'tanggal_lahir': tglLahirCtrl.text.trim(),
+      'usia': usiaCtrl.text.trim(),
+      'alamat': alamatCtrl.text.trim(),
+      'tensi': tensiCtrl.text.trim(),
+      'bb': bbCtrl.text.trim(),
+      'tb': tbCtrl.text.trim(),
+      'lingkar_pinggang': lpCtrl.text.trim(),
+      'lila': lilaCtrl.text.trim(),
+      'lika': likaCtrl.text.trim(),
+      'gula_darah': gdCtrl.text.trim(),
+      'keluhan': keluhanCtrl.text.trim().isEmpty ? [] : keluhanCtrl.text.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList(),
+      'tindak_lanjut': tindakCtrl.text.trim().isEmpty ? [] : tindakCtrl.text.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList(),
+    };
+    if (newFotoUrl != null) updates['foto_path'] = newFotoUrl;
+
+    final error = await SupabaseService.adminUpdateExam(examId, updates);
+    if (!mounted) return;
+    if (error != null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error), backgroundColor: AppTheme.error));
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(newFotoUrl != null ? 'Data & foto berhasil diperbarui' : 'Data pasien berhasil diperbarui'), backgroundColor: const Color(0xFF4CAF50)),
+      );
+      _load();
+    }
+  }
+
+  Widget _sectionHeader(IconData icon, String title, Color color) {
+    return Row(children: [
+      Container(
+        padding: const EdgeInsets.all(6),
+        decoration: BoxDecoration(color: color.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(8)),
+        child: Icon(icon, color: color, size: 16),
+      ),
+      const SizedBox(width: 10),
+      Text(title, style: TextStyle(color: color, fontSize: 14, fontWeight: FontWeight.w700, letterSpacing: 0.5)),
+      const SizedBox(width: 10),
+      Expanded(child: Container(height: 1, color: color.withValues(alpha: 0.15))),
+    ]);
+  }
+
+  Widget _editField(TextEditingController ctrl, String label, IconData icon, {int maxLines = 1}) {
+    return TextField(
+      controller: ctrl,
+      style: const TextStyle(color: AppTheme.textPrimary, fontSize: 14),
+      maxLines: maxLines,
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: const TextStyle(color: AppTheme.textHint, fontSize: 12),
+        prefixIcon: Icon(icon, color: AppTheme.textHint, size: 18),
+        filled: true, fillColor: AppTheme.surfaceDark,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppTheme.divider)),
+        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppTheme.accentTeal, width: 1.5)),
+      ),
+    );
+  }
+
+  Widget _row(String label, String value) => Padding(
+    padding: const EdgeInsets.only(bottom: 2),
+    child: Row(children: [
+      SizedBox(width: 90, child: Text(label, style: const TextStyle(color: AppTheme.textHint, fontSize: 12))),
+      Expanded(child: Text(value, style: const TextStyle(color: AppTheme.textPrimary, fontSize: 12))),
+    ]),
+  );
+}
+
+// ═══════════════════════════════════════════════
+// Fullscreen Photo Preview with Zoom
+// ═══════════════════════════════════════════════
+
+class _PhotoPreviewDialog extends StatelessWidget {
+  final String url;
+  final String title;
+  final bool isLocal;
+  const _PhotoPreviewDialog({required this.url, required this.title, this.isLocal = false});
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: EdgeInsets.zero,
+      child: Stack(children: [
+        // Dark background
+        GestureDetector(
+          onTap: () => Navigator.pop(context),
+          child: Container(color: Colors.black87),
+        ),
+        // Zoomable image
+        Center(
+          child: InteractiveViewer(
+            minScale: 0.5, maxScale: 5.0, clipBehavior: Clip.none,
+            child: isLocal
+                ? Image.file(File(url), fit: BoxFit.contain)
+                : Image.network(url, fit: BoxFit.contain,
+                    loadingBuilder: (_, child, progress) => progress == null
+                        ? child
+                        : const Center(child: CircularProgressIndicator(color: AppTheme.accentTeal)),
+                    errorBuilder: (_, __, ___) => const Center(
+                      child: Column(mainAxisSize: MainAxisSize.min, children: [
+                        Icon(Icons.broken_image_rounded, color: AppTheme.textHint, size: 60),
+                        SizedBox(height: 8),
+                        Text('Gagal memuat foto', style: TextStyle(color: AppTheme.textHint)),
+                      ]),
+                    ),
+                  ),
+          ),
+        ),
+        // Header bar
+        Positioned(top: 0, left: 0, right: 0, child: SafeArea(
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(colors: [Colors.black87, Colors.transparent], begin: Alignment.topCenter, end: Alignment.bottomCenter),
+            ),
+            child: Row(children: [
+              const Icon(Icons.photo_rounded, color: Colors.white70, size: 18),
+              const SizedBox(width: 8),
+              Expanded(child: Text(title, style: const TextStyle(color: Colors.white70, fontSize: 14), overflow: TextOverflow.ellipsis)),
+              IconButton(
+                icon: const Icon(Icons.close_rounded, color: Colors.white, size: 24),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ]),
+          ),
+        )),
+        // Hint text
+        Positioned(bottom: 40, left: 0, right: 0, child: Center(
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+            decoration: BoxDecoration(color: Colors.black45, borderRadius: BorderRadius.circular(20)),
+            child: const Text('Cubit untuk zoom • Ketuk luar untuk tutup', style: TextStyle(color: Colors.white54, fontSize: 11)),
+          ),
+        )),
+      ]),
+    );
+  }
+}

@@ -5,6 +5,7 @@ import 'package:uuid/uuid.dart';
 class ResidentExam {
   final String id;
   final String tanggal;
+  final String tanggalLahir;
   final String nama;
   final String nik;
   final String usia;
@@ -25,6 +26,7 @@ class ResidentExam {
   ResidentExam({
     String? id,
     required this.tanggal,
+    this.tanggalLahir = '',
     required this.nama,
     this.nik = '',
     required this.usia,
@@ -46,6 +48,7 @@ class ResidentExam {
   Map<String, dynamic> toJson() => {
         'id': id,
         'tanggal': tanggal,
+        'tanggalLahir': tanggalLahir,
         'nama': nama,
         'nik': nik,
         'usia': usia,
@@ -67,6 +70,7 @@ class ResidentExam {
   factory ResidentExam.fromJson(Map<String, dynamic> json) => ResidentExam(
         id: json['id'] as String? ?? const Uuid().v4(),
         tanggal: json['tanggal'] as String? ?? '',
+        tanggalLahir: json['tanggalLahir'] as String? ?? json['tanggal_lahir'] as String? ?? '',
         nama: json['nama'] as String? ?? '',
         nik: json['nik'] as String? ?? '',
         usia: json['usia'] as String? ?? '',

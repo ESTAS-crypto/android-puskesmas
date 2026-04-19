@@ -4,6 +4,7 @@ import '../models/report.dart';
 import '../models/resident_exam.dart';
 import '../models/user_session.dart';
 import '../services/storage_service.dart';
+import '../services/supabase_service.dart';
 import 'resident_exam_form_screen.dart';
 import 'success_screen.dart';
 
@@ -127,6 +128,11 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
       } else {
         await StorageService.saveReport(report);
         await StorageService.clearDraft(); // Clear draft on successful save
+      }
+
+      // Auto-sync ke cloud (fire-and-forget, tidak blocking)
+      if (SupabaseService.isLoggedIn) {
+        SupabaseService.syncReportToCloud(report).catchError((_) {});
       }
 
       if (!mounted) return;
