@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../theme/app_theme.dart';
 import '../models/user_session.dart';
 import '../models/resident_exam.dart';
@@ -35,6 +36,42 @@ class _DashboardScreenState extends State<DashboardScreen>
     _animController.forward();
     _loadReportCount();
     _checkChangelog();
+    // Jalankan background tasks — tidak blocking UI
+    _runBackgroundTasks();
+  }
+
+  /// Jalankan auto-cleanup lokal dan (jika admin) server cleanup.
+  Future<void> _runBackgroundTasks() async {
+    // 1. Cleanup lokal selalu dijalankan
+    StorageService.cleanupOldLocalData().then((count) {
+      if (count > 0) {
+        debugPrint('[Dashboard] Local cleanup: $count laporan dihapus');
+        _loadReportCount(); // Reload count setelah cleanup
+      }
+    });
+
+    // 2. Jika admin dan online → cleanup server juga
+    if (widget.session.isAdmin && SupabaseService.isLoggedIn) {
+      final prefs = await SharedPreferences.getInstance();
+      final photoVal = prefs.getInt('ad_photo_val') ?? 0;
+      final photoUnit = prefs.getString('ad_photo_unit') ?? 'bulan';
+      final reportVal = prefs.getInt('ad_report_val') ?? 0;
+      final reportUnit = prefs.getString('ad_report_unit') ?? 'bulan';
+
+      int toDays(int v, String u) {
+        if (v <= 0) return 0;
+        switch (u) {
+          case 'hari': return v;
+          case 'minggu': return v * 7;
+          default: return v * 30;
+        }
+      }
+
+      SupabaseService.adminAutoCleanServerData(
+        photoDeleteDays: toDays(photoVal, photoUnit),
+        reportDeleteDays: toDays(reportVal, reportUnit),
+      );
+    }
   }
 
   Future<void> _loadReportCount() async {

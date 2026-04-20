@@ -6,6 +6,7 @@ import '../models/user_session.dart';
 import '../services/storage_service.dart';
 import '../services/supabase_service.dart';
 import 'dashboard_screen.dart';
+import 'google_profile_setup_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -64,6 +65,79 @@ class _LoginScreenState extends State<LoginScreen>
     _namaController.dispose();
     _puskesmasController.dispose();
     super.dispose();
+  }
+
+  /// Proses login menggunakan akun Google.
+  Future<void> _signInWithGoogle() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    final result = await SupabaseService.signInWithGoogle();
+
+    if (!mounted) return;
+
+    final error = result['error'] as String?;
+    if (error != null) {
+      // Login dibatalkan adalah bukan error yang perlu ditampilkan
+      if (!error.contains('dibatalkan')) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = error;
+        });
+      } else {
+        setState(() => _isLoading = false);
+      }
+      return;
+    }
+
+    final isNewUser = result['isNewUser'] as bool? ?? true;
+    final email = result['email'] as String? ?? '';
+    final googleName = result['googleName'] as String? ?? '';
+
+    if (isNewUser) {
+      // Pengguna baru → minta nama kader & puskesmas dulu
+      setState(() => _isLoading = false);
+      Navigator.pushReplacement(
+        context,
+        PageRouteBuilder(
+          pageBuilder: (_, __, ___) => GoogleProfileSetupScreen(
+            email: email,
+            googleName: googleName,
+          ),
+          transitionsBuilder: (_, anim, __, child) => FadeTransition(opacity: anim, child: child),
+          transitionDuration: const Duration(milliseconds: 400),
+        ),
+      );
+    } else {
+      // Pengguna lama → langsung ke dashboard
+      final uid = SupabaseService.currentUserId ?? '';
+      final role = uid.isNotEmpty ? await SupabaseService.fetchUserRole(uid) : 'user';
+      final nama = result['existingNama'] as String? ?? googleName;
+      final puskesmas = result['existingPuskesmas'] as String? ?? '';
+
+      final session = UserSession(
+        userId: uid,
+        email: email,
+        nama: nama,
+        puskesmas: puskesmas,
+        bulan: '',
+        tahun: '',
+        role: role,
+      );
+
+      await StorageService.saveSession(session);
+      if (!mounted) return;
+      Navigator.pushReplacement(
+        context,
+        PageRouteBuilder(
+          pageBuilder: (_, __, ___) => DashboardScreen(session: session),
+          transitionsBuilder: (_, anim, __, child) => FadeTransition(opacity: anim, child: child),
+          transitionDuration: const Duration(milliseconds: 400),
+        ),
+      );
+    }
   }
 
   Future<void> _submit() async {
@@ -806,7 +880,68 @@ class _LoginScreenState extends State<LoginScreen>
 
                       const SizedBox(height: 20),
 
-                      // Toggle Register/Login
+                      // === Divider Google ===
+                      if (!_isRegisterMode) ...[
+                        Row(
+                          children: [
+                            const Expanded(child: Divider(color: AppTheme.divider)),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 12),
+                              child: Text(
+                                'atau masuk dengan',
+                                style: TextStyle(color: AppTheme.textHint, fontSize: 12),
+                              ),
+                            ),
+                            const Expanded(child: Divider(color: AppTheme.divider)),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Tombol Google
+                        SizedBox(
+                          width: double.infinity,
+                          height: 54,
+                          child: OutlinedButton(
+                            onPressed: _isLoading ? null : _signInWithGoogle,
+                            style: OutlinedButton.styleFrom(
+                              side: BorderSide(color: AppTheme.divider.withValues(alpha: 0.8)),
+                              backgroundColor: AppTheme.cardDark,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Container(
+                                  width: 24,
+                                  height: 24,
+                                  alignment: Alignment.center,
+                                  child: const Text(
+                                    'G',
+                                    style: TextStyle(
+                                      color: Color(0xFF4285F4),
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                const Text(
+                                  'Masuk dengan Google',
+                                  style: TextStyle(
+                                    color: AppTheme.textPrimary,
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                      ],
+
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [

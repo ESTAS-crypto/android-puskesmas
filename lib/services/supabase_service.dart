@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/report.dart';
@@ -210,6 +211,161 @@ class SupabaseService {
       await _client.auth.signOut();
     } catch (e) {
       debugPrint('[SupabaseService] signOut error: $e');
+    }
+  }
+
+  // ─────────────────────────────────────────────
+  // GOOGLE SIGN-IN
+  // ─────────────────────────────────────────────
+
+  static final GoogleSignIn _googleSignIn = GoogleSignIn(
+    serverClientId: '824087521061-oh6sheu9lp08tf1onni7op38fj6f8ja03.apps.googleusercontent.com', 
+  );
+
+  /// Sign in menggunakan akun Google.
+  /// Mengembalikan [Map] dengan kunci:
+  ///   - 'error': String? (null jika sukses)
+  ///   - 'isNewUser': bool (true jika pengguna belum pernah mendaftar)
+  ///   - 'email': String
+  ///   - 'googleName': String (nama dari akun Google)
+  static Future<Map<String, dynamic>> signInWithGoogle() async {
+    try {
+      final googleUser = await _googleSignIn.signIn();
+      if (googleUser == null) {
+        return {'error': 'Login dibatalkan oleh pengguna.'};
+      }
+
+      final googleAuth = await googleUser.authentication;
+      final idToken = googleAuth.idToken;
+      final accessToken = googleAuth.accessToken;
+
+      if (idToken == null) {
+        return {'error': 'Gagal mendapatkan token Google. Coba lagi.'};
+      }
+
+      final res = await _client.auth.signInWithIdToken(
+        provider: OAuthProvider.google,
+        idToken: idToken,
+        accessToken: accessToken,
+      );
+
+      if (res.user == null) {
+        return {'error': 'Login Google gagal. Silakan coba lagi.'};
+      }
+
+      final userId = res.user!.id;
+
+      // Cek apakah sudah ada profil di table profiles
+      final existingProfile = await _client
+          .from('profiles')
+          .select('nama, puskesmas')
+          .eq('id', userId)
+          .maybeSingle();
+
+      final bool isNewUser = existingProfile == null ||
+          (existingProfile['nama'] as String? ?? '').isEmpty;
+
+      return {
+        'error': null,
+        'isNewUser': isNewUser,
+        'email': googleUser.email,
+        'googleName': googleUser.displayName ?? '',
+        'existingNama': existingProfile?['nama'] as String? ?? '',
+        'existingPuskesmas': existingProfile?['puskesmas'] as String? ?? '',
+      };
+    } on AuthException catch (e) {
+      return {'error': _translateError(e.message)};
+    } catch (e) {
+      final msg = e.toString();
+      if (msg.contains('sign_in_failed') || msg.contains('network_error')) {
+        return {'error': 'Koneksi gagal. Pastikan internet aktif dan coba lagi.'};
+      }
+      if (msg.contains('sign_in_canceled') || msg.contains('canceled')) {
+        return {'error': 'Login dibatalkan.'};
+      }
+      return {'error': 'Login Google gagal: $e'};
+    }
+  }
+
+  /// Simpan profil pertama kali setelah Google Sign-In.
+  static Future<String?> saveGoogleProfile({
+    required String nama,
+    required String puskesmas,
+  }) async {
+    try {
+      final userId = currentUserId;
+      if (userId == null) return 'Sesi tidak ditemukan. Coba login ulang.';
+      final email = _client.auth.currentUser?.email ?? '';
+
+      await _client.from('profiles').upsert({
+        'id': userId,
+        'email': email,
+        'nama': nama,
+        'puskesmas': puskesmas,
+        'username': email.split('@').first.toLowerCase(),
+      });
+      return null;
+    } catch (e) {
+      return 'Gagal menyimpan profil: $e';
+    }
+  }
+
+  // ─────────────────────────────────────────────
+  // ADMIN AUTO-CLEAN SERVER DATA
+  // ─────────────────────────────────────────────
+
+  /// Hapus otomatis laporan & foto dari server berdasarkan pengaturan admin.
+  /// Dipanggil saat Admin membuka Dashboard (non-blocking / fire-and-forget).
+  static Future<void> adminAutoCleanServerData({
+    required int photoDeleteDays,
+    required int reportDeleteDays,
+  }) async {
+    if (!isLoggedIn) return;
+    try {
+      final now = DateTime.now();
+
+      // 1. Hapus foto lama dari Storage berdasarkan tanggal modifikasi
+      if (photoDeleteDays > 0) {
+        final cutoffDate = now.subtract(Duration(days: photoDeleteDays));
+        final allPhotos = await _client.storage.from('photos').list();
+        int deletedPhotos = 0;
+        for (final photo in allPhotos) {
+          final updatedAt = photo.updatedAt;
+          if (updatedAt != null) {
+            final photoDate = DateTime.tryParse(updatedAt);
+            if (photoDate != null && photoDate.isBefore(cutoffDate)) {
+              try {
+                await _client.storage.from('photos').remove([photo.name]);
+                deletedPhotos++;
+              } catch (_) {}
+            }
+          }
+        }
+        if (deletedPhotos > 0) {
+          debugPrint('[AdminAutoClean] Foto dihapus dari storage: $deletedPhotos');
+        }
+      }
+
+      // 2. Hapus exam lama dari database berdasarkan kolom tanggal
+      if (reportDeleteDays > 0) {
+        final cutoffDate = now.subtract(Duration(days: reportDeleteDays));
+        final cutoffStr = cutoffDate.toIso8601String().substring(0, 10);
+
+        // Hapus exams yang tanggal_kunjungannya sebelum batas
+        final deleted = await _client
+            .from('resident_exams')
+            .delete()
+            .lt('created_at', cutoffStr)
+            .select('id');
+
+        debugPrint('[AdminAutoClean] Exam rows dihapus: ${deleted.length}');
+
+        // Hapus reports yang sudah tidak memiliki exam (orphan reports)
+        // Dilakukan dengan subquery: hapus reports yang tidak ada di resident_exams
+        await _client.rpc('delete_orphan_reports');
+      }
+    } catch (e) {
+      debugPrint('[AdminAutoClean] Error: $e');
     }
   }
 

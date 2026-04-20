@@ -795,7 +795,7 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen> {
             Icon(Icons.search_off_rounded, size: 64, color: AppTheme.textHint),
             const SizedBox(height: 16),
             Text(
-              _searchQuery.isEmpty ? 'Belum ada data di server' : 'Tidak ada hasil untuk "' + _searchQuery + '"',
+              _searchQuery.isEmpty ? 'Belum ada data di server' : 'Tidak ada hasil untuk "$_searchQuery"',
               style: const TextStyle(color: AppTheme.textSecondary, fontSize: 15),
               textAlign: TextAlign.center,
             ),
