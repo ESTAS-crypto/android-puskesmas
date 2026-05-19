@@ -3,73 +3,95 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../theme/app_theme.dart';
 
 class ChangelogDialog {
-  static const String _currentVersion = '2.5.0';
+  static const String _currentVersion = '2.7.0';
   static const String _seenVersionKey = 'changelog_seen_version';
 
   static final List<Map<String, dynamic>> _changelog = [
     {
+      'version': '2.7.0',
+      'date': '19 Mei 2026',
+      'changes': [
+        {'icon': Icons.manage_accounts_rounded, 'text': '🔑 Sistem role baru: Owner › Developer › Admin › User — setiap level punya batas wewenang sendiri', 'type': 'new'},
+        {'icon': Icons.shield_rounded, 'text': '🛡️ Admin sekarang tidak bisa mengubah role siapapun — hanya Developer/Owner yang bisa kelola role', 'type': 'new'},
+        {'icon': Icons.no_accounts_rounded, 'text': '🚫 Admin tidak bisa menurunkan atau menghapus akun yang rolenya lebih tinggi dari dirinya', 'type': 'new'},
+        {'icon': Icons.refresh_rounded, 'text': '🔄 Role akan otomatis diperbarui saat aplikasi dibuka — tidak perlu logout dulu!', 'type': 'fix'},
+        {'icon': Icons.badge_rounded, 'text': '🎨 Badge role kini berwarna berbeda: Emas (Owner), Cyan (Developer), Ungu (Admin)', 'type': 'improve'},
+      ],
+    },
+    {
+      'version': '2.6.0',
+      'date': '20 April 2026',
+      'changes': [
+        {'icon': Icons.g_mobiledata_rounded, 'text': '✨ Sekarang bisa masuk pakai akun Gmail — tidak perlu buat akun baru lagi!', 'type': 'new'},
+        {'icon': Icons.badge_rounded, 'text': '📝 Masuk pertama kali lewat Google? Tinggal isi nama kader & puskesmas, lalu selesai!', 'type': 'new'},
+        {'icon': Icons.auto_delete_rounded, 'text': '🧹 Foto & laporan lama di HP otomatis terhapus sendiri — HP tidak bakal penuh!', 'type': 'new'},
+        {'icon': Icons.cloud_off_rounded, 'text': '☁️ Data lama di server juga ikut dibersihkan sendiri setiap kali admin buka aplikasi', 'type': 'new'},
+        {'icon': Icons.speed_rounded, 'text': '⚡ Aplikasi terasa lebih ringan & cepat saat dibuka', 'type': 'improve'},
+        {'icon': Icons.error_outline_rounded, 'text': '💬 Kalau ada masalah saat login, pesannya sekarang lebih mudah dimengerti', 'type': 'improve'},
+      ],
+    },
+    {
       'version': '2.5.0',
       'date': '27 Maret 2026',
       'changes': [
-        {'icon': Icons.cloud_sync_rounded, 'text': 'Sinkronisasi data ke cloud — akses laporan dari device manapun', 'type': 'new'},
-        {'icon': Icons.login_rounded, 'text': 'Login hybrid: bisa pakai Username atau Email', 'type': 'new'},
-        {'icon': Icons.pin_rounded, 'text': 'Konfirmasi akun & reset password via kode OTP 6-angka (tanpa link)', 'type': 'new'},
-        {'icon': Icons.public_rounded, 'text': 'Global Search — cari riwayat pasien dari semua petugas (online)', 'type': 'new'},
-        {'icon': Icons.wifi_rounded, 'text': 'Notifikasi status koneksi (online/offline) otomatis', 'type': 'new'},
-        {'icon': Icons.person_add_rounded, 'text': 'Registrasi akun dengan verifikasi email OTP', 'type': 'new'},
-        {'icon': Icons.search_rounded, 'text': 'Pencarian lokal kini mendukung NIK', 'type': 'improve'},
-        {'icon': Icons.cleaning_services_rounded, 'text': 'Hapus field Bulan & Tahun dari form registrasi', 'type': 'improve'},
+        {'icon': Icons.cloud_sync_rounded, 'text': '☁️ Data tersimpan ke internet — bisa dilihat dari HP mana saja!', 'type': 'new'},
+        {'icon': Icons.login_rounded, 'text': '🔐 Masuk bisa pakai nama pengguna atau alamat email — pilih yang paling ingat', 'type': 'new'},
+        {'icon': Icons.pin_rounded, 'text': '🔢 Lupa kata sandi? Bisa diubah lewat kode 6 angka yang dikirim ke email', 'type': 'new'},
+        {'icon': Icons.public_rounded, 'text': '🔍 Bisa cari data pasien dari semua petugas puskesmas (butuh internet)', 'type': 'new'},
+        {'icon': Icons.wifi_rounded, 'text': '📶 Ada tanda di layar apakah HP sedang terkoneksi internet atau tidak', 'type': 'new'},
+        {'icon': Icons.person_add_rounded, 'text': '👤 Daftar akun baru kini lebih aman — ada konfirmasi ke email', 'type': 'new'},
+        {'icon': Icons.search_rounded, 'text': '🔍 Cari pasien sekarang bisa pakai nomor NIK', 'type': 'improve'},
       ],
     },
     {
       'version': '2.4.0',
       'date': '19 Maret 2026',
       'changes': [
-        {'icon': Icons.badge_rounded, 'text': 'Penambahan kolom NIK pada identitas pasien', 'type': 'new'},
-        {'icon': Icons.share_rounded, 'text': 'Bagikan file hasil export langsung ke WhatsApp & aplikasi lain', 'type': 'new'},
-        {'icon': Icons.drag_handle_rounded, 'text': 'Urutan Keluhan & Tindak Lanjut kini bisa digeser (drag & drop)', 'type': 'new'},
-        {'icon': Icons.edit_document, 'text': 'Penyempurnaan seluruh istilah "Warga" menjadi "Pasien"', 'type': 'improve'},
+        {'icon': Icons.badge_rounded, 'text': '🪪 Ditambahkan kolom Nomor NIK di data pasien', 'type': 'new'},
+        {'icon': Icons.share_rounded, 'text': '📤 Laporan bisa langsung dikirim ke WhatsApp atau aplikasi lain dari HP', 'type': 'new'},
+        {'icon': Icons.drag_handle_rounded, 'text': '↕️ Urutan keluhan & tindakan bisa diubah dengan cara digeser-geser', 'type': 'new'},
+        {'icon': Icons.edit_document, 'text': '✏️ Tulisan "Warga" sudah diganti menjadi "Pasien" di seluruh aplikasi', 'type': 'improve'},
       ],
     },
     {
       'version': '2.3.0',
       'date': '15 Maret 2026',
       'changes': [
-        {'icon': Icons.calendar_month_rounded, 'text': 'Tanggal kunjungan terpisah per warga', 'type': 'new'},
-        {'icon': Icons.search_rounded, 'text': 'Pencarian & filter riwayat laporan (offline)', 'type': 'new'},
-        {'icon': Icons.auto_awesome_rounded, 'text': 'Auto-complete nama warga & isi otomatis semua data sebelumnya', 'type': 'new'},
-        {'icon': Icons.save_rounded, 'text': 'Auto-save draf laporan — progres tidak hilang', 'type': 'new'},
-        {'icon': Icons.description_rounded, 'text': 'PDF & DOCX: setiap warga kini di halaman terpisah', 'type': 'improve'},
-        {'icon': Icons.speed_rounded, 'text': 'Optimasi ukuran aplikasi — lebih ringan & cepat', 'type': 'improve'},
+        {'icon': Icons.calendar_month_rounded, 'text': '📅 Setiap pasien bisa punya tanggal kunjungan yang berbeda dalam satu laporan', 'type': 'new'},
+        {'icon': Icons.search_rounded, 'text': '🔍 Riwayat laporan bisa dicari & disaring dengan mudah, walau tanpa internet', 'type': 'new'},
+        {'icon': Icons.auto_awesome_rounded, 'text': '✨ Nama pasien lama muncul otomatis saat diketik — menghemat waktu!', 'type': 'new'},
+        {'icon': Icons.save_rounded, 'text': '💾 Laporan yang belum selesai tersimpan otomatis — tidak perlu takut hilang', 'type': 'new'},
+        {'icon': Icons.description_rounded, 'text': '📄 Laporan PDF & Word lebih rapi — setiap pasien ada di halaman sendiri', 'type': 'improve'},
+        {'icon': Icons.speed_rounded, 'text': '⚡ Aplikasi lebih ringan dan tidak lemot', 'type': 'improve'},
       ],
     },
     {
       'version': '2.2.0',
       'date': '11 Maret 2026',
       'changes': [
-        {'icon': Icons.people_alt_rounded, 'text': '1 Laporan bisa berisi banyak warga sekaligus', 'type': 'new'},
-        {'icon': Icons.drag_handle_rounded, 'text': 'Urutan warga bisa diatur ulang (drag & drop)', 'type': 'new'},
-        {'icon': Icons.table_chart_rounded, 'text': 'PDF & DOCX otomatis memuat semua warga dalam 1 dokumen', 'type': 'improve'},
-        {'icon': Icons.cloud_done_rounded, 'text': 'Data lama otomatis dimigrasi ke format baru', 'type': 'fix'},
+        {'icon': Icons.people_alt_rounded, 'text': '👥 Satu laporan sekarang bisa memuat banyak pasien sekaligus — tidak perlu laporan terpisah', 'type': 'new'},
+        {'icon': Icons.drag_handle_rounded, 'text': '↕️ Urutan nama pasien bisa diubah dengan cara digeser', 'type': 'new'},
+        {'icon': Icons.table_chart_rounded, 'text': '📋 Semua pasien otomatis masuk ke satu file PDF atau Word', 'type': 'improve'},
+        {'icon': Icons.cloud_done_rounded, 'text': '🔄 Data lama diperbarui otomatis agar tetap bisa dibuka di versi baru', 'type': 'fix'},
       ],
     },
     {
       'version': '2.1.0',
       'date': '6 Maret 2026',
       'changes': [
-        {'icon': Icons.add_circle_outline, 'text': 'Custom pengukuran — buat field sendiri di Data Pengukuran', 'type': 'new'},
-        {'icon': Icons.description_outlined, 'text': 'DOCX kompatibel dengan MS Word Android', 'type': 'fix'},
-        {'icon': Icons.animation, 'text': 'Splash screen lebih cepat & mulus', 'type': 'improve'},
+        {'icon': Icons.add_circle_outline, 'text': '➕ Bisa tambahkan kolom pengukuran sendiri sesuai kebutuhan', 'type': 'new'},
+        {'icon': Icons.description_outlined, 'text': '📝 File Word sekarang bisa dibuka normal di HP Android', 'type': 'fix'},
+        {'icon': Icons.animation, 'text': '🚀 Tampilan awal aplikasi lebih cepat terbuka', 'type': 'improve'},
       ],
     },
     {
       'version': '2.0.0',
       'date': '28 Februari 2026',
       'changes': [
-        {'icon': Icons.rocket_launch, 'text': 'Rilis pertama v2 dengan desain baru', 'type': 'new'},
-        {'icon': Icons.picture_as_pdf, 'text': 'Export PDF & DOCX', 'type': 'new'},
-        {'icon': Icons.mic, 'text': 'Voice input untuk semua field', 'type': 'new'},
-        {'icon': Icons.wifi_off, 'text': '100% Offline — tanpa internet', 'type': 'new'},
+        {'icon': Icons.rocket_launch, 'text': '🎉 Tampilan aplikasi dibuat ulang — lebih cantik & nyaman dipakai!', 'type': 'new'},
+        {'icon': Icons.picture_as_pdf, 'text': '📄 Laporan bisa dicetak ke file PDF atau Word langsung dari HP', 'type': 'new'},
+        {'icon': Icons.mic, 'text': '🎤 Bisa isi data cukup dengan berbicara ke HP — tidak perlu ketik!', 'type': 'new'},
+        {'icon': Icons.wifi_off, 'text': '📴 Tidak ada internet pun tetap bisa dipakai untuk catat kunjungan', 'type': 'new'},
       ],
     },
   ];

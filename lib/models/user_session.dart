@@ -19,7 +19,35 @@ class UserSession {
     this.role = 'user',
   });
 
-  bool get isAdmin => role == 'admin';
+  // ── Role hierarchy: owner > developer > admin > user ──
+  static const Map<String, int> _roleLevels = {
+    'user': 0,
+    'admin': 1,
+    'developer': 2,
+    'owner': 3,
+  };
+
+  int get roleLevel => _roleLevels[role] ?? 0;
+
+  /// True jika role adalah admin, developer, atau owner (dapat akses Admin Panel).
+  bool get isAdmin => roleLevel >= 1;
+
+  /// True hanya untuk developer atau owner.
+  bool get isDeveloper => roleLevel >= 2;
+
+  /// True hanya untuk owner.
+  bool get isOwner => role == 'owner';
+
+  /// True jika boleh mengubah role user lain (developer/owner saja).
+  bool get canManageRoles => roleLevel >= 2;
+
+  /// Cek apakah session ini boleh memodifikasi target berdasarkan roleLevel.
+  /// Rule: hanya boleh memodifikasi role yang LEBIH RENDAH dari diri sendiri.
+  bool canModifyRole(String targetRole) {
+    if (!canManageRoles) return false;
+    final targetLevel = _roleLevels[targetRole] ?? 0;
+    return roleLevel > targetLevel;
+  }
 
   Map<String, dynamic> toJson() {
     return {

@@ -330,23 +330,37 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
           final role = user['role'] as String? ?? 'user';
           final userId = user['id'] as String? ?? '';
           final isCurrentUser = userId == widget.session.userId;
-          final isAdmin = role == 'admin';
+
+          // Hitung level role untuk tampilan
+          final roleLevel = const {'user': 0, 'admin': 1, 'developer': 2, 'owner': 3}[role] ?? 0;
 
           return Container(
             margin: const EdgeInsets.only(bottom: 10),
             decoration: BoxDecoration(
               color: AppTheme.cardDark,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: isAdmin ? const Color(0xFFE040FB).withValues(alpha: 0.3) : AppTheme.divider),
+              border: Border.all(
+                color: roleLevel >= 3
+                    ? const Color(0xFFFFD700).withValues(alpha: 0.5) // owner: emas
+                    : roleLevel >= 2
+                        ? const Color(0xFF00E5FF).withValues(alpha: 0.4) // developer: cyan
+                        : roleLevel >= 1
+                            ? const Color(0xFFE040FB).withValues(alpha: 0.3) // admin: purple
+                            : AppTheme.divider, // user: default
+              ),
             ),
             child: ListTile(
               contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               leading: Container(
                 width: 44, height: 44,
                 decoration: BoxDecoration(
-                  gradient: isAdmin
-                      ? const LinearGradient(colors: [Color(0xFF9C27B0), Color(0xFFE040FB)])
-                      : AppTheme.primaryGradient,
+                  gradient: roleLevel >= 3
+                      ? const LinearGradient(colors: [Color(0xFFFF8F00), Color(0xFFFFD700)])
+                      : roleLevel >= 2
+                          ? const LinearGradient(colors: [Color(0xFF006064), Color(0xFF00E5FF)])
+                          : roleLevel >= 1
+                              ? const LinearGradient(colors: [Color(0xFF9C27B0), Color(0xFFE040FB)])
+                              : AppTheme.primaryGradient,
                   borderRadius: BorderRadius.circular(14),
                 ),
                 alignment: Alignment.center,
@@ -355,15 +369,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
               ),
               title: Row(children: [
                 Expanded(child: Text(nama, style: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w600))),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: isAdmin ? const Color(0xFFE040FB).withValues(alpha: 0.15) : AppTheme.surfaceDark,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(isAdmin ? 'ADMIN' : 'USER',
-                      style: TextStyle(color: isAdmin ? const Color(0xFFE040FB) : AppTheme.textHint, fontSize: 10, fontWeight: FontWeight.w700)),
-                ),
+                _buildRoleBadge(role),
               ]),
               subtitle: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 const SizedBox(height: 4),
@@ -372,41 +378,113 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
                 if (puskesmas.isNotEmpty) Text('PKM $puskesmas', style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
               ]),
               trailing: isCurrentUser
-                  ? const Tooltip(message: 'Akun Anda', child: Icon(Icons.person_pin_rounded, color: AppTheme.accentTeal))
-                  : PopupMenuButton<String>(
-                      icon: const Icon(Icons.more_vert_rounded, color: AppTheme.textHint),
-                      color: AppTheme.cardDark,
-                      onSelected: (value) {
-                        if (value == 'edit') {
-                          _showEditUserDialog(userId, nama, email, puskesmas);
-                        } else if (value == 'reset_pw') {
-                          _resetUserPassword(email, nama);
-                        } else {
-                          _onRoleAction(value, userId, nama, role);
-                        }
-                      },
-                      itemBuilder: (_) => [
-                        const PopupMenuItem(value: 'edit', child: Row(children: [
-                          Icon(Icons.edit_rounded, color: AppTheme.accentTeal, size: 18), SizedBox(width: 8),
-                          Text('Edit Profil', style: TextStyle(color: AppTheme.textPrimary)),
-                        ])),
-                        PopupMenuItem(value: isAdmin ? 'demote' : 'promote', child: Row(children: [
-                          Icon(isAdmin ? Icons.remove_moderator_rounded : Icons.shield_rounded,
-                              color: isAdmin ? AppTheme.warning : const Color(0xFFE040FB), size: 18),
-                          const SizedBox(width: 8),
-                          Text(isAdmin ? 'Jadikan User' : 'Jadikan Admin', style: const TextStyle(color: AppTheme.textPrimary)),
-                        ])),
-                        const PopupMenuItem(value: 'reset_pw', child: Row(children: [
-                          Icon(Icons.lock_reset_rounded, color: AppTheme.warning, size: 18), SizedBox(width: 8),
-                          Text('Reset Password', style: TextStyle(color: AppTheme.textPrimary)),
-                        ])),
-                      ],
-                    ),
+                  ? Tooltip(
+                      message: 'Akun Anda (${_roleLabel(role)})',
+                      child: const Icon(Icons.person_pin_rounded, color: AppTheme.accentTeal))
+                  // Hanya tampilkan popup jika sesi punya izin manage roles
+                  : widget.session.canManageRoles
+                      ? PopupMenuButton<String>(
+                          icon: const Icon(Icons.more_vert_rounded, color: AppTheme.textHint),
+                          color: AppTheme.cardDark,
+                          onSelected: (value) {
+                            if (value == 'edit') {
+                              _showEditUserDialog(userId, nama, email, puskesmas);
+                            } else if (value == 'reset_pw') {
+                              _resetUserPassword(email, nama);
+                            } else if (value == 'set_role') {
+                              _showSetRoleDialog(userId, nama, role);
+                            }
+                          },
+                          itemBuilder: (_) {
+                            final items = <PopupMenuEntry<String>>[
+                              const PopupMenuItem(value: 'edit', child: Row(children: [
+                                Icon(Icons.edit_rounded, color: AppTheme.accentTeal, size: 18), SizedBox(width: 8),
+                                Text('Edit Profil', style: TextStyle(color: AppTheme.textPrimary)),
+                              ])),
+                            ];
+                            // Tampilkan opsi ubah role hanya jika aktor bisa modifikasi target
+                            if (widget.session.canModifyRole(role)) {
+                              items.add(PopupMenuItem(value: 'set_role', child: Row(children: [
+                                Icon(Icons.manage_accounts_rounded,
+                                    color: roleLevel >= 1 ? AppTheme.warning : const Color(0xFFE040FB), size: 18),
+                                const SizedBox(width: 8),
+                                Text('Ubah Role (${ _roleLabel(role)})', style: const TextStyle(color: AppTheme.textPrimary)),
+                              ])));
+                            }
+                            items.add(const PopupMenuItem(value: 'reset_pw', child: Row(children: [
+                              Icon(Icons.lock_reset_rounded, color: AppTheme.warning, size: 18), SizedBox(width: 8),
+                              Text('Reset Password', style: TextStyle(color: AppTheme.textPrimary)),
+                            ])));
+                            return items;
+                          },
+                        )
+                      : // Admin dan user tidak punya tombol ubah role, hanya edit biasa
+                        PopupMenuButton<String>(
+                          icon: const Icon(Icons.more_vert_rounded, color: AppTheme.textHint),
+                          color: AppTheme.cardDark,
+                          onSelected: (value) {
+                            if (value == 'edit') {
+                              _showEditUserDialog(userId, nama, email, puskesmas);
+                            } else if (value == 'reset_pw') {
+                              _resetUserPassword(email, nama);
+                            }
+                          },
+                          itemBuilder: (_) => [
+                            const PopupMenuItem(value: 'edit', child: Row(children: [
+                              Icon(Icons.edit_rounded, color: AppTheme.accentTeal, size: 18), SizedBox(width: 8),
+                              Text('Edit Profil', style: TextStyle(color: AppTheme.textPrimary)),
+                            ])),
+                            const PopupMenuItem(value: 'reset_pw', child: Row(children: [
+                              Icon(Icons.lock_reset_rounded, color: AppTheme.warning, size: 18), SizedBox(width: 8),
+                              Text('Reset Password', style: TextStyle(color: AppTheme.textPrimary)),
+                            ])),
+                          ],
+                        ),
             ),
           );
         },
       ),
     );
+  }
+
+  /// Badge role berwarna sesuai hierarki.
+  Widget _buildRoleBadge(String role) {
+    Color color;
+    String label;
+    switch (role) {
+      case 'owner':
+        color = const Color(0xFFFFD700);
+        label = 'OWNER';
+        break;
+      case 'developer':
+        color = const Color(0xFF00E5FF);
+        label = 'DEV';
+        break;
+      case 'admin':
+        color = const Color(0xFFE040FB);
+        label = 'ADMIN';
+        break;
+      default:
+        color = AppTheme.textHint;
+        label = 'USER';
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(label, style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.w700)),
+    );
+  }
+
+  String _roleLabel(String role) {
+    switch (role) {
+      case 'owner': return 'Owner';
+      case 'developer': return 'Developer';
+      case 'admin': return 'Admin';
+      default: return 'User';
+    }
   }
 
   Future<void> _showEditUserDialog(String userId, String nama, String email, String puskesmas) async {
@@ -493,13 +571,103 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
     );
   }
 
-  Future<void> _onRoleAction(String action, String userId, String nama, String currentRole) async {
-    final newRole = action == 'promote' ? 'admin' : 'user';
-    final confirm = await _confirmDialog('Ubah Role', 'Jadikan "$nama" sebagai ${newRole == 'admin' ? 'Admin' : 'User biasa'}?');
-    if (confirm != true) return;
-    final error = await SupabaseService.adminUpdateUserRole(userId, newRole);
+  /// Dialog untuk memilih role baru (khusus developer/owner).
+  Future<void> _showSetRoleDialog(String targetUserId, String nama, String currentRole) async {
+    // Tentukan daftar role yang boleh diberikan oleh aktor
+    // Aktor hanya bisa memberi role di bawah levelnya sendiri
+    final actorLevel = widget.session.roleLevel;
+    final allRoles = <String, String>{
+      'user': 'User',
+      'admin': 'Admin',
+      'developer': 'Developer',
+      'owner': 'Owner',
+    };
+    final availableRoles = allRoles.entries
+        .where((e) {
+          final lvl = const {'user': 0, 'admin': 1, 'developer': 2, 'owner': 3}[e.key] ?? 0;
+          return lvl < actorLevel && e.key != currentRole;
+        })
+        .toList();
+
+    if (availableRoles.isEmpty) {
+      _showSnack('Tidak ada role yang tersedia untuk diberikan.', isError: true);
+      return;
+    }
+
+    String? selectedRole = availableRoles.first.key;
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          backgroundColor: AppTheme.cardDark,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Row(children: [
+            const Icon(Icons.manage_accounts_rounded, color: Color(0xFFE040FB), size: 22),
+            const SizedBox(width: 8),
+            Expanded(child: Text('Ubah Role: $nama', style: const TextStyle(color: AppTheme.textPrimary, fontSize: 15))),
+          ]),
+          content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(
+              'Role saat ini: ${_roleLabel(currentRole)}',
+              style: const TextStyle(color: AppTheme.textHint, fontSize: 13),
+            ),
+            const SizedBox(height: 16),
+            const Text('Pilih role baru:', style: TextStyle(color: AppTheme.textSecondary, fontSize: 13, fontWeight: FontWeight.w500)),
+            const SizedBox(height: 8),
+            ...availableRoles.map((entry) {
+              final lvl = const {'user': 0, 'admin': 1, 'developer': 2, 'owner': 3}[entry.key] ?? 0;
+              final roleColor = lvl >= 3 ? const Color(0xFFFFD700)
+                  : lvl >= 2 ? const Color(0xFF00E5FF)
+                  : lvl >= 1 ? const Color(0xFFE040FB)
+                  : AppTheme.textHint;
+              return RadioListTile<String>(
+                value: entry.key,
+                groupValue: selectedRole,
+                onChanged: (v) => setDialogState(() => selectedRole = v),
+                activeColor: roleColor,
+                contentPadding: EdgeInsets.zero,
+                title: Row(children: [
+                  _buildRoleBadge(entry.key),
+                  const SizedBox(width: 8),
+                  Text(entry.value, style: TextStyle(color: roleColor, fontWeight: FontWeight.w600)),
+                ]),
+              );
+            }),
+          ]),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Batal', style: TextStyle(color: AppTheme.textSecondary)),
+            ),
+            ElevatedButton.icon(
+              onPressed: () => Navigator.pop(ctx, true),
+              icon: const Icon(Icons.check_rounded, size: 18),
+              label: const Text('Simpan'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFE040FB),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (confirm != true || selectedRole == null) return;
+    final error = await SupabaseService.adminUpdateUserRole(
+      widget.session.userId,
+      targetUserId,
+      selectedRole!,
+    );
     if (!mounted) return;
-    if (error != null) { _showSnack(error, isError: true); } else { _showSnack('Role berhasil diubah'); _loadUsers(); }
+    if (error != null) {
+      _showSnack(error, isError: true);
+    } else {
+      _showSnack('Role "$nama" berhasil diubah ke ${_roleLabel(selectedRole!)}');
+      _loadUsers();
+    }
   }
 
   Future<void> _resetUserPassword(String email, String nama) async {

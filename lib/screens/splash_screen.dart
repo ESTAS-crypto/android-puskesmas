@@ -118,11 +118,25 @@ class _SplashScreenState extends State<SplashScreen>
 
     // Cek 1: Apakah Supabase auth session masih aktif?
     // Cek 2: Apakah ada session lokal di SharedPreferences? (offline fallback)
-    final localSession = await StorageService.getSession();
+    var localSession = await StorageService.getSession();
     final isSupabaseLoggedIn = SupabaseService.isLoggedIn;
 
     Widget destination;
     if (localSession != null && (isSupabaseLoggedIn || localSession.userId.isNotEmpty)) {
+      // Re-fetch role dari server jika online agar perubahan role langsung berlaku
+      // tanpa perlu logout-login ulang
+      if (isSupabaseLoggedIn && localSession.userId.isNotEmpty) {
+        try {
+          final freshRole = await SupabaseService.fetchUserRole(localSession.userId);
+          if (freshRole != localSession.role) {
+            localSession = localSession.copyWith(role: freshRole);
+            await StorageService.saveSession(localSession);
+            debugPrint('[Splash] Role di-refresh dari server: $freshRole');
+          }
+        } catch (e) {
+          debugPrint('[Splash] Gagal refresh role: $e');
+        }
+      }
       destination = DashboardScreen(session: localSession);
     } else {
       destination = const LoginScreen();
@@ -305,7 +319,7 @@ class _SplashScreenState extends State<SplashScreen>
                                     fontSize: 11,
                                     letterSpacing: 1)),
                             SizedBox(height: 4),
-                            Text('v2.5',
+                            Text('v2.7.0',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                     color: AppTheme.textHint, fontSize: 10)),

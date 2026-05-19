@@ -89,7 +89,7 @@ class SupabaseService {
     } on AuthException catch (e) {
       return _translateError(e.message);
     } catch (e) {
-      return 'Terjadi kesalahan: $e';
+      return 'Terjadi kesalahan. Silakan coba lagi.';
     }
   }
 
@@ -126,7 +126,7 @@ class SupabaseService {
     } on AuthException catch (e) {
       return e.message;
     } catch (e) {
-      return 'Terjadi kesalahan: $e';
+      return 'Terjadi kesalahan. Silakan coba lagi.';
     }
   }
 
@@ -160,7 +160,7 @@ class SupabaseService {
     } on AuthException catch (e) {
       return e.message;
     } catch (e) {
-      return 'Terjadi kesalahan: $e';
+      return 'Terjadi kesalahan. Silakan coba lagi.';
     }
   }
 
@@ -172,7 +172,7 @@ class SupabaseService {
     } on AuthException catch (e) {
       return e.message;
     } catch (e) {
-      return 'Terjadi kesalahan: $e';
+      return 'Terjadi kesalahan. Silakan coba lagi.';
     }
   }
 
@@ -189,7 +189,7 @@ class SupabaseService {
     } on AuthException catch (e) {
       return e.message;
     } catch (e) {
-      return 'Terjadi kesalahan: $e';
+      return 'Terjadi kesalahan. Silakan coba lagi.';
     }
   }
 
@@ -201,7 +201,7 @@ class SupabaseService {
     } on AuthException catch (e) {
       return e.message;
     } catch (e) {
-      return 'Terjadi kesalahan: $e';
+      return 'Terjadi kesalahan. Silakan coba lagi.';
     }
   }
 
@@ -219,7 +219,7 @@ class SupabaseService {
   // ─────────────────────────────────────────────
 
   static final GoogleSignIn _googleSignIn = GoogleSignIn(
-    serverClientId: '824087521061-oh6sheu9lp08tf1onni7op38fj6f8ja03.apps.googleusercontent.com', 
+    serverClientId: '824087521051-cmrhk54u3avgb6boujrgsq1kmh28slv6.apps.googleusercontent.com',
   );
 
   /// Sign in menggunakan akun Google.
@@ -230,17 +230,25 @@ class SupabaseService {
   ///   - 'googleName': String (nama dari akun Google)
   static Future<Map<String, dynamic>> signInWithGoogle() async {
     try {
+      // Pastikan sign out dulu agar user bisa pilih akun
+      await _googleSignIn.signOut();
+
       final googleUser = await _googleSignIn.signIn();
       if (googleUser == null) {
         return {'error': 'Login dibatalkan oleh pengguna.'};
       }
 
+      debugPrint('[GoogleSignIn] User: ${googleUser.email}');
+
       final googleAuth = await googleUser.authentication;
       final idToken = googleAuth.idToken;
       final accessToken = googleAuth.accessToken;
 
+      debugPrint('[GoogleSignIn] idToken: ${idToken != null ? "OK (${idToken.length} chars)" : "NULL"}');
+      debugPrint('[GoogleSignIn] accessToken: ${accessToken != null ? "OK" : "NULL"}');
+
       if (idToken == null) {
-        return {'error': 'Gagal mendapatkan token Google. Coba lagi.'};
+        return {'error': 'Gagal mendapatkan token dari Google. Pastikan Web Client ID sudah benar di Google Cloud Console.'};
       }
 
       final res = await _client.auth.signInWithIdToken(
@@ -254,6 +262,7 @@ class SupabaseService {
       }
 
       final userId = res.user!.id;
+      debugPrint('[GoogleSignIn] Supabase userId: $userId');
 
       // Cek apakah sudah ada profil di table profiles
       final existingProfile = await _client
@@ -274,16 +283,25 @@ class SupabaseService {
         'existingPuskesmas': existingProfile?['puskesmas'] as String? ?? '',
       };
     } on AuthException catch (e) {
+      debugPrint('[GoogleSignIn] AuthException: ${e.message}');
       return {'error': _translateError(e.message)};
     } catch (e) {
-      final msg = e.toString();
-      if (msg.contains('sign_in_failed') || msg.contains('network_error')) {
-        return {'error': 'Koneksi gagal. Pastikan internet aktif dan coba lagi.'};
+      debugPrint('[GoogleSignIn] Exception: $e');
+      final msg = e.toString().toLowerCase();
+
+      // sign_in_failed biasanya berarti konfigurasi OAuth salah, BUKAN internet
+      if (msg.contains('sign_in_failed')) {
+        return {
+          'error': 'Login Google gagal. Silakan coba lagi atau hubungi admin jika masalah berlanjut.'
+        };
       }
-      if (msg.contains('sign_in_canceled') || msg.contains('canceled')) {
+      if (msg.contains('network_error')) {
+        return {'error': 'Tidak ada koneksi internet. Periksa jaringan Anda.'};
+      }
+      if (msg.contains('canceled') || msg.contains('cancelled')) {
         return {'error': 'Login dibatalkan.'};
       }
-      return {'error': 'Login Google gagal: $e'};
+      return {'error': 'Login Google gagal. Silakan coba lagi.'};
     }
   }
 
@@ -744,13 +762,64 @@ class SupabaseService {
     }
   }
 
-  /// Admin: Ubah role user.
-  static Future<String?> adminUpdateUserRole(String userId, String newRole) async {
+  /// Konstanta hierarki role: semakin tinggi angka semakin tinggi privilege.
+  static const Map<String, int> _roleLevels = {
+    'user': 0,
+    'admin': 1,
+    'developer': 2,
+    'owner': 3,
+  };
+
+  static int _roleLevel(String role) => _roleLevels[role] ?? 0;
+
+  /// Admin: Ubah role user dengan penegakan hierarki.
+  /// - Hanya developer/owner (level >= 2) yang boleh mengubah role.
+  /// - Tidak bisa mengubah role yang >= level aktor.
+  /// - Tidak bisa mem-promote ke level >= level aktor.
+  static Future<String?> adminUpdateUserRole(
+    String actorUserId,
+    String targetUserId,
+    String newRole,
+  ) async {
     try {
-      await _client.from('profiles').update({'role': newRole}).eq('id', userId);
+      // 1. Ambil role aktor (yang sedang login) fresh dari DB
+      final actorRole = await fetchUserRole(actorUserId);
+      final actorLevel = _roleLevel(actorRole);
+
+      // 2. Hanya developer/owner yang boleh manage role
+      if (actorLevel < 2) {
+        return 'Anda tidak memiliki izin untuk mengubah role. Fitur ini hanya untuk Developer/Owner.';
+      }
+
+      // 3. Ambil role target saat ini dari DB
+      final targetCurrentRole = await fetchUserRole(targetUserId);
+      final targetCurrentLevel = _roleLevel(targetCurrentRole);
+      final newRoleLevel = _roleLevel(newRole);
+
+      // 4. Tidak boleh memodifikasi user dengan level >= aktor
+      if (targetCurrentLevel >= actorLevel) {
+        return 'Tidak bisa mengubah role "${_roleLabel(targetCurrentRole)}". Anda hanya bisa memodifikasi role di bawah level Anda.';
+      }
+
+      // 5. Tidak boleh promote ke level >= aktor
+      if (newRoleLevel >= actorLevel) {
+        return 'Tidak bisa memberi role "${_roleLabel(newRole)}". Hanya bisa memberi role di bawah level Anda.';
+      }
+
+      await _client.from('profiles').update({'role': newRole}).eq('id', targetUserId);
       return null;
     } catch (e) {
       return _translateError(e.toString());
+    }
+  }
+
+  /// Label role yang ramah pengguna.
+  static String _roleLabel(String role) {
+    switch (role) {
+      case 'owner': return 'Owner';
+      case 'developer': return 'Developer';
+      case 'admin': return 'Admin';
+      default: return 'User';
     }
   }
 
