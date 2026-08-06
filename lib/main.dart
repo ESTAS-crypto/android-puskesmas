@@ -4,6 +4,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'theme/app_theme.dart';
 import 'screens/splash_screen.dart';
 
+import 'services/supabase_service.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -12,6 +14,9 @@ void main() async {
     url: 'https://pndkpooxkbmkgmcgqygl.supabase.co',
     anonKey: 'sb_publishable_3HttqlKQ2iv-CLGJyv-AjA_-AmS663B',
   );
+
+  // Ping background ringan untuk keep-alive Supabase agar DB tidak ter-pause
+  SupabaseService.pingKeepAlive();
 
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(

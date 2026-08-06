@@ -1,0 +1,23 @@
+name: Keep Supabase Awake (Auto-Ping)
+
+on:
+  schedule:
+    # Jalankan otomatis setiap 3 hari sekali jam 00:00 UTC
+    - cron: '0 0 */3 * *'
+  workflow_dispatch: # Bisa dipicu manual dari tab Actions di GitHub
+
+jobs:
+  ping-supabase:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase Database Endpoint
+        run: |
+          echo "Mengirim ping otomatis ke Supabase agar database tidak ter-pause..."
+          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" -H "apikey: sb_publishable_3HttqlKQ2iv-CLGJyv-AjA_-AmS663B" -H "Authorization: Bearer sb_publishable_3HttqlKQ2iv-CLGJyv-AjA_-AmS663B" "https://pndkpooxkbmkgmcgqygl.supabase.co/rest/v1/")
+          echo "Supabase HTTP Response Code: $RESPONSE"
+          if [ "$RESPONSE" -ge 200 ] && [ "$RESPONSE" -lt 500 ]; then
+            echo "BERHASIL: Supabase aktif dan merespon!"
+          else
+            echo "PERINGATAN: Supabase ping mengembalikan kode $RESPONSE"
+            exit 1
+          fi

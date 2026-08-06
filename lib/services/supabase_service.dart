@@ -53,6 +53,51 @@ class SupabaseService {
   }
 
   // ─────────────────────────────────────────────
+  // HEALTH CHECK & KEEP-ALIVE
+  // ─────────────────────────────────────────────
+
+  /// Keep-alive ping ke Supabase agar database tidak ter-pause otomatis (Free tier).
+  static Future<void> pingKeepAlive() async {
+    try {
+      await _client.from('profiles').select('id').limit(1).timeout(const Duration(seconds: 4));
+      debugPrint('[Supabase] Keep-alive ping succeeded');
+    } catch (e) {
+      debugPrint('[Supabase] Keep-alive ping failed/offline: $e');
+    }
+  }
+
+  /// Cek status koneksi & latency ke Supabase Cloud
+  static Future<Map<String, dynamic>> checkConnectionStatus() async {
+    final stopwatch = Stopwatch()..start();
+    try {
+      await _client.from('profiles').select('id').limit(1).timeout(const Duration(seconds: 5));
+      stopwatch.stop();
+      return {
+        'connected': true,
+        'latencyMs': stopwatch.elapsedMilliseconds,
+        'message': 'Terkoneksi ke Supabase Cloud (${stopwatch.elapsedMilliseconds} ms)',
+        'isPaused': false,
+      };
+    } catch (e) {
+      stopwatch.stop();
+      final errStr = e.toString().toLowerCase();
+      final isPaused = errStr.contains('503') ||
+          errStr.contains('paused') ||
+          errStr.contains('timeout') ||
+          errStr.contains('connection refused') ||
+          errStr.contains('socketexception');
+      return {
+        'connected': false,
+        'latencyMs': stopwatch.elapsedMilliseconds,
+        'message': isPaused
+            ? 'Supabase Ter-pause / Unreachable (Server 503/Timeout)'
+            : 'Gagal terhubung: ${_translateError(e.toString())}',
+        'isPaused': isPaused,
+      };
+    }
+  }
+
+  // ─────────────────────────────────────────────
   // AUTHENTICATION
   // ─────────────────────────────────────────────
 

@@ -48,6 +48,13 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
   int _localDeleteValue = 0;
   String _localDeleteUnit = 'hari';
 
+  // Supabase Health Status State
+  bool _checkingSupabase = false;
+  bool? _supabaseConnected;
+  int _supabaseLatencyMs = 0;
+  String _supabaseStatusMsg = 'Memeriksa koneksi Supabase...';
+  bool _supabaseIsPaused = false;
+
   @override
   void initState() {
     super.initState();
@@ -58,6 +65,25 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
     _loadTabData(0);
     _loadAutoDeleteSettings();
     _loadLocalDeleteConfig();
+    _checkSupabaseConnection();
+  }
+
+  Future<void> _checkSupabaseConnection() async {
+    if (!mounted) return;
+    setState(() {
+      _checkingSupabase = true;
+      _supabaseStatusMsg = 'Memeriksa koneksi ke Supabase Cloud...';
+    });
+    final res = await SupabaseService.checkConnectionStatus();
+    if (mounted) {
+      setState(() {
+        _checkingSupabase = false;
+        _supabaseConnected = res['connected'] as bool? ?? false;
+        _supabaseLatencyMs = res['latencyMs'] as int? ?? 0;
+        _supabaseStatusMsg = res['message'] as String? ?? '';
+        _supabaseIsPaused = res['isPaused'] as bool? ?? false;
+      });
+    }
   }
 
   @override
@@ -292,6 +318,128 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
     if (mounted) setState(() { _photos = photos; _totalStorageUsedBytes = bytes; _loadingPhotos = false; });
   }
 
+  Widget _buildSupabaseStatusCard() {
+    final isConnected = _supabaseConnected == true;
+    final isChecking = _checkingSupabase;
+    final color = isChecking
+        ? AppTheme.accentTeal
+        : (isConnected ? const Color(0xFF4CAF50) : AppTheme.error);
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppTheme.cardDark,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withValues(alpha: 0.4)),
+        boxShadow: [
+          BoxShadow(
+            color: color.withValues(alpha: 0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.15),
+              shape: BoxShape.circle,
+            ),
+            child: isChecking
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.5,
+                      color: AppTheme.accentTeal,
+                    ),
+                  )
+                : Icon(
+                    isConnected ? Icons.cloud_done_rounded : Icons.cloud_off_rounded,
+                    color: color,
+                    size: 20,
+                  ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    const Text(
+                      'Status Cloud Supabase',
+                      style: TextStyle(
+                        color: AppTheme.textPrimary,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: color.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        isChecking
+                            ? 'CHECKING...'
+                            : (isConnected ? 'TERKONEKSI' : (_supabaseIsPaused ? 'TER-PAUSE' : 'TERPUTUS')),
+                        style: TextStyle(
+                          color: color,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  _supabaseStatusMsg,
+                  style: TextStyle(
+                    color: AppTheme.textSecondary,
+                    fontSize: 11,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                if (isConnected) ...[
+                  const SizedBox(height: 2),
+                  const Row(
+                    children: [
+                      Icon(Icons.check_circle_outline_rounded, color: Color(0xFF4CAF50), size: 12),
+                      SizedBox(width: 4),
+                      Text(
+                        'Auto-Ping aktif (cegah database ter-pause)',
+                        style: TextStyle(color: Color(0xFF81C784), fontSize: 10),
+                      ),
+                    ],
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(width: 4),
+          IconButton(
+            tooltip: 'Tes Ping Koneksi Supabase',
+            onPressed: isChecking ? null : _checkSupabaseConnection,
+            icon: Icon(
+              Icons.refresh_rounded,
+              color: isChecking ? AppTheme.textHint : AppTheme.accentTeal,
+              size: 20,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -336,12 +484,19 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
           ],
         ),
       ),
-      body: TabBarView(
-        controller: _tabController,
+      body: Column(
         children: [
-          _buildUsersTab(),
-          _buildReportsTab(),
-          _buildPhotosTab(),
+          _buildSupabaseStatusCard(),
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                _buildUsersTab(),
+                _buildReportsTab(),
+                _buildPhotosTab(),
+              ],
+            ),
+          ),
         ],
       ),
     );
