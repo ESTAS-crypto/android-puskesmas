@@ -11,6 +11,7 @@ class StorageService {
   static const String _sessionKey = 'user_session';
   static const String _reportsKey = 'reports';
   static const String _draftKey = 'draft_report';
+  static const String _pendingSyncKey = 'pending_sync_ids'; // ponytail: track unsynced reports
 
   // User Session
   static Future<void> saveSession(UserSession session) async {
@@ -44,8 +45,14 @@ class StorageService {
     reports.add(report);
     await _saveReports(reports);
 
-    // Sync ke Supabase (fire-and-forget, tidak blocking)
-    SupabaseService.syncReportToCloud(report);
+    // ponytail: sync ke Supabase, track jika gagal
+    await addPendingSync(report.id);
+    try {
+      await SupabaseService.syncReportToCloud(report);
+      await removePendingSync(report.id);
+    } catch (_) {
+      debugPrint('[StorageService] Sync gagal untuk report ${report.id}, ditandai pending');
+    }
   }
 
   /// Simpan report hanya ke lokal (tanpa sync ke cloud).
@@ -63,8 +70,14 @@ class StorageService {
       reports[index] = report;
       await _saveReports(reports);
 
-      // Sync ke Supabase
-      SupabaseService.syncReportToCloud(report);
+      // ponytail: sync ke Supabase, track jika gagal
+      await addPendingSync(report.id);
+      try {
+        await SupabaseService.syncReportToCloud(report);
+        await removePendingSync(report.id);
+      } catch (_) {
+        debugPrint('[StorageService] Sync update gagal untuk report ${report.id}');
+      }
     }
   }
 
@@ -87,6 +100,55 @@ class StorageService {
   static Future<void> syncAllToCloud() async {
     final reports = await getReports();
     await SupabaseService.syncAllToCloud(reports);
+  }
+
+  // ── PENDING SYNC TRACKING ──────────────────
+  // ponytail: minimal — just a set of IDs in SharedPreferences
+
+  static Future<Set<String>> getPendingSyncIds() async {
+    final prefs = await SharedPreferences.getInstance();
+    final list = prefs.getStringList(_pendingSyncKey);
+    return list?.toSet() ?? {};
+  }
+
+  static Future<int> getPendingSyncCount() async {
+    return (await getPendingSyncIds()).length;
+  }
+
+  static Future<void> addPendingSync(String reportId) async {
+    final prefs = await SharedPreferences.getInstance();
+    final ids = (prefs.getStringList(_pendingSyncKey) ?? []).toSet();
+    ids.add(reportId);
+    await prefs.setStringList(_pendingSyncKey, ids.toList());
+  }
+
+  static Future<void> removePendingSync(String reportId) async {
+    final prefs = await SharedPreferences.getInstance();
+    final ids = (prefs.getStringList(_pendingSyncKey) ?? []).toSet();
+    ids.remove(reportId);
+    await prefs.setStringList(_pendingSyncKey, ids.toList());
+  }
+
+  /// Sync hanya laporan yang belum ter-sync. Return jumlah yang berhasil.
+  static Future<int> syncPendingReports() async {
+    final pendingIds = await getPendingSyncIds();
+    if (pendingIds.isEmpty) return 0;
+
+    final reports = await getReports();
+    int synced = 0;
+    for (final report in reports) {
+      if (pendingIds.contains(report.id)) {
+        try {
+          await SupabaseService.syncReportToCloud(report);
+          await removePendingSync(report.id);
+          synced++;
+        } catch (_) {
+          debugPrint('[StorageService] Pending sync gagal untuk ${report.id}');
+        }
+      }
+    }
+    debugPrint('[StorageService] syncPendingReports: $synced/${pendingIds.length} berhasil');
+    return synced;
   }
 
   // ── AUTO-CLEANUP LOKAL ──────────────────────

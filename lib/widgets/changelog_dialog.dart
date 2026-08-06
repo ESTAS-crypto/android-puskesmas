@@ -3,10 +3,20 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../theme/app_theme.dart';
 
 class ChangelogDialog {
-  static const String _currentVersion = '2.7.0';
+  static const String _currentVersion = '2.7.5';
   static const String _seenVersionKey = 'changelog_seen_version';
 
   static final List<Map<String, dynamic>> _changelog = [
+    {
+      'version': '2.7.5',
+      'date': '17 Juli 2026',
+      'changes': [
+        {'icon': Icons.photo_camera_rounded, 'text': '📸 Foto pasien sekarang ikut muncul saat cetak laporan dari halaman Admin — tidak kosong lagi!', 'type': 'fix'},
+        {'icon': Icons.wifi_rounded, 'text': '📶 Kalau HP mati data lalu nyala lagi, laporan otomatis terkirim ke server — tidak perlu kirim ulang!', 'type': 'improve'},
+        {'icon': Icons.notifications_active_rounded, 'text': '🔔 Ada pemberitahuan berapa laporan yang belum terkirim dan berapa yang berhasil terkirim', 'type': 'new'},
+        {'icon': Icons.edit_note_rounded, 'text': '✏️ Admin bisa ubah data pasien langsung dari halaman Admin — tinggal ketuk tombol edit', 'type': 'new'},
+      ],
+    },
     {
       'version': '2.7.0',
       'date': '19 Mei 2026',

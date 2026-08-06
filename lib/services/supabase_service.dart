@@ -729,6 +729,22 @@ class SupabaseService {
     }
   }
 
+  /// Ambil SEMUA laporan dari cloud (semua kader) dengan data pasien di dalamnya.
+  /// Digunakan untuk mode global per-laporan.
+  static Future<List<Map<String, dynamic>>> globalGetAllReports() async {
+    try {
+      final results = await _client
+          .from('reports')
+          .select('id, no, user_id, user_nama, user_puskesmas, created_at, resident_exams(id, nama, nik, tanggal, usia, alamat, tensi, bb, tb, keluhan, tindak_lanjut)')
+          .order('created_at', ascending: false)
+          .limit(200);
+      return List<Map<String, dynamic>>.from(results);
+    } catch (e) {
+      debugPrint('[SupabaseService] globalGetAllReports error: $e');
+      return [];
+    }
+  }
+
   // ─────────────────────────────────────────────
   // ADMIN METHODS
   // ─────────────────────────────────────────────
@@ -748,12 +764,45 @@ class SupabaseService {
     }
   }
 
+  /// Ambil profil lengkap user: role + custom_role_id + data CustomRole (jika ada).
+  /// Mengembalikan map dengan keys: 'role' (String), 'customRoleMap' (Map? - data custom role).
+  static Future<Map<String, dynamic>> fetchUserProfile(String userId) async {
+    try {
+      final profile = await _client
+          .from('profiles')
+          .select('role, custom_role_id')
+          .eq('id', userId)
+          .maybeSingle();
+
+      final role = (profile?['role'] as String?) ?? 'user';
+      final customRoleId = profile?['custom_role_id'] as String?;
+
+      Map<String, dynamic>? customRoleMap;
+      if (customRoleId != null && customRoleId.isNotEmpty) {
+        try {
+          final crData = await _client
+              .from('custom_roles')
+              .select()
+              .eq('id', customRoleId)
+              .maybeSingle();
+          customRoleMap = crData != null ? Map<String, dynamic>.from(crData) : null;
+        } catch (_) {}
+      }
+
+      return {'role': role, 'customRoleMap': customRoleMap};
+    } catch (e) {
+      debugPrint('[SupabaseService] fetchUserProfile error: $e');
+      return {'role': 'user', 'customRoleMap': null};
+    }
+  }
+
+
   /// Admin: Ambil semua user dari tabel profiles.
   static Future<List<Map<String, dynamic>>> adminGetAllUsers() async {
     try {
       final results = await _client
           .from('profiles')
-          .select('id, username, email, nama, puskesmas, role')
+          .select('id, username, email, nama, puskesmas, role, custom_role_id')
           .order('nama', ascending: true);
       return List<Map<String, dynamic>>.from(results);
     } catch (e) {
@@ -990,6 +1039,116 @@ class SupabaseService {
       return null;
     } catch (e) {
       debugPrint('[SupabaseService] adminDeletePhoto error: $e');
+      return _translateError(e.toString());
+    }
+  }
+
+  /// Ambil semua profiles beserta role dan custom_role_id.
+  /// Return: Map of userId to role details (e.g. {role, custom_role_id})
+  static Future<Map<String, Map<String, dynamic>>> fetchProfilesWithRoles() async {
+    try {
+      final results = await _client
+          .from('profiles')
+          .select('id, role, custom_role_id');
+      final map = <String, Map<String, dynamic>>{};
+      for (final p in results) {
+        map[p['id'] as String] = p;
+      }
+      return map;
+    } catch (e) {
+      debugPrint('[SupabaseService] fetchProfilesWithRoles error: $e');
+      return {};
+    }
+  }
+
+  // ═══════════════════════════════════════════════
+  // CUSTOM ROLES
+  // ═══════════════════════════════════════════════
+
+  /// Ambil semua custom role dari Supabase.
+  static Future<List<Map<String, dynamic>>> getCustomRoles() async {
+    try {
+      final results = await _client
+          .from('custom_roles')
+          .select()
+          .order('created_at', ascending: true);
+      return List<Map<String, dynamic>>.from(results);
+    } catch (e) {
+      debugPrint('[SupabaseService] getCustomRoles error: $e');
+      return [];
+    }
+  }
+
+  /// Buat custom role baru.
+  static Future<String?> createCustomRole({
+    required String name,
+    required int colorValue,
+    required String iconName,
+    required int permissions,
+    required String createdBy,
+  }) async {
+    try {
+      final effectiveCreatedBy = createdBy.isNotEmpty ? createdBy : currentUserId;
+      await _client.from('custom_roles').insert({
+        'name': name,
+        'color': colorValue,
+        'color_value': colorValue,
+        'icon': iconName,
+        'icon_name': iconName,
+        'permissions': permissions,
+        if (effectiveCreatedBy != null) 'created_by': effectiveCreatedBy,
+      });
+      return null;
+    } catch (e) {
+      debugPrint('[SupabaseService] createCustomRole error: $e');
+      return _translateError(e.toString());
+    }
+  }
+
+  /// Update custom role yang sudah ada.
+  static Future<String?> updateCustomRole({
+    required String roleId,
+    required String name,
+    required int colorValue,
+    required String iconName,
+    required int permissions,
+  }) async {
+    try {
+      await _client.from('custom_roles').update({
+        'name': name,
+        'color': colorValue,
+        'color_value': colorValue,
+        'icon': iconName,
+        'icon_name': iconName,
+        'permissions': permissions,
+      }).eq('id', roleId);
+      return null;
+    } catch (e) {
+      debugPrint('[SupabaseService] updateCustomRole error: $e');
+      return _translateError(e.toString());
+    }
+  }
+
+  /// Hapus custom role.
+  static Future<String?> deleteCustomRole(String roleId) async {
+    try {
+      await _client.from('custom_roles').delete().eq('id', roleId);
+      return null;
+    } catch (e) {
+      debugPrint('[SupabaseService] deleteCustomRole error: $e');
+      return _translateError(e.toString());
+    }
+  }
+
+  /// Assign custom role ke user (simpan di kolom custom_role_id di tabel profiles).
+  static Future<String?> assignCustomRoleToUser(String userId, String? customRoleId) async {
+    try {
+      await _client.from('profiles').update({
+        'custom_role_id': customRoleId,
+      }).eq('id', userId);
+      return null;
+    } catch (e) {
+      debugPrint('[SupabaseService] assignCustomRoleToUser error: $e');
       return _translateError(e.toString());
     }
   }

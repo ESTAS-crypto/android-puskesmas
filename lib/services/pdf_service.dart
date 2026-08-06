@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:path_provider/path_provider.dart';
@@ -47,6 +48,27 @@ class PdfService {
     int rowNo = 1;
     for (final report in reports) {
       for (final exam in report.exams) {
+        // ponytail: pre-download foto sebelum build (build callback itu sync)
+        Uint8List? preloadedImage;
+        final fotoPath = exam.fotoPath;
+        if (fotoPath != null && fotoPath.isNotEmpty) {
+          try {
+            if (fotoPath.startsWith('http')) {
+              final httpClient = HttpClient();
+              final request = await httpClient.getUrl(Uri.parse(fotoPath));
+              final response = await request.close();
+              if (response.statusCode == 200) {
+                final chunks = <List<int>>[];
+                await for (final chunk in response) { chunks.add(chunk); }
+                preloadedImage = Uint8List.fromList(chunks.expand((c) => c).toList());
+              }
+              httpClient.close();
+            } else if (File(fotoPath).existsSync()) {
+              preloadedImage = File(fotoPath).readAsBytesSync();
+            }
+          } catch (_) {}
+        }
+
         pdf.addPage(
           pw.MultiPage(
             pageFormat: PdfPageFormat.a4,
@@ -117,12 +139,11 @@ class PdfService {
                 hasilWidgets.add(pw.Text('-', style: normalStyle));
               }
 
-              // Build foto cell
+              // Build foto cell — uses preloaded bytes
               pw.Widget fotoWidget;
-              if (exam.fotoPath != null && File(exam.fotoPath!).existsSync()) {
+              if (preloadedImage != null && preloadedImage.isNotEmpty) {
                 try {
-                  final imageBytes = File(exam.fotoPath!).readAsBytesSync();
-                  final image = pw.MemoryImage(imageBytes);
+                  final image = pw.MemoryImage(preloadedImage);
                   fotoWidget = pw.Padding(
                     padding: const pw.EdgeInsets.all(3),
                     child: pw.Center(child: pw.Image(image, width: 162, height: 220, fit: pw.BoxFit.contain)),

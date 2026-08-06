@@ -128,13 +128,32 @@ class DocxService {
             hasil.write(_normalText('-'));
           }
 
+          // ponytail: support both local file and cloud URL
           String fotoCellContent;
-          if (exam.fotoPath != null && File(exam.fotoPath!).existsSync()) {
+          Uint8List? imageBytes;
+          final fotoPath = exam.fotoPath;
+          if (fotoPath != null && fotoPath.isNotEmpty) {
             try {
-              final imageBytes = File(exam.fotoPath!).readAsBytesSync();
+              if (fotoPath.startsWith('http')) {
+                final httpClient = HttpClient();
+                final request = await httpClient.getUrl(Uri.parse(fotoPath));
+                final response = await request.close();
+                if (response.statusCode == 200) {
+                  final chunks = <List<int>>[];
+                  await for (final chunk in response) { chunks.add(chunk); }
+                  imageBytes = Uint8List.fromList(chunks.expand((c) => c).toList());
+                }
+                httpClient.close();
+              } else if (File(fotoPath).existsSync()) {
+                imageBytes = File(fotoPath).readAsBytesSync();
+              }
+            } catch (_) {}
+          }
+          if (imageBytes != null && imageBytes.isNotEmpty) {
+            try {
               final imgId = 'rId${10 + imageIndex}';
               final imgFile = 'image$imageIndex.jpg';
-              imageParts['word/media/$imgFile'] = Uint8List.fromList(imageBytes);
+              imageParts['word/media/$imgFile'] = imageBytes;
               imageRelationships.write(
                 '<Relationship Id="$imgId" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/$imgFile"/>');
               fotoCellContent = _imageCellXml(imgId, imageIndex);

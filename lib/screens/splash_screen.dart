@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 import '../theme/app_theme.dart';
+import '../models/custom_role.dart';
 import '../services/storage_service.dart';
 import '../services/supabase_service.dart';
 import 'login_screen.dart';
@@ -118,26 +119,38 @@ class _SplashScreenState extends State<SplashScreen>
 
     // Cek 1: Apakah Supabase auth session masih aktif?
     // Cek 2: Apakah ada session lokal di SharedPreferences? (offline fallback)
-    var localSession = await StorageService.getSession();
+    final localSessionRaw = await StorageService.getSession();
     final isSupabaseLoggedIn = SupabaseService.isLoggedIn;
 
     Widget destination;
-    if (localSession != null && (isSupabaseLoggedIn || localSession.userId.isNotEmpty)) {
+    if (localSessionRaw != null && (isSupabaseLoggedIn || localSessionRaw.userId.isNotEmpty)) {
       // Re-fetch role dari server jika online agar perubahan role langsung berlaku
       // tanpa perlu logout-login ulang
-      if (isSupabaseLoggedIn && localSession.userId.isNotEmpty) {
+      var session = localSessionRaw;
+      if (isSupabaseLoggedIn && session.userId.isNotEmpty) {
         try {
-          final freshRole = await SupabaseService.fetchUserRole(localSession.userId);
-          if (freshRole != localSession.role) {
-            localSession = localSession.copyWith(role: freshRole);
-            await StorageService.saveSession(localSession);
-            debugPrint('[Splash] Role di-refresh dari server: $freshRole');
+          final freshProfile = await SupabaseService.fetchUserProfile(session.userId);
+          final freshRole = freshProfile['role'] as String;
+          final crMap = freshProfile['customRoleMap'] as Map<String, dynamic>?;
+          final freshCustomRole = crMap != null ? CustomRole.fromMap(crMap) : null;
+
+          final roleChanged = freshRole != session.role;
+          final crChanged = freshCustomRole?.id != session.customRole?.id;
+
+          if (roleChanged || crChanged) {
+            session = session.copyWith(
+              role: freshRole,
+              customRole: freshCustomRole,
+              clearCustomRole: freshCustomRole == null,
+            );
+            await StorageService.saveSession(session);
+            debugPrint('[Splash] Session di-refresh: role=$freshRole, customRole=${freshCustomRole?.name}');
           }
         } catch (e) {
-          debugPrint('[Splash] Gagal refresh role: $e');
+          debugPrint('[Splash] Gagal refresh session: $e');
         }
       }
-      destination = DashboardScreen(session: localSession);
+      destination = DashboardScreen(session: session);
     } else {
       destination = const LoginScreen();
     }

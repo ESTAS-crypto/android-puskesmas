@@ -19,6 +19,8 @@ class _ConnectivityBannerState extends State<ConnectivityBanner>
   bool _isOnline = true;
   bool _showBanner = false;
   bool _isFirstCheck = true;
+  int _pendingCount = 0; // ponytail: track pending sync count
+  String _syncMessage = ''; // ponytail: dynamic subtitle
   Timer? _timer;
   late AnimationController _animCtrl;
   late Animation<Offset> _slideAnim;
@@ -53,17 +55,21 @@ class _ConnectivityBannerState extends State<ConnectivityBanner>
     if (!mounted) return;
 
     if (online != _isOnline) {
+      // ponytail: update pending count on transition
+      final pending = await StorageService.getPendingSyncCount();
       setState(() {
         _isOnline = online;
         _showBanner = true;
+        _pendingCount = pending;
+        _syncMessage = '';
       });
       _animCtrl.forward();
 
-      // Saat kembali online: trigger auto-sync data lokal ke cloud
+      // Saat kembali online: sync pending reports
       if (online) {
         _triggerAutoSync();
-        // Auto-hide banner setelah 3 detik
-        Future.delayed(const Duration(seconds: 3), () {
+        // Auto-hide banner setelah 4 detik (sedikit lebih lama untuk feedback)
+        Future.delayed(const Duration(seconds: 4), () {
           if (mounted && _isOnline) {
             _animCtrl.reverse().then((_) {
               if (mounted) setState(() => _showBanner = false);
@@ -77,23 +83,29 @@ class _ConnectivityBannerState extends State<ConnectivityBanner>
     if (_isFirstCheck) {
       _isFirstCheck = false;
       if (!online) {
+        final pending = await StorageService.getPendingSyncCount();
         setState(() {
           _showBanner = true;
+          _pendingCount = pending;
         });
         _animCtrl.forward();
       }
     }
   }
 
-  /// Trigger sync semua data lokal ke Supabase saat online.
+  /// ponytail: Sync hanya report yang pending, tampilkan hasil
   Future<void> _triggerAutoSync() async {
     try {
       if (!SupabaseService.isLoggedIn) return;
-      final reports = await StorageService.getReports();
-      if (reports.isNotEmpty) {
-        SupabaseService.syncAllToCloud(reports).catchError((_) {});
+      final synced = await StorageService.syncPendingReports();
+      if (mounted && synced > 0) {
+        setState(() => _syncMessage = '$synced laporan berhasil disinkronkan');
+      } else if (mounted) {
+        setState(() => _syncMessage = 'Semua data sudah sinkron');
       }
-    } catch (_) {}
+    } catch (_) {
+      if (mounted) setState(() => _syncMessage = 'Gagal sinkronisasi, akan dicoba lagi');
+    }
   }
 
   @override
@@ -155,9 +167,12 @@ class _ConnectivityBannerState extends State<ConnectivityBanner>
                               ),
                             ),
                             Text(
+                              // ponytail: dynamic subtitle with pending count / sync result
                               _isOnline
-                                  ? 'Data akan disinkronkan ke server'
-                                  : 'Data tersimpan di lokal, akan sync saat online',
+                                  ? (_syncMessage.isNotEmpty ? _syncMessage : 'Menyinkronkan data...')
+                                  : _pendingCount > 0
+                                      ? '$_pendingCount laporan menunggu sinkronisasi'
+                                      : 'Data tersimpan di lokal, akan sync saat online',
                               style: TextStyle(
                                 color: Colors.white.withValues(alpha: 0.8),
                                 fontSize: 11,

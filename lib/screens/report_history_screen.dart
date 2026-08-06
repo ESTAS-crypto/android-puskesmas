@@ -7,10 +7,12 @@ import '../theme/app_theme.dart';
 import '../models/report.dart';
 import '../models/resident_exam.dart';
 import '../models/user_session.dart';
+import '../models/custom_role.dart';
 import '../services/storage_service.dart';
 import '../services/supabase_service.dart';
 import '../services/pdf_service.dart';
 import '../services/docx_service.dart';
+import 'custom_roles_screen.dart';
 import 'report_form_screen.dart';
 
 class ReportHistoryScreen extends StatefulWidget {
@@ -35,7 +37,12 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen> {
   bool _isGlobalMode = false;
   bool _isGlobalSearching = false;
   List<Map<String, dynamic>> _globalResults = [];
+  List<Map<String, dynamic>> _globalReports = []; // untuk tampilan per-laporan
+  bool _globalViewPerReport = true; // true = per laporan, false = per pasien
   Timer? _debounceTimer;
+  // Custom role data untuk badge di global mode
+  Map<String, Map<String, dynamic>> _userProfilesMap = {}; // userId -> {role, custom_role_id}
+  Map<String, CustomRole> _customRolesMap = {}; // roleId -> CustomRole
 
   List<Report> get _filteredReports {
     if (_searchQuery.isEmpty) return _reports;
@@ -647,7 +654,8 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen> {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    // Global toggle button
+                    // Global toggle button — hanya tampil jika punya akses Mode Global
+                    if (widget.session.canGlobalMode)
                     GestureDetector(
                       onTap: () {
                         setState(() {
@@ -693,14 +701,52 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen> {
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(color: const Color(0xFF4CAF50).withValues(alpha: 0.3)),
                   ),
-                  child: const Row(
+                  child: Row(
                     children: [
-                      Icon(Icons.public_rounded, color: Color(0xFF4CAF50), size: 16),
-                      SizedBox(width: 8),
-                      Expanded(
+                      const Icon(Icons.public_rounded, color: Color(0xFF4CAF50), size: 16),
+                      const SizedBox(width: 8),
+                      const Expanded(
                         child: Text(
-                          'Mode Global — Menampilkan data semua petugas. Bisa cari nama petugas',
+                          'Mode Global — Data semua petugas',
                           style: TextStyle(color: Color(0xFF4CAF50), fontSize: 11),
+                        ),
+                      ),
+                      // Toggle tampilan per laporan / per pasien
+                      GestureDetector(
+                        onTap: () => setState(() => _globalViewPerReport = !_globalViewPerReport),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 250),
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: _globalViewPerReport
+                                ? const Color(0xFF4CAF50).withValues(alpha: 0.2)
+                                : AppTheme.surfaceDark,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: const Color(0xFF4CAF50).withValues(alpha: 0.4),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                _globalViewPerReport
+                                    ? Icons.folder_copy_rounded
+                                    : Icons.person_rounded,
+                                color: const Color(0xFF4CAF50),
+                                size: 13,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                _globalViewPerReport ? 'Per Laporan' : 'Per Pasien',
+                                style: const TextStyle(
+                                  color: Color(0xFF4CAF50),
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ],
@@ -755,8 +801,29 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen> {
 
   Future<void> _loadAllGlobal() async {
     setState(() => _isGlobalSearching = true);
-    final results = await SupabaseService.globalGetAllExams();
-    if (mounted) setState(() { _globalResults = results; _isGlobalSearching = false; });
+    // Muat per-pasien, per-laporan, custom roles, dan profiles secara paralel
+    final results = await Future.wait([
+      SupabaseService.globalGetAllExams(),
+      SupabaseService.globalGetAllReports(),
+      SupabaseService.getCustomRoles(),
+      SupabaseService.fetchProfilesWithRoles(),
+    ]);
+    if (mounted) {
+      // Build custom roles map
+      final rolesData = results[2] as List<Map<String, dynamic>>;
+      final rolesMap = <String, CustomRole>{};
+      for (final m in rolesData) {
+        final role = CustomRole.fromMap(m);
+        rolesMap[role.id] = role;
+      }
+      setState(() {
+        _globalResults = results[0] as List<Map<String, dynamic>>;
+        _globalReports = results[1] as List<Map<String, dynamic>>;
+        _customRolesMap = rolesMap;
+        _userProfilesMap = results[3] as Map<String, Map<String, dynamic>>;
+        _isGlobalSearching = false;
+      });
+    }
   }
 
   Future<void> _performGlobalSearch(String query) async { }
@@ -775,15 +842,70 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen> {
       );
     }
 
+    // ── Tampilan Per Laporan ──
+    if (_globalViewPerReport) {
+      final filteredReports = _searchQuery.isEmpty
+          ? _globalReports
+          : _globalReports.where((r) {
+              final q = _searchQuery.toLowerCase();
+              final kader = (r['user_nama'] as String? ?? '').toLowerCase();
+              final puskesmas = (r['user_puskesmas'] as String? ?? '').toLowerCase();
+              final exams = r['resident_exams'] as List? ?? [];
+              final pasienNames = exams.map((e) => (e['nama'] as String? ?? '').toLowerCase()).join(' ');
+              return kader.contains(q) || puskesmas.contains(q) || pasienNames.contains(q);
+            }).toList();
+
+      if (filteredReports.isEmpty) {
+        return Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.folder_off_rounded, size: 64, color: AppTheme.textHint),
+              const SizedBox(height: 16),
+              Text(
+                _searchQuery.isEmpty ? 'Belum ada laporan di server' : 'Laporan tidak ditemukan',
+                style: const TextStyle(color: AppTheme.textSecondary, fontSize: 15),
+              ),
+            ],
+          ),
+        );
+      }
+
+      return Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: Row(
+              children: [
+                const Icon(Icons.folder_copy_rounded, size: 14, color: Color(0xFF4CAF50)),
+                const SizedBox(width: 6),
+                Text(
+                  '${filteredReports.length} laporan',
+                  style: const TextStyle(color: Color(0xFF4CAF50), fontSize: 12, fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: ListView.builder(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              itemCount: filteredReports.length,
+              itemBuilder: (context, index) =>
+                  _buildGlobalReportCard(filteredReports[index]),
+            ),
+          ),
+        ],
+      );
+    }
+
+    // ── Tampilan Per Pasien (lama) ──
     final filtered = _searchQuery.isEmpty ? _globalResults : _globalResults.where((row) {
       final q = _searchQuery.toLowerCase();
       final n = (row['nama'] as String? ?? '').toLowerCase();
       final nik = (row['nik'] as String? ?? '').toLowerCase();
       final a = (row['alamat'] as String? ?? '').toLowerCase();
-      
       final reportsData = row['reports'] as Map<String, dynamic>?;
       final kaderName = (reportsData?['user_nama'] as String? ?? '').toLowerCase();
-      
       return n.contains(q) || nik.contains(q) || a.contains(q) || kaderName.contains(q);
     }).toList();
 
@@ -830,6 +952,467 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  /// Card untuk tampilan per-laporan di mode global
+  Widget _buildGlobalReportCard(Map<String, dynamic> report) {
+    final no = report['no'] as int? ?? 0;
+    final userId = report['user_id'] as String? ?? '';
+    final kader = report['user_nama'] as String? ?? 'Petugas';
+    final puskesmas = report['user_puskesmas'] as String? ?? '';
+    final createdAt = report['created_at'] as String? ?? '';
+    final exams = report['resident_exams'] as List? ?? [];
+    final pasienCount = exams.length;
+
+    // Lookup role info
+    final profileInfo = _userProfilesMap[userId];
+    final builtInRole = profileInfo?['role'] as String? ?? 'user';
+    final customRoleId = profileInfo?['custom_role_id'] as String?;
+    final customRole = customRoleId != null ? _customRolesMap[customRoleId] : null;
+
+    String tanggalStr = '';
+    if (createdAt.isNotEmpty) {
+      try {
+        final dt = DateTime.parse(createdAt).toLocal();
+        tanggalStr = '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}';
+      } catch (_) {}
+    }
+
+    final namaList = exams.take(3).map((e) => e['nama'] as String? ?? '-').join(', ');
+    final extraCount = pasienCount > 3 ? ' +${pasienCount - 3} lainnya' : '';
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: AppTheme.cardDark,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFF4CAF50).withValues(alpha: 0.25)),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () => _showGlobalReportDetailSheet(report),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header laporan
+                Row(
+                  children: [
+                    // Nomor laporan
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF4CAF50), Color(0xFF00BCD4)],
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        '#$no',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            kader,
+                            style: const TextStyle(
+                              color: AppTheme.textPrimary,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          if (puskesmas.isNotEmpty)
+                            Text(
+                              'Puskesmas $puskesmas',
+                              style: const TextStyle(
+                                color: AppTheme.textSecondary,
+                                fontSize: 12,
+                              ),
+                            ),
+                          const SizedBox(height: 4),
+                          // Role badge
+                          _buildRoleBadge(builtInRole, customRole),
+                        ],
+                      ),
+                    ),
+                    // Tombol lihat detail
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF4CAF50).withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: const Color(0xFF4CAF50).withValues(alpha: 0.3)),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.visibility_rounded, color: Color(0xFF4CAF50), size: 14),
+                          SizedBox(width: 4),
+                          Text(
+                            'Lihat',
+                            style: TextStyle(
+                              color: Color(0xFF4CAF50),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                // Info pasien
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: AppTheme.surfaceDark,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.people_alt_rounded, size: 14, color: AppTheme.textHint),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          pasienCount == 0
+                              ? 'Belum ada pasien'
+                              : '$namaList$extraCount',
+                          style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: AppTheme.accentTeal.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          '$pasienCount pasien',
+                          style: const TextStyle(
+                            color: AppTheme.accentTeal,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (tanggalStr.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      const Icon(Icons.access_time_rounded, size: 12, color: AppTheme.textHint),
+                      const SizedBox(width: 4),
+                      Text(
+                        tanggalStr,
+                        style: const TextStyle(color: AppTheme.textHint, fontSize: 11),
+                      ),
+                    ],
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Badge role untuk ditampilkan di card global
+  Widget _buildRoleBadge(String builtInRole, CustomRole? customRole) {
+    // Prioritaskan custom role jika ada
+    if (customRole != null) {
+      final color = Color(customRole.colorValue);
+      final icon = getCustomRoleIconData(customRole.iconName);
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: color.withValues(alpha: 0.4)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: color, size: 12),
+            const SizedBox(width: 4),
+            Text(
+              customRole.name,
+              style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.w700),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Fallback ke built-in role badge
+    if (builtInRole == 'user') return const SizedBox.shrink();
+
+    final Map<String, ({Color color, IconData icon, String label})> roleStyles = {
+      'owner': (color: const Color(0xFFFFD700), icon: Icons.workspace_premium_rounded, label: 'Owner'),
+      'developer': (color: const Color(0xFFE040FB), icon: Icons.code_rounded, label: 'Developer'),
+      'admin': (color: const Color(0xFF448AFF), icon: Icons.admin_panel_settings_rounded, label: 'Admin'),
+    };
+
+    final style = roleStyles[builtInRole];
+    if (style == null) return const SizedBox.shrink();
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: style.color.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: style.color.withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(style.icon, color: style.color, size: 12),
+          const SizedBox(width: 4),
+          Text(
+            style.label,
+            style: TextStyle(color: style.color, fontSize: 10, fontWeight: FontWeight.w700),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Bottom sheet detail laporan dengan daftar semua pasien + opsi copy & export
+  void _showGlobalReportDetailSheet(Map<String, dynamic> report) {
+    final no = report['no'] as int? ?? 0;
+    final kader = report['user_nama'] as String? ?? 'Petugas';
+    final puskesmas = report['user_puskesmas'] as String? ?? '';
+    final exams = report['resident_exams'] as List? ?? [];
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppTheme.cardDark,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.75,
+        minChildSize: 0.4,
+        maxChildSize: 0.95,
+        expand: false,
+        builder: (_, scrollCtrl) => Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Handle
+              Center(
+                child: Container(
+                  width: 40, height: 4,
+                  decoration: BoxDecoration(
+                    color: AppTheme.divider,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              // Header
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF4CAF50), Color(0xFF00BCD4)],
+                      ),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      'Laporan #$no',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          kader,
+                          style: const TextStyle(
+                            color: AppTheme.textPrimary,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        if (puskesmas.isNotEmpty)
+                          Text(
+                            'Puskesmas $puskesmas',
+                            style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+                          ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppTheme.accentTeal.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      '${exams.length} Pasien',
+                      style: const TextStyle(
+                        color: AppTheme.accentTeal,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Divider(color: AppTheme.divider),
+              const SizedBox(height: 4),
+              // Daftar pasien
+              Expanded(
+                child: exams.isEmpty
+                    ? const Center(
+                        child: Text('Tidak ada data pasien', style: TextStyle(color: AppTheme.textSecondary)),
+                      )
+                    : ListView.separated(
+                        controller: scrollCtrl,
+                        itemCount: exams.length,
+                        separatorBuilder: (_, __) => Divider(color: AppTheme.divider, height: 1),
+                        itemBuilder: (_, i) {
+                          final exam = exams[i] as Map<String, dynamic>;
+                          final nama = exam['nama'] as String? ?? '-';
+                          final nik = exam['nik'] as String? ?? '';
+                          final tanggal = exam['tanggal'] as String? ?? '';
+                          final usia = exam['usia'] as String? ?? '';
+                          final tensi = exam['tensi'] as String? ?? '';
+                          final bb = exam['bb'] as String? ?? '';
+                          final tb = exam['tb'] as String? ?? '';
+                          final keluhan = (exam['keluhan'] as List?)?.join(', ') ?? '';
+
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Nomor urut
+                                Container(
+                                  width: 28,
+                                  height: 28,
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.surfaceDark,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  alignment: Alignment.center,
+                                  child: Text(
+                                    '${i + 1}',
+                                    style: const TextStyle(
+                                      color: AppTheme.textSecondary,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Expanded(
+                                            child: Text(
+                                              nama,
+                                              style: const TextStyle(
+                                                color: AppTheme.textPrimary,
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ),
+                                          // Tombol copy nama + NIK
+                                          GestureDetector(
+                                            onTap: () {
+                                              final text = 'Nama: $nama${nik.isNotEmpty ? '\nNIK: $nik' : ''}${tanggal.isNotEmpty ? '\nTanggal: $tanggal' : ''}${usia.isNotEmpty ? '\nUsia: $usia thn' : ''}${tensi.isNotEmpty ? '\nTensi: $tensi' : ''}${bb.isNotEmpty ? '\nBB: $bb kg' : ''}${tb.isNotEmpty ? '\nTB: $tb cm' : ''}${keluhan.isNotEmpty ? '\nKeluhan: $keluhan' : ''}';
+                                              Clipboard.setData(ClipboardData(text: text));
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                const SnackBar(
+                                                  content: Text('Data pasien disalin!'),
+                                                  duration: Duration(seconds: 1),
+                                                ),
+                                              );
+                                            },
+                                            child: const Icon(
+                                              Icons.copy_rounded,
+                                              size: 16,
+                                              color: AppTheme.textHint,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      if (nik.isNotEmpty)
+                                        Text(
+                                          'NIK: $nik',
+                                          style: const TextStyle(color: AppTheme.accentTeal, fontSize: 11),
+                                        ),
+                                      const SizedBox(height: 4),
+                                      Wrap(
+                                        spacing: 8,
+                                        runSpacing: 4,
+                                        children: [
+                                          if (tanggal.isNotEmpty) _infoChip(Icons.calendar_today_rounded, tanggal),
+                                          if (usia.isNotEmpty) _infoChip(Icons.cake_rounded, '$usia thn'),
+                                          if (tensi.isNotEmpty) _healthChip('Tensi', tensi),
+                                          if (bb.isNotEmpty) _healthChip('BB', '$bb kg'),
+                                          if (tb.isNotEmpty) _healthChip('TB', '$tb cm'),
+                                        ],
+                                      ),
+                                      if (keluhan.isNotEmpty)
+                                        Padding(
+                                          padding: const EdgeInsets.only(top: 4),
+                                          child: Text(
+                                            'Keluhan: $keluhan',
+                                            style: const TextStyle(color: AppTheme.textSecondary, fontSize: 11),
+                                            maxLines: 2,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -916,8 +1499,8 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen> {
                       tooltip: 'Simpan ke Lokal',
                       visualDensity: VisualDensity.compact,
                     ),
-                    // Admin: Hapus dari cloud
-                    if (widget.session.isAdmin)
+                    // Hapus dari cloud — hanya jika punya izin hapus laporan
+                    if (widget.session.canDeleteReport)
                       IconButton(
                         onPressed: () => _deleteGlobalExam(row),
                         icon: const Icon(Icons.delete_outline_rounded, size: 18, color: AppTheme.error),
@@ -1166,6 +1749,8 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen> {
                         ],
                       ),
                     ),
+                    // Hapus — hanya tampil jika punya izin hapus laporan
+                    if (widget.session.canDeleteReport)
                     const PopupMenuItem(
                       value: 'delete',
                       child: Row(

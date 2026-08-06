@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../models/user_session.dart';
+import '../models/custom_role.dart';
 import '../services/supabase_service.dart';
 import '../services/storage_service.dart';
 import 'dashboard_screen.dart';
@@ -88,9 +89,14 @@ class _GoogleProfileSetupScreenState extends State<GoogleProfileSetupScreen>
       return;
     }
 
-    // Fetch role dari server
+    // Fetch role + custom role dari server
     final uid = SupabaseService.currentUserId ?? '';
-    final role = uid.isNotEmpty ? await SupabaseService.fetchUserRole(uid) : 'user';
+    final profile = uid.isNotEmpty
+        ? await SupabaseService.fetchUserProfile(uid)
+        : {'role': 'user', 'customRoleMap': null};
+    final role = profile['role'] as String;
+    final crMap = profile['customRoleMap'] as Map<String, dynamic>?;
+    final customRole = crMap != null ? CustomRole.fromMap(crMap) : null;
 
     final session = UserSession(
       userId: uid,
@@ -100,6 +106,7 @@ class _GoogleProfileSetupScreenState extends State<GoogleProfileSetupScreen>
       bulan: '',
       tahun: '',
       role: role,
+      customRole: customRole,
     );
 
     await StorageService.saveSession(session);

@@ -7,6 +7,7 @@ import '../services/storage_service.dart';
 import '../services/supabase_service.dart';
 import '../widgets/changelog_dialog.dart';
 import '../widgets/connectivity_banner.dart';
+import '../widgets/role_badge.dart';
 import 'login_screen.dart';
 import 'report_form_screen.dart';
 import 'report_history_screen.dart';
@@ -257,53 +258,10 @@ class _DashboardScreenState extends State<DashboardScreen>
                   // Header
                   _buildAnimatedChild(
                     delay: 0,
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Halo,',
-                                style: TextStyle(
-                                  color: AppTheme.textSecondary,
-                                  fontSize: 16,
-                                ),
-                              ),
-                              Text(
-                                widget.session.nama,
-                                style: const TextStyle(
-                                  color: AppTheme.textPrimary,
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        IconButton(
-                          onPressed: () => ChangelogDialog.show(context),
-                          icon: Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: AppTheme.surfaceDark,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: const Icon(Icons.new_releases_outlined, color: AppTheme.accentTeal, size: 20),
-                          ),
-                        ),
-                        IconButton(
-                          onPressed: _logout,
-                          icon: Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: AppTheme.surfaceDark,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: const Icon(Icons.logout_rounded, color: AppTheme.textSecondary, size: 20),
-                          ),
-                        ),
-                      ],
+                    child: DashboardHeader(
+                      session: widget.session,
+                      onChangelogTap: () => ChangelogDialog.show(context),
+                      onLogoutTap: _logout,
                     ),
                   ),
                   const SizedBox(height: 24),

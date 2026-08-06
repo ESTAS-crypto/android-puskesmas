@@ -2,10 +2,18 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:open_file/open_file.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../theme/app_theme.dart';
+import '../models/report.dart';
+import '../models/resident_exam.dart';
 import '../models/user_session.dart';
+import '../services/docx_service.dart';
+import '../services/pdf_service.dart';
 import '../services/supabase_service.dart';
+import '../theme/app_theme.dart';
+import '../models/custom_role.dart';
+import 'custom_roles_screen.dart';
 
 class AdminPanelScreen extends StatefulWidget {
   final UserSession session;
@@ -27,6 +35,8 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
   bool _loadingPhotos = false;
   int _totalStorageUsedBytes = 0;
   int _totalExamCount = 0;
+  bool _isExporting = false; // untuk export laporan dari admin panel
+  Map<String, CustomRole> _customRolesMap = {}; // roleId -> CustomRole
 
   // Auto-delete settings (terpisah foto & laporan) — SERVER/CLOUD
   int _photoDeleteValue = 0;   // 0 = nonaktif
@@ -244,8 +254,24 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
 
   Future<void> _loadUsers() async {
     setState(() => _loadingUsers = true);
-    final users = await SupabaseService.adminGetAllUsers();
-    if (mounted) setState(() { _users = users; _loadingUsers = false; });
+    // Load users dan custom roles secara paralel
+    final results = await Future.wait([
+      SupabaseService.adminGetAllUsers(),
+      SupabaseService.getCustomRoles(),
+    ]);
+    if (mounted) {
+      final rolesData = results[1];
+      final rolesMap = <String, CustomRole>{};
+      for (final m in rolesData) {
+        final role = CustomRole.fromMap(m);
+        rolesMap[role.id] = role;
+      }
+      setState(() {
+        _users = results[0];
+        _customRolesMap = rolesMap;
+        _loadingUsers = false;
+      });
+    }
   }
 
   Future<void> _loadReports() async {
@@ -282,6 +308,20 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
           SizedBox(width: 8),
           Text('Admin Panel', style: TextStyle(color: AppTheme.textPrimary, fontSize: 18, fontWeight: FontWeight.w700)),
         ]),
+        actions: [
+          // Tombol Kelola Role Custom — hanya untuk developer/owner
+          if (widget.session.isDeveloper)
+            Tooltip(
+              message: 'Kelola Role Custom',
+              child: IconButton(
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => CustomRolesScreen(session: widget.session)),
+                ),
+                icon: const Icon(Icons.shield_rounded, color: Color(0xFFFFD700), size: 22),
+              ),
+            ),
+        ],
         bottom: TabBar(
           controller: _tabController,
           indicatorColor: const Color(0xFFE040FB),
@@ -370,6 +410,27 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
               title: Row(children: [
                 Expanded(child: Text(nama, style: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w600))),
                 _buildRoleBadge(role),
+                // Show custom role badge if assigned
+                if (user['custom_role_id'] != null && _customRolesMap.containsKey(user['custom_role_id'])) ...[
+                  const SizedBox(width: 4),
+                  Builder(builder: (_) {
+                    final cr = _customRolesMap[user['custom_role_id']]!;
+                    final crColor = Color(cr.colorValue);
+                    return Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: crColor.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: crColor.withValues(alpha: 0.4)),
+                      ),
+                      child: Row(mainAxisSize: MainAxisSize.min, children: [
+                        Icon(getCustomRoleIconData(cr.iconName), color: crColor, size: 10),
+                        const SizedBox(width: 3),
+                        Text(cr.name.toUpperCase(), style: TextStyle(color: crColor, fontSize: 9, fontWeight: FontWeight.w700)),
+                      ]),
+                    );
+                  }),
+                ],
               ]),
               subtitle: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 const SizedBox(height: 4),
@@ -572,10 +633,11 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
   }
 
   /// Dialog untuk memilih role baru (khusus developer/owner).
+  /// Menampilkan role bawaan DAN custom role dari database.
   Future<void> _showSetRoleDialog(String targetUserId, String nama, String currentRole) async {
-    // Tentukan daftar role yang boleh diberikan oleh aktor
-    // Aktor hanya bisa memberi role di bawah levelnya sendiri
     final actorLevel = widget.session.roleLevel;
+
+    // Built-in roles yang boleh diberikan (di bawah level aktor)
     final allRoles = <String, String>{
       'user': 'User',
       'admin': 'Admin',
@@ -589,12 +651,17 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
         })
         .toList();
 
-    if (availableRoles.isEmpty) {
+    // Load custom roles dari database
+    final customRoleMaps = await SupabaseService.getCustomRoles();
+    final customRoles = customRoleMaps.map((m) => CustomRole.fromMap(m)).toList();
+
+    if (availableRoles.isEmpty && customRoles.isEmpty) {
       _showSnack('Tidak ada role yang tersedia untuk diberikan.', isError: true);
       return;
     }
 
-    String? selectedRole = availableRoles.first.key;
+    // Selection state: 'builtin:<roleKey>' atau 'custom:<roleId>'
+    String? selectedValue = availableRoles.isNotEmpty ? 'builtin:${availableRoles.first.key}' : null;
 
     final confirm = await showDialog<bool>(
       context: context,
@@ -607,41 +674,84 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
             const SizedBox(width: 8),
             Expanded(child: Text('Ubah Role: $nama', style: const TextStyle(color: AppTheme.textPrimary, fontSize: 15))),
           ]),
-          content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(
-              'Role saat ini: ${_roleLabel(currentRole)}',
-              style: const TextStyle(color: AppTheme.textHint, fontSize: 13),
-            ),
-            const SizedBox(height: 16),
-            const Text('Pilih role baru:', style: TextStyle(color: AppTheme.textSecondary, fontSize: 13, fontWeight: FontWeight.w500)),
-            const SizedBox(height: 8),
-            ...availableRoles.map((entry) {
-              final lvl = const {'user': 0, 'admin': 1, 'developer': 2, 'owner': 3}[entry.key] ?? 0;
-              final roleColor = lvl >= 3 ? const Color(0xFFFFD700)
-                  : lvl >= 2 ? const Color(0xFF00E5FF)
-                  : lvl >= 1 ? const Color(0xFFE040FB)
-                  : AppTheme.textHint;
-              return RadioListTile<String>(
-                value: entry.key,
-                groupValue: selectedRole,
-                onChanged: (v) => setDialogState(() => selectedRole = v),
-                activeColor: roleColor,
-                contentPadding: EdgeInsets.zero,
-                title: Row(children: [
-                  _buildRoleBadge(entry.key),
-                  const SizedBox(width: 8),
-                  Text(entry.value, style: TextStyle(color: roleColor, fontWeight: FontWeight.w600)),
-                ]),
-              );
-            }),
-          ]),
+          content: SingleChildScrollView(
+            child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(
+                'Role saat ini: ${_roleLabel(currentRole)}',
+                style: const TextStyle(color: AppTheme.textHint, fontSize: 13),
+              ),
+              const SizedBox(height: 16),
+
+              // ── Built-in Roles ──
+              if (availableRoles.isNotEmpty) ...[
+                const Text('Role Bawaan:', style: TextStyle(color: AppTheme.textSecondary, fontSize: 13, fontWeight: FontWeight.w500)),
+                const SizedBox(height: 4),
+                ...availableRoles.map((entry) {
+                  final lvl = const {'user': 0, 'admin': 1, 'developer': 2, 'owner': 3}[entry.key] ?? 0;
+                  final roleColor = lvl >= 3 ? const Color(0xFFFFD700)
+                      : lvl >= 2 ? const Color(0xFF00E5FF)
+                      : lvl >= 1 ? const Color(0xFFE040FB)
+                      : AppTheme.textHint;
+                  final val = 'builtin:${entry.key}';
+                  return RadioListTile<String>(
+                    value: val,
+                    groupValue: selectedValue,
+                    onChanged: (v) => setDialogState(() => selectedValue = v),
+                    activeColor: roleColor,
+                    contentPadding: EdgeInsets.zero,
+                    title: Row(children: [
+                      _buildRoleBadge(entry.key),
+                      const SizedBox(width: 8),
+                      Text(entry.value, style: TextStyle(color: roleColor, fontWeight: FontWeight.w600)),
+                    ]),
+                  );
+                }),
+              ],
+
+              // ── Custom Roles ──
+              if (customRoles.isNotEmpty) ...[
+                const Divider(color: AppTheme.divider, height: 24),
+                const Text('Custom Role:', style: TextStyle(color: AppTheme.textSecondary, fontSize: 13, fontWeight: FontWeight.w500)),
+                const SizedBox(height: 4),
+                ...customRoles.map((cr) {
+                  final color = Color(cr.colorValue);
+                  final icon = getCustomRoleIconData(cr.iconName);
+                  final val = 'custom:${cr.id}';
+                  return RadioListTile<String>(
+                    value: val,
+                    groupValue: selectedValue,
+                    onChanged: (v) => setDialogState(() => selectedValue = v),
+                    activeColor: color,
+                    contentPadding: EdgeInsets.zero,
+                    title: Row(children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: color.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: color.withValues(alpha: 0.4)),
+                        ),
+                        child: Row(mainAxisSize: MainAxisSize.min, children: [
+                          Icon(icon, color: color, size: 12),
+                          const SizedBox(width: 4),
+                          Text(cr.name.toUpperCase(), style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.w700)),
+                        ]),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(cr.name, style: TextStyle(color: color, fontWeight: FontWeight.w600)),
+                    ]),
+                  );
+                }),
+              ],
+            ]),
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx, false),
               child: const Text('Batal', style: TextStyle(color: AppTheme.textSecondary)),
             ),
             ElevatedButton.icon(
-              onPressed: () => Navigator.pop(ctx, true),
+              onPressed: selectedValue != null ? () => Navigator.pop(ctx, true) : null,
               icon: const Icon(Icons.check_rounded, size: 18),
               label: const Text('Simpan'),
               style: ElevatedButton.styleFrom(
@@ -655,18 +765,39 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
       ),
     );
 
-    if (confirm != true || selectedRole == null) return;
-    final error = await SupabaseService.adminUpdateUserRole(
-      widget.session.userId,
-      targetUserId,
-      selectedRole!,
-    );
-    if (!mounted) return;
-    if (error != null) {
-      _showSnack(error, isError: true);
-    } else {
-      _showSnack('Role "$nama" berhasil diubah ke ${_roleLabel(selectedRole!)}');
-      _loadUsers();
+    if (confirm != true || selectedValue == null) return;
+
+    String? error;
+    if (selectedValue!.startsWith('builtin:')) {
+      final newRole = selectedValue!.replaceFirst('builtin:', '');
+      // Set built-in role & clear custom role
+      error = await SupabaseService.adminUpdateUserRole(
+        widget.session.userId,
+        targetUserId,
+        newRole,
+      );
+      if (error == null) {
+        // Clear any previously assigned custom role
+        await SupabaseService.assignCustomRoleToUser(targetUserId, null);
+      }
+      if (!mounted) return;
+      if (error != null) {
+        _showSnack(error, isError: true);
+      } else {
+        _showSnack('Role "$nama" berhasil diubah ke ${_roleLabel(newRole)}');
+        _loadUsers();
+      }
+    } else if (selectedValue!.startsWith('custom:')) {
+      final customRoleId = selectedValue!.replaceFirst('custom:', '');
+      final cr = customRoles.firstWhere((r) => r.id == customRoleId);
+      error = await SupabaseService.assignCustomRoleToUser(targetUserId, customRoleId);
+      if (!mounted) return;
+      if (error != null) {
+        _showSnack(error, isError: true);
+      } else {
+        _showSnack('Custom role "${cr.name}" berhasil diberikan ke "$nama"');
+        _loadUsers();
+      }
     }
   }
 
@@ -890,13 +1021,172 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
           ]),
         ]),
         onTap: () => _showReportDetail(reportId, no),
-        trailing: IconButton(
-          icon: const Icon(Icons.delete_outline_rounded, color: AppTheme.error, size: 20),
-          onPressed: () => _deleteReport(reportId, no),
+        trailing: _isExporting
+            ? const SizedBox(
+                width: 24, height: 24,
+                child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.accentTeal),
+              )
+            : PopupMenuButton<String>(
+                icon: const Icon(Icons.more_vert_rounded, color: AppTheme.textHint, size: 20),
+                color: AppTheme.cardDark,
+                onSelected: (value) {
+                  if (value == 'export_pdf') {
+                    _exportAdminReport(reportId, no, owner, pkm, 'pdf');
+                  } else if (value == 'export_docx') {
+                    _exportAdminReport(reportId, no, owner, pkm, 'docx');
+                  } else if (value == 'delete') {
+                    _deleteReport(reportId, no);
+                  }
+                },
+                itemBuilder: (_) => [
+                  const PopupMenuItem(value: 'export_pdf', child: Row(children: [
+                    Icon(Icons.picture_as_pdf_rounded, color: Color(0xFFFF5252), size: 18),
+                    SizedBox(width: 8),
+                    Text('Export PDF', style: TextStyle(color: AppTheme.textPrimary)),
+                  ])),
+                  const PopupMenuItem(value: 'export_docx', child: Row(children: [
+                    Icon(Icons.description_rounded, color: Color(0xFF448AFF), size: 18),
+                    SizedBox(width: 8),
+                    Text('Export DOCX', style: TextStyle(color: AppTheme.textPrimary)),
+                  ])),
+                  const PopupMenuDivider(),
+                  const PopupMenuItem(value: 'delete', child: Row(children: [
+                    Icon(Icons.delete_outline_rounded, color: AppTheme.error, size: 18),
+                    SizedBox(width: 8),
+                    Text('Hapus', style: TextStyle(color: AppTheme.error)),
+                  ])),
+                ],
+              ),
+      ),
+    );
+  }
+
+  /// Export satu laporan dari admin panel ke PDF atau DOCX.
+  Future<void> _exportAdminReport(
+    String reportId, int no, String ownerNama, String ownerPkm, String format,
+  ) async {
+    setState(() => _isExporting = true);
+    try {
+      // 1. Ambil data pasien dari Supabase
+      final examMaps = await SupabaseService.adminGetReportExams(reportId);
+
+      // 2. Konversi ke ResidentExam objects
+      final exams = examMaps.map((m) {
+        final keluhan = m['keluhan'];
+        final tindakLanjut = m['tindak_lanjut'];
+        return ResidentExam(
+          id: m['id'] as String? ?? '',
+          tanggal: m['tanggal'] as String? ?? '',
+          nama: m['nama'] as String? ?? '',
+          nik: m['nik'] as String? ?? '',
+          usia: m['usia'] as String? ?? '',
+          alamat: m['alamat'] as String? ?? '',
+          bb: m['bb'] as String? ?? '',
+          tb: m['tb'] as String? ?? '',
+          tensi: m['tensi'] as String? ?? '',
+          gulaDarah: m['gula_darah'] as String? ?? '',
+          lingkarPinggang: m['lingkar_pinggang'] as String? ?? '',
+          lila: m['lila'] as String? ?? '',
+          lika: m['lika'] as String? ?? '',
+          keluhan: keluhan is List ? List<String>.from(keluhan) : [],
+          tindakLanjut: tindakLanjut is List ? List<String>.from(tindakLanjut) : [],
+          fotoPath: m['foto_path'] as String?, // ponytail: was missing — foto never exported
+        );
+      }).toList();
+
+      // 3. Buat Report object
+      final report = Report(no: no, exams: exams);
+
+      // 4. Buat session tiruan dari data pemilik laporan
+      final now = DateTime.now();
+      final bulanNames = ['', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+      final fakeSession = UserSession(
+        nama: ownerNama,
+        puskesmas: ownerPkm.isNotEmpty ? ownerPkm : widget.session.puskesmas,
+        bulan: bulanNames[now.month],
+        tahun: '${now.year}',
+      );
+
+      // 5. Generate file
+      final String path;
+      if (format == 'pdf') {
+        path = await PdfService.generatePdf(reports: [report], session: fakeSession);
+      } else {
+        path = await DocxService.generateDocx(reports: [report], session: fakeSession);
+      }
+
+      if (!mounted) return;
+      setState(() => _isExporting = false);
+      _showAdminExportSuccess(path, format.toUpperCase());
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isExporting = false);
+      _showSnack('Gagal export: $e', isError: true);
+    }
+  }
+
+  void _showAdminExportSuccess(String path, String type) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppTheme.cardDark,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 60, height: 60,
+              decoration: BoxDecoration(
+                color: AppTheme.success.withValues(alpha: 0.15),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.check_circle_rounded, color: AppTheme.success, size: 36),
+            ),
+            const SizedBox(height: 14),
+            Text('File $type Berhasil!',
+                style: const TextStyle(color: AppTheme.textPrimary, fontSize: 17, fontWeight: FontWeight.w600),
+                textAlign: TextAlign.center),
+            const SizedBox(height: 6),
+            Text(path.split(RegExp(r'[\\/]')).last,
+                style: const TextStyle(color: AppTheme.textSecondary, fontSize: 11),
+                textAlign: TextAlign.center),
+            const SizedBox(height: 18),
+            Row(children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () { Navigator.pop(ctx); OpenFile.open(path); },
+                  icon: const Icon(Icons.open_in_new_rounded, size: 16, color: AppTheme.accentTeal),
+                  label: const Text('Buka', style: TextStyle(color: AppTheme.accentTeal, fontSize: 13)),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: AppTheme.accentTeal),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () { Navigator.pop(ctx); Share.shareXFiles([XFile(path)]); },
+                  icon: const Icon(Icons.share_rounded, size: 16),
+                  label: const Text('Bagikan', style: TextStyle(fontSize: 13)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.accentTeal,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
+              ),
+            ]),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Tutup', style: TextStyle(color: AppTheme.textSecondary)),
+            ),
+          ],
         ),
       ),
     );
   }
+
 
   Future<void> _showReportDetail(String reportId, int no) async {
     showModalBottomSheet(

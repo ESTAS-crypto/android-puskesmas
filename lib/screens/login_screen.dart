@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:pin_code_fields/pin_code_fields.dart';
 import '../theme/app_theme.dart';
 import '../models/user_session.dart';
+import '../models/custom_role.dart';
 import '../services/storage_service.dart';
 import '../services/supabase_service.dart';
 import 'dashboard_screen.dart';
@@ -113,7 +114,12 @@ class _LoginScreenState extends State<LoginScreen>
     } else {
       // Pengguna lama → langsung ke dashboard
       final uid = SupabaseService.currentUserId ?? '';
-      final role = uid.isNotEmpty ? await SupabaseService.fetchUserRole(uid) : 'user';
+      final profile = uid.isNotEmpty
+          ? await SupabaseService.fetchUserProfile(uid)
+          : {'role': 'user', 'customRoleMap': null};
+      final role = profile['role'] as String;
+      final crMap = profile['customRoleMap'] as Map<String, dynamic>?;
+      final customRole = crMap != null ? CustomRole.fromMap(crMap) : null;
       final nama = result['existingNama'] as String? ?? googleName;
       final puskesmas = result['existingPuskesmas'] as String? ?? '';
 
@@ -125,6 +131,7 @@ class _LoginScreenState extends State<LoginScreen>
         bulan: '',
         tahun: '',
         role: role,
+        customRole: customRole,
       );
 
       await StorageService.saveSession(session);
@@ -218,66 +225,72 @@ class _LoginScreenState extends State<LoginScreen>
     String email = _isRegisterMode ? _emailController.text.trim() : '';
 
     if (uid.isNotEmpty) {
-      role = await SupabaseService.fetchUserRole(uid);
+      final profile = await SupabaseService.fetchUserProfile(uid);
+      role = profile['role'] as String;
+      final crMap = profile['customRoleMap'] as Map<String, dynamic>?;
       // Untuk login (bukan register), ambil profil lengkap
       if (!_isRegisterMode) {
         try {
-          final profile = await SupabaseService.adminGetAllUsers()
-              .then((users) => users.firstWhere((u) => u['id'] == uid, orElse: () => {}));
-          if (profile.isNotEmpty) {
-            nama = (profile['nama'] as String?) ?? nama;
-            puskesmas = (profile['puskesmas'] as String?) ?? '';
-            email = (profile['email'] as String?) ?? '';
+          final users = await SupabaseService.adminGetAllUsers();
+          final userProfile = users.firstWhere((u) => u['id'] == uid, orElse: () => {});
+          if (userProfile.isNotEmpty) {
+            nama = (userProfile['nama'] as String?) ?? nama;
+            puskesmas = (userProfile['puskesmas'] as String?) ?? '';
+            email = (userProfile['email'] as String?) ?? '';
           }
         } catch (_) {}
       }
-    }
+      final crMapFinal = crMap;
+      final customRoleObj = crMapFinal != null ? CustomRole.fromMap(crMapFinal) : null;
 
-    final session = UserSession(
-      userId: uid,
-      email: email,
-      nama: nama,
-      puskesmas: puskesmas,
-      bulan: '',
-      tahun: '',
-      role: role,
-    );
+      final session = UserSession(
+        userId: uid,
+        email: email,
+        nama: nama,
+        puskesmas: puskesmas,
+        bulan: '',
+        tahun: '',
+        role: role,
+        customRole: customRoleObj,
+      );
 
-    await StorageService.saveSession(session);
+      await StorageService.saveSession(session);
 
-    // Download data dari cloud (jika login di device baru)
-    final cloudReports = await SupabaseService.downloadFromCloud();
-    if (cloudReports.isNotEmpty) {
-      final localReports = await StorageService.getReports();
-      final localIds = localReports.map((r) => r.id).toSet();
-      for (final report in cloudReports) {
-        if (!localIds.contains(report.id)) {
-          await StorageService.saveReportLocalOnly(report);
+      // Download data dari cloud (jika login di device baru)
+      final cloudReports = await SupabaseService.downloadFromCloud();
+      if (cloudReports.isNotEmpty) {
+        final localReports = await StorageService.getReports();
+        final localIds = localReports.map((r) => r.id).toSet();
+        for (final report in cloudReports) {
+          if (!localIds.contains(report.id)) {
+            await StorageService.saveReportLocalOnly(report);
+          }
         }
       }
-    }
 
-    if (!mounted) return;
-    Navigator.pushReplacement(
-      context,
-      PageRouteBuilder(
-        pageBuilder: (_, __, ___) => DashboardScreen(session: session),
-        transitionsBuilder: (_, anim, __, child) {
-          return FadeTransition(
-            opacity: anim,
-            child: SlideTransition(
-              position: Tween<Offset>(
-                begin: const Offset(1, 0),
-                end: Offset.zero,
-              ).animate(CurvedAnimation(parent: anim, curve: Curves.easeOutCubic)),
-              child: child,
-            ),
-          );
-        },
-        transitionDuration: const Duration(milliseconds: 500),
-      ),
-    );
-  }
+      if (!mounted) return;
+      Navigator.pushReplacement(
+        context,
+        PageRouteBuilder(
+          pageBuilder: (_, __, ___) => DashboardScreen(session: session),
+          transitionsBuilder: (_, anim, __, child) {
+            return FadeTransition(
+              opacity: anim,
+              child: SlideTransition(
+                position: Tween<Offset>(
+                  begin: const Offset(1, 0),
+                  end: Offset.zero,
+                ).animate(CurvedAnimation(parent: anim, curve: Curves.easeOutCubic)),
+                child: child,
+              ),
+            );
+          },
+          transitionDuration: const Duration(milliseconds: 500),
+        ),
+      );
+      return;
+    }
+  } // end _submit
 
   void _startCooldown() {
     _cooldownSeconds = 30;
