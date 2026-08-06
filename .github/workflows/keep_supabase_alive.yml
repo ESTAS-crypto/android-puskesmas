@@ -1,4 +1,4 @@
-name: Keep Supabase Awake (Auto-Ping)
+name: Keep Supabase Awake & Discord Notifier
 
 on:
   schedule:
@@ -7,17 +7,138 @@ on:
   workflow_dispatch: # Bisa dipicu manual dari tab Actions di GitHub
 
 jobs:
-  ping-supabase:
+  ping-and-notify:
     runs-on: ubuntu-latest
     steps:
-      - name: Ping Supabase Database Endpoint
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Ping Supabase & Send Discord Webhook
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: |
-          echo "Mengirim ping otomatis ke Supabase agar database tidak ter-pause..."
-          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" -H "apikey: sb_publishable_3HttqlKQ2iv-CLGJyv-AjA_-AmS663B" -H "Authorization: Bearer sb_publishable_3HttqlKQ2iv-CLGJyv-AjA_-AmS663B" "https://pndkpooxkbmkgmcgqygl.supabase.co/rest/v1/")
-          echo "Supabase HTTP Response Code: $RESPONSE"
-          if [ "$RESPONSE" -ge 200 ] && [ "$RESPONSE" -lt 500 ]; then
-            echo "BERHASIL: Supabase aktif dan merespon!"
-          else
-            echo "PERINGATAN: Supabase ping mengembalikan kode $RESPONSE"
-            exit 1
-          fi
+          python -c '
+          import os, sys, time, json, urllib.request, datetime
+
+          webhook_url = os.environ.get("DISCORD_WEBHOOK_URL", "").strip()
+          supabase_url = "https://pndkpooxkbmkgmcgqygl.supabase.co/rest/v1/"
+          anon_key = "sb_publishable_3HttqlKQ2iv-CLGJyv-AjA_-AmS663B"
+
+          # Waktu WIB (Asia/Jakarta = UTC+7)
+          tz_wib = datetime.timezone(datetime.timedelta(hours=7))
+          now_wib = datetime.datetime.now(tz_wib)
+          next_ping = now_wib + datetime.timedelta(days=3)
+          pause_deadline = now_wib + datetime.timedelta(days=7)
+
+          fmt = "%d %b %Y, %H:%M WIB"
+          now_str = now_wib.strftime(fmt)
+          next_str = next_ping.strftime(fmt)
+          deadline_str = pause_deadline.strftime(fmt)
+
+          # Ping Supabase & ukur latency
+          start = time.time()
+          req = urllib.request.Request(supabase_url, headers={
+              "apikey": anon_key,
+              "Authorization": f"Bearer {anon_key}"
+          })
+
+          is_success = False
+          status_code = 0
+          latency_ms = 0
+          error_msg = ""
+
+          try:
+              with urllib.request.urlopen(req, timeout=10) as response:
+                  latency_ms = int((time.time() - start) * 1000)
+                  status_code = response.getcode()
+                  is_success = (200 <= status_code < 500)
+          except Exception as e:
+              latency_ms = int((time.time() - start) * 1000)
+              error_msg = str(e)
+              is_success = False
+
+          # Desain Embed Discord Premium
+          if is_success:
+              color = 0x57F287 # Emerald Green
+              title = "🟢 Supabase Keep-Alive Report"
+              desc = "✨ **Project Supabase berhasil di-ping!** Timer auto-pause 7 hari telah **berhasil di-reset** ke 7 hari."
+              status_text = f"🟢 **Online & Healthy** `(HTTP {status_code})`"
+              latency_text = f"⚡ **{latency_ms} ms**"
+              deadline_text = f"⏳ **{deadline_str}**\n*(Database Aman & Aktif)*"
+          else:
+              color = 0xED4245 # Crimson Red
+              title = "🚨 PERINGATAN: Supabase Keep-Alive Gagal!"
+              desc = f"⚠️ **Project Supabase tidak merespons!** Segera cek Supabase Dashboard.\n*Detail:* `{error_msg}`"
+              status_text = "🔴 **DOWN / UNREACHABLE**"
+              latency_text = "❌ **N/A**"
+              deadline_text = "⚠️ **Potensi Ter-pause dalam waktu dekat!**"
+
+          embed = {
+              "title": title,
+              "description": desc,
+              "color": color,
+              "fields": [
+                  {
+                      "name": "📊 Status Database",
+                      "value": status_text,
+                      "inline": True
+                  },
+                  {
+                      "name": "⚡ Latency",
+                      "value": latency_text,
+                      "inline": True
+                  },
+                  {
+                      "name": "🕒 Ping Time (WIB)",
+                      "value": f"📅 `{now_str}`",
+                      "inline": True
+                  },
+                  {
+                      "name": "🗓️ Next Auto-Ping",
+                      "value": f"📅 `{next_str}`",
+                      "inline": True
+                  },
+                  {
+                      "name": "⌛ Pause Deadline",
+                      "value": deadline_text,
+                      "inline": True
+                  },
+                  {
+                      "name": "🔄 Auto-Ping Interval",
+                      "value": "Every **3 days** *(Margin aman: 4 hari sebelum deadline)*",
+                      "inline": True
+                  }
+              ],
+              "footer": {
+                  "text": "ESTAS Puskesmas • Supabase Guardian",
+                  "icon_url": "https://supabase.com/favicon/favicon-32x32.png"
+              },
+              "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat()
+          }
+
+          payload = {
+              "username": "NOTIF WEBSITE",
+              "avatar_url": "https://supabase.com/favicon/favicon-32x32.png",
+              "embeds": [embed]
+          }
+
+          if webhook_url:
+              print("Mengirim notifikasi ke Discord Webhook...")
+              post_data = json.dumps(payload).encode("utf-8")
+              post_req = urllib.request.Request(webhook_url, data=post_data, headers={
+                  "Content-Type": "application/json",
+                  "User-Agent": "Mozilla/5.0"
+              })
+              try:
+                  with urllib.request.urlopen(post_req) as resp:
+                      print(f"Discord Webhook Response: {resp.getcode()}")
+              except Exception as e:
+                  print(f"Gagal mengirim Webhook Discord: {e}")
+          else:
+              print("Notice: DISCORD_WEBHOOK_URL belum diset di GitHub Secrets.")
+
+          if not is_success:
+              sys.exit(1)
+          '
