@@ -1,0 +1,147 @@
+import os
+import sys
+import time
+import json
+import urllib.request
+import datetime
+
+def main():
+    webhook_url = os.environ.get("DISCORD_WEBHOOK_URL", "").strip()
+    supabase_url = "https://pndkpooxkbmkgmcgqygl.supabase.co/rest/v1/profiles?select=id&limit=1"
+    anon_key = "sb_publishable_3HttqlKQ2iv-CLGJyv-AjA_-AmS663B"
+
+    # Timezone WIB (Asia/Jakarta = UTC+7)
+    tz_wib = datetime.timezone(datetime.timedelta(hours=7))
+    now_wib = datetime.datetime.now(tz_wib)
+    next_ping = now_wib + datetime.timedelta(days=3)
+    pause_deadline = now_wib + datetime.timedelta(days=7)
+
+    # Format tanggal ringkas
+    fmt_short = "%d %b %Y, %H.%M"
+    now_str = now_wib.strftime(fmt_short)
+    next_str = next_ping.strftime(fmt_short)
+    deadline_str = pause_deadline.strftime(fmt_short)
+    footer_date_str = now_wib.strftime("%d/%m/%Y %H.%M")
+
+    start = time.time()
+    req = urllib.request.Request(supabase_url, headers={
+        "apikey": anon_key,
+        "Authorization": f"Bearer {anon_key}"
+    })
+
+    is_success = False
+    status_code = 0
+    latency_ms = 0
+    error_msg = ""
+
+    try:
+        with urllib.request.urlopen(req, timeout=10) as response:
+            latency_ms = int((time.time() - start) * 1000)
+            status_code = response.getcode()
+            is_success = (200 <= status_code < 500)
+    except Exception as e:
+        latency_ms = int((time.time() - start) * 1000)
+        error_msg = str(e)
+        is_success = False
+
+    if is_success:
+        color = 0x2ECC71  # Sleek Emerald Green
+        title = "✅ Supabase Keep-Alive Report"
+        desc = "| Project berhasil di-ping! Timer pause **sudah di-reset** ke 7 hari.\n\n```\nOnline & Healthy\n```"
+        
+        fields = [
+            {
+                "name": "⚡ Latency",
+                "value": f"`{latency_ms}ms`",
+                "inline": True
+            },
+            {
+                "name": "🕒 Ping Time (WIB)",
+                "value": f"`{now_str}`",
+                "inline": True
+            },
+            {
+                "name": "📅 Next Auto-Ping",
+                "value": f"`{next_str}`",
+                "inline": True
+            },
+            {
+                "name": "⌛ Pause Deadline",
+                "value": f"`{deadline_str}` *(7 hari dari sekarang)*",
+                "inline": False
+            },
+            {
+                "name": "🔄 Auto-Ping Interval",
+                "value": "Every **3 days** *(safe margin: 4 days before deadline)*",
+                "inline": False
+            }
+        ]
+    else:
+        color = 0xE74C3C  # Sleek Crimson Red
+        title = "🚨 Supabase Keep-Alive Report"
+        desc = f"| **PERINGATAN:** Project tidak merespons! Segera cek Supabase Dashboard.\n*Detail:* `{error_msg}`\n\n```\nDOWN - Fetch Failed\n```"
+        
+        fields = [
+            {
+                "name": "⚡ Latency",
+                "value": "`N/A`",
+                "inline": True
+            },
+            {
+                "name": "🕒 Ping Time (WIB)",
+                "value": f"`{now_str}`",
+                "inline": True
+            },
+            {
+                "name": "📅 Next Auto-Ping",
+                "value": f"`{next_str}`",
+                "inline": True
+            },
+            {
+                "name": "⌛ Pause Deadline",
+                "value": "⚠️ **Could be paused NOW**",
+                "inline": False
+            },
+            {
+                "name": "🔄 Auto-Ping Interval",
+                "value": "Every **3 days** *(safe margin: 4 days before deadline)*",
+                "inline": False
+            }
+        ]
+
+    embed = {
+        "title": title,
+        "description": desc,
+        "color": color,
+        "fields": fields,
+        "footer": {
+            "text": f"ESTAS Puskesmas • Supabase Guardian • {footer_date_str}"
+        }
+    }
+
+    # Tanpa override username & avatar_url
+    # Agar Discord otomatis memakai Nama Webhook & Foto Profil (Puskesmas Logo) yang diupload user
+    payload = {
+        "embeds": [embed]
+    }
+
+    if webhook_url:
+        print("Mengirim notifikasi ke Discord Webhook...")
+        post_data = json.dumps(payload).encode("utf-8")
+        post_req = urllib.request.Request(webhook_url, data=post_data, headers={
+            "Content-Type": "application/json",
+            "User-Agent": "Mozilla/5.0"
+        })
+        try:
+            with urllib.request.urlopen(post_req) as resp:
+                print(f"Discord Webhook Response: {resp.getcode()}")
+        except Exception as e:
+            print(f"Gagal mengirim Webhook Discord: {e}")
+    else:
+        print("Notice: DISCORD_WEBHOOK_URL belum diset di GitHub Secrets.")
+
+    if not is_success:
+        sys.exit(1)
+
+if __name__ == "__main__":
+    main()
