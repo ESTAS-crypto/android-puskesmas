@@ -1168,7 +1168,7 @@ class _ReportHistoryScreenState extends State<ReportHistoryScreen> {
 
     final Map<String, ({Color color, IconData icon, String label})> roleStyles = {
       'owner': (color: const Color(0xFFFFD700), icon: Icons.workspace_premium_rounded, label: 'Owner'),
-      'developer': (color: const Color(0xFFE040FB), icon: Icons.code_rounded, label: 'Developer'),
+      'developer': (color: const Color(0xFF00B4DB), icon: Icons.code_rounded, label: 'Developer'),
       'admin': (color: const Color(0xFF448AFF), icon: Icons.admin_panel_settings_rounded, label: 'Admin'),
     };
 

@@ -30,9 +30,9 @@ class RoleBadge extends StatelessWidget {
           label: 'Developer',
           icon: Icons.code_rounded,
           gradient: const LinearGradient(
-            colors: [Color(0xFF7C4DFF), Color(0xFFE040FB)],
+            colors: [Color(0xFF00B4DB), Color(0xFF0083B0)],
           ),
-          glowColor: const Color(0xFF7C4DFF),
+          glowColor: const Color(0xFF00B4DB),
         );
       case 'admin':
         return RoleStyle(

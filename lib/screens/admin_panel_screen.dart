@@ -371,17 +371,20 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
               children: [
                 Row(
                   children: [
-                    const Text(
-                      'Status Cloud Supabase',
-                      style: TextStyle(
-                        color: AppTheme.textPrimary,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
+                    const Flexible(
+                      child: Text(
+                        'Status Cloud Supabase',
+                        style: TextStyle(
+                          color: AppTheme.textPrimary,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                        ),
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 6),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
                         color: color.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(6),
@@ -538,7 +541,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
                 color: roleLevel >= 3
                     ? const Color(0xFFFFD700).withValues(alpha: 0.5) // owner: emas
                     : roleLevel >= 2
-                        ? const Color(0xFF00E5FF).withValues(alpha: 0.4) // developer: cyan
+                        ? const Color(0xFF00B4DB).withValues(alpha: 0.4) // developer: ocean cyan blue
                         : roleLevel >= 1
                             ? const Color(0xFFE040FB).withValues(alpha: 0.3) // admin: purple
                             : AppTheme.divider, // user: default
@@ -552,7 +555,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
                   gradient: roleLevel >= 3
                       ? const LinearGradient(colors: [Color(0xFFFF8F00), Color(0xFFFFD700)])
                       : roleLevel >= 2
-                          ? const LinearGradient(colors: [Color(0xFF006064), Color(0xFF00E5FF)])
+                          ? const LinearGradient(colors: [Color(0xFF0083B0), Color(0xFF00B4DB)])
                           : roleLevel >= 1
                               ? const LinearGradient(colors: [Color(0xFF9C27B0), Color(0xFFE040FB)])
                               : AppTheme.primaryGradient,
@@ -673,7 +676,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
         label = 'OWNER';
         break;
       case 'developer':
-        color = const Color(0xFF00E5FF);
+        color = const Color(0xFF00B4DB);
         label = 'DEV';
         break;
       case 'admin':
