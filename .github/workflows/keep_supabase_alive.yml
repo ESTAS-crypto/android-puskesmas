@@ -26,18 +26,18 @@ jobs:
           supabase_url = "https://pndkpooxkbmkgmcgqygl.supabase.co/rest/v1/profiles?select=id&limit=1"
           anon_key = "sb_publishable_3HttqlKQ2iv-CLGJyv-AjA_-AmS663B"
 
-          # Waktu WIB (Asia/Jakarta = UTC+7)
+          # Timezone WIB (Asia/Jakarta = UTC+7)
           tz_wib = datetime.timezone(datetime.timedelta(hours=7))
           now_wib = datetime.datetime.now(tz_wib)
           next_ping = now_wib + datetime.timedelta(days=3)
           pause_deadline = now_wib + datetime.timedelta(days=7)
 
-          fmt = "%d %b %Y, %H:%M WIB"
-          now_str = now_wib.strftime(fmt)
-          next_str = next_ping.strftime(fmt)
-          deadline_str = pause_deadline.strftime(fmt)
+          # Format tanggal ringkas agar tidak patah/terpotong di Discord
+          fmt_short = "%d %b %Y, %H.%M"
+          now_str = now_wib.strftime(fmt_short)
+          next_str = next_ping.strftime(fmt_short)
+          deadline_str = pause_deadline.strftime(fmt_short)
 
-          # Ping Supabase & ukur latency
           start = time.time()
           req = urllib.request.Request(supabase_url, headers={
               "apikey": anon_key,
@@ -59,63 +59,79 @@ jobs:
               error_msg = str(e)
               is_success = False
 
-          # Desain Embed Discord Premium
           if is_success:
-              color = 0x57F287 # Emerald Green
-              title = "🟢 Supabase Keep-Alive Report"
-              desc = "✨ **Project Supabase berhasil di-ping!** Timer auto-pause 7 hari telah **berhasil di-reset** ke 7 hari."
-              status_text = f"🟢 **Online & Healthy** `(HTTP {status_code})`"
-              latency_text = f"⚡ **{latency_ms} ms**"
-              deadline_text = f"⏳ **{deadline_str}**\n*(Database Aman & Aktif)*"
+              color = 0x2ECC71  # Sleek Emerald Green
+              title = "✅ Supabase Keep-Alive Report"
+              desc = f"| Project berhasil di-ping! Timer pause **sudah di-reset** ke 7 hari.\n\n```\nOnline & Healthy\n```"
+              
+              fields = [
+                  {
+                      "name": "⚡ Latency",
+                      "value": f"`{latency_ms}ms`",
+                      "inline": True
+                  },
+                  {
+                      "name": "🕒 Ping Time (WIB)",
+                      "value": f"`{now_str}`",
+                      "inline": True
+                  },
+                  {
+                      "name": "📅 Next Auto-Ping",
+                      "value": f"`{next_str}`",
+                      "inline": True
+                  },
+                  {
+                      "name": "⌛ Pause Deadline",
+                      "value": f"`{deadline_str}` *(7 hari dari sekarang)*",
+                      "inline": False
+                  },
+                  {
+                      "name": "🔄 Auto-Ping Interval",
+                      "value": "Every **3 days** *(safe margin: 4 days before deadline)*",
+                      "inline": False
+                  }
+              ]
           else:
-              color = 0xED4245 # Crimson Red
-              title = "🚨 PERINGATAN: Supabase Keep-Alive Gagal!"
-              desc = f"⚠️ **Project Supabase tidak merespons!** Segera cek Supabase Dashboard.\n*Detail:* `{error_msg}`"
-              status_text = "🔴 **DOWN / UNREACHABLE**"
-              latency_text = "❌ **N/A**"
-              deadline_text = "⚠️ **Potensi Ter-pause dalam waktu dekat!**"
+              color = 0xE74C3C  # Sleek Crimson Red
+              title = "🚨 Supabase Keep-Alive Report"
+              desc = f"| **PERINGATAN:** Project tidak merespons! Segera cek Supabase Dashboard.\n*Detail:* `{error_msg}`\n\n```\nDOWN - Fetch Failed\n```"
+              
+              fields = [
+                  {
+                      "name": "⚡ Latency",
+                      "value": "`N/A`",
+                      "inline": True
+                  },
+                  {
+                      "name": "🕒 Ping Time (WIB)",
+                      "value": f"`{now_str}`",
+                      "inline": True
+                  },
+                  {
+                      "name": "📅 Next Auto-Ping",
+                      "value": f"`{next_str}`",
+                      "inline": True
+                  },
+                  {
+                      "name": "⌛ Pause Deadline",
+                      "value": "⚠️ **Could be paused NOW**",
+                      "inline": False
+                  },
+                  {
+                      "name": "🔄 Auto-Ping Interval",
+                      "value": "Every **3 days** *(safe margin: 4 days before deadline)*",
+                      "inline": False
+                  }
+              ]
 
           embed = {
               "title": title,
               "description": desc,
               "color": color,
-              "fields": [
-                  {
-                      "name": "📊 Status Database",
-                      "value": status_text,
-                      "inline": True
-                  },
-                  {
-                      "name": "⚡ Latency",
-                      "value": latency_text,
-                      "inline": True
-                  },
-                  {
-                      "name": "🕒 Ping Time (WIB)",
-                      "value": f"📅 `{now_str}`",
-                      "inline": True
-                  },
-                  {
-                      "name": "🗓️ Next Auto-Ping",
-                      "value": f"📅 `{next_str}`",
-                      "inline": True
-                  },
-                  {
-                      "name": "⌛ Pause Deadline",
-                      "value": deadline_text,
-                      "inline": True
-                  },
-                  {
-                      "name": "🔄 Auto-Ping Interval",
-                      "value": "Every **3 days** *(Margin aman: 4 hari sebelum deadline)*",
-                      "inline": True
-                  }
-              ],
+              "fields": fields,
               "footer": {
-                  "text": "ESTAS Puskesmas • Supabase Guardian",
-                  "icon_url": "https://supabase.com/favicon/favicon-32x32.png"
-              },
-              "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat()
+                  "text": f"ESTAS Puskesmas • Supabase Guardian • {now_wib.strftime('%d/%m/%Y %H.%M')}"
+              }
           }
 
           payload = {
