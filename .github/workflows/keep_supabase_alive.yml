@@ -23,7 +23,7 @@ jobs:
           import os, sys, time, json, urllib.request, datetime
 
           webhook_url = os.environ.get("DISCORD_WEBHOOK_URL", "").strip()
-          supabase_url = "https://pndkpooxkbmkgmcgqygl.supabase.co/rest/v1/"
+          supabase_url = "https://pndkpooxkbmkgmcgqygl.supabase.co/rest/v1/profiles?select=id&limit=1"
           anon_key = "sb_publishable_3HttqlKQ2iv-CLGJyv-AjA_-AmS663B"
 
           # Waktu WIB (Asia/Jakarta = UTC+7)
