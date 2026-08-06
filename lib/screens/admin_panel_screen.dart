@@ -411,13 +411,13 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
                 ),
                 if (isConnected) ...[
                   const SizedBox(height: 2),
-                  const Row(
+                  Row(
                     children: [
-                      Icon(Icons.check_circle_outline_rounded, color: Color(0xFF4CAF50), size: 12),
-                      SizedBox(width: 4),
+                      const Icon(Icons.check_circle_outline_rounded, color: Color(0xFF4CAF50), size: 12),
+                      const SizedBox(width: 4),
                       Text(
-                        'Auto-Ping aktif (cegah database ter-pause)',
-                        style: TextStyle(color: Color(0xFF81C784), fontSize: 10),
+                        'Ping: ${_supabaseLatencyMs}ms • Auto-Ping aktif',
+                        style: const TextStyle(color: Color(0xFF81C784), fontSize: 10),
                       ),
                     ],
                   ),
