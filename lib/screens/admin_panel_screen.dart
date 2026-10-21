@@ -11,6 +11,7 @@ import '../models/user_session.dart';
 import '../services/docx_service.dart';
 import '../services/pdf_service.dart';
 import '../services/supabase_service.dart';
+import '../services/update_service.dart';
 import '../theme/app_theme.dart';
 import '../models/custom_role.dart';
 import 'custom_roles_screen.dart';
@@ -84,6 +85,214 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
         _supabaseIsPaused = res['isPaused'] as bool? ?? false;
       });
     }
+  }
+
+  // ═══════════════════════════════════════════════
+  // OTA UPDATE MANAGEMENT
+  // ═══════════════════════════════════════════════
+
+  Future<void> _showPublishUpdateDialog() async {
+    final currentConfig = await UpdateService.getLatestPublishedConfig();
+    if (!mounted) return;
+
+    final versionCtrl = TextEditingController(text: currentConfig?.version ?? UpdateService.currentVersion);
+    final codeCtrl = TextEditingController(text: (currentConfig?.versionCode ?? UpdateService.currentVersionCode + 1).toString());
+    final urlCtrl = TextEditingController(text: currentConfig?.downloadUrl ?? '');
+    final notesCtrl = TextEditingController(
+      text: currentConfig?.releaseNotes ?? '• Peningkatan performa aplikasi\n• Perbaikan bug dan kestabilan sistem',
+    );
+    bool isMandatory = currentConfig?.isMandatory ?? false;
+    bool isSaving = false;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppTheme.cardDark,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setModalState) {
+          return Padding(
+            padding: EdgeInsets.only(
+              left: 20,
+              right: 20,
+              top: 16,
+              bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+            ),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: AppTheme.divider,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: AppTheme.accentTeal.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(Icons.rocket_launch_rounded, color: AppTheme.accentTeal, size: 24),
+                      ),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Rilis Pembaruan Aplikasi (OTA)',
+                              style: TextStyle(
+                                color: AppTheme.textPrimary,
+                                fontSize: 17,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            Text(
+                              'Otomatis terdeteksi & ter-update di HP semua user',
+                              style: TextStyle(color: AppTheme.textHint, fontSize: 11),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+
+                  Row(
+                    children: [
+                      Expanded(
+                        flex: 2,
+                        child: TextField(
+                          controller: versionCtrl,
+                          decoration: InputDecoration(
+                            labelText: 'Nomor Versi',
+                            hintText: 'misal 2.8.0',
+                            filled: true,
+                            fillColor: AppTheme.secondaryDark,
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        flex: 1,
+                        child: TextField(
+                          controller: codeCtrl,
+                          keyboardType: TextInputType.number,
+                          decoration: InputDecoration(
+                            labelText: 'Code',
+                            hintText: '10',
+                            filled: true,
+                            fillColor: AppTheme.secondaryDark,
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+
+                  TextField(
+                    controller: urlCtrl,
+                    decoration: InputDecoration(
+                      labelText: 'URL Download File APK',
+                      hintText: 'https://.../app-release.apk',
+                      filled: true,
+                      fillColor: AppTheme.secondaryDark,
+                      prefixIcon: const Icon(Icons.link_rounded, color: AppTheme.accentTeal),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+
+                  TextField(
+                    controller: notesCtrl,
+                    maxLines: 4,
+                    decoration: InputDecoration(
+                      labelText: 'Catatan Rilis / Apa yang Baru',
+                      hintText: '• Perbaikan...\n• Fitur baru...',
+                      filled: true,
+                      fillColor: AppTheme.secondaryDark,
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  SwitchListTile(
+                    value: isMandatory,
+                    onChanged: (val) => setModalState(() => isMandatory = val),
+                    title: const Text('Wajib Update (Mandatory)', style: TextStyle(color: AppTheme.textPrimary, fontSize: 14)),
+                    subtitle: const Text('Pengguna tidak bisa melewati dialog update', style: TextStyle(color: AppTheme.textHint, fontSize: 11)),
+                    activeThumbColor: AppTheme.accentTeal,
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                  const SizedBox(height: 16),
+
+                  ElevatedButton.icon(
+                    onPressed: isSaving
+                        ? null
+                        : () async {
+                            final v = versionCtrl.text.trim();
+                            final c = int.tryParse(codeCtrl.text.trim()) ?? 1;
+                            final u = urlCtrl.text.trim();
+                            final n = notesCtrl.text.trim();
+
+                            if (v.isEmpty || u.isEmpty) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Nomor versi dan URL APK tidak boleh kosong!')),
+                              );
+                              return;
+                            }
+
+                            setModalState(() => isSaving = true);
+                            final err = await UpdateService.publishUpdate(
+                              version: v,
+                              versionCode: c,
+                              downloadUrl: u,
+                              releaseNotes: n,
+                              isMandatory: isMandatory,
+                            );
+
+                            if (!ctx.mounted) return;
+                            Navigator.pop(ctx);
+
+                            if (!mounted) return;
+                            if (err == null) {
+                              _showSnack('✅ Berhasil merilis pembaruan v$v! Semua pengguna akan menerima notifikasi update.');
+                            } else {
+                              _showSnack('Gagal rilis update: $err', isError: true);
+                            }
+                          },
+                    icon: isSaving
+                        ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        : const Icon(Icons.cloud_upload_rounded),
+                    label: Text(isSaving ? 'Menyimpan...' : 'Publikasikan Pembaruan Sekarang'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.accentTeal,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
   }
 
   @override
@@ -460,6 +669,15 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
           Text('Admin Panel', style: TextStyle(color: AppTheme.textPrimary, fontSize: 18, fontWeight: FontWeight.w700)),
         ]),
         actions: [
+          // Tombol Publikasi Update OTA — untuk developer/owner
+          if (widget.session.isDeveloper)
+            Tooltip(
+              message: 'Rilis Pembaruan Aplikasi (OTA)',
+              child: IconButton(
+                onPressed: _showPublishUpdateDialog,
+                icon: const Icon(Icons.system_update_rounded, color: AppTheme.accentTeal, size: 22),
+              ),
+            ),
           // Tombol Kelola Role Custom — hanya untuk developer/owner
           if (widget.session.isDeveloper)
             Tooltip(
@@ -811,6 +1029,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
 
     // Load custom roles dari database
     final customRoleMaps = await SupabaseService.getCustomRoles();
+    if (!mounted) return;
     final customRoles = customRoleMaps.map((m) => CustomRole.fromMap(m)).toList();
 
     if (availableRoles.isEmpty && customRoles.isEmpty) {

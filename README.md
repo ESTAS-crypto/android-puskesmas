@@ -312,6 +312,23 @@ CREATE TABLE resident_exams (
   foto_path   TEXT,
   created_at  TIMESTAMPTZ DEFAULT now()
 );
+
+-- Tabel role kustom (Role-Based Access Control)
+CREATE TABLE custom_roles (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name        TEXT NOT NULL,
+  color       BIGINT DEFAULT 4292952315,
+  color_value BIGINT,
+  icon        TEXT DEFAULT 'person_rounded',
+  icon_name   TEXT,
+  permissions INTEGER DEFAULT 0,
+  created_by  UUID REFERENCES auth.users(id),
+  created_at  TIMESTAMPTZ DEFAULT now()
+);
+
+-- Pastikan Row Level Security (RLS) aktif pada semua tabel public!
+-- Lihat script: supabase/fix_rls_custom_roles.sql
+ALTER TABLE public.custom_roles ENABLE ROW LEVEL SECURITY;
 ```
 
 <br>

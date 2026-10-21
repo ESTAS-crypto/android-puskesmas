@@ -5,6 +5,7 @@ import '../models/user_session.dart';
 import '../models/resident_exam.dart';
 import '../services/storage_service.dart';
 import '../services/supabase_service.dart';
+import '../services/update_service.dart';
 import '../widgets/changelog_dialog.dart';
 import '../widgets/connectivity_banner.dart';
 import '../widgets/role_badge.dart';
@@ -37,8 +38,16 @@ class _DashboardScreenState extends State<DashboardScreen>
     _animController.forward();
     _loadReportCount();
     _checkChangelog();
+    _checkAppUpdate();
     // Jalankan background tasks — tidak blocking UI
     _runBackgroundTasks();
+  }
+
+  /// Periksa pembaruan aplikasi OTA (silent = jangan tampilkan apa-apa jika sudah terbaru)
+  Future<void> _checkAppUpdate() async {
+    await Future.delayed(const Duration(milliseconds: 1500));
+    if (!mounted) return;
+    UpdateService.checkAndShowUpdate(context, silent: true);
   }
 
   /// Jalankan auto-cleanup lokal dan (jika admin) server cleanup.
@@ -262,6 +271,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                       session: widget.session,
                       onChangelogTap: () => ChangelogDialog.show(context),
                       onLogoutTap: _logout,
+                      onUpdateTap: () => UpdateService.checkAndShowUpdate(context, silent: false),
                     ),
                   ),
                   const SizedBox(height: 24),

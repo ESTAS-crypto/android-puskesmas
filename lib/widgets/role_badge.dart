@@ -145,12 +145,14 @@ class DashboardHeader extends StatelessWidget {
   final UserSession session;
   final VoidCallback onChangelogTap;
   final VoidCallback onLogoutTap;
+  final VoidCallback? onUpdateTap;
 
   const DashboardHeader({
     super.key,
     required this.session,
     required this.onChangelogTap,
     required this.onLogoutTap,
+    this.onUpdateTap,
   });
 
   @override
@@ -185,6 +187,10 @@ class DashboardHeader extends StatelessWidget {
         ),
 
         // Action buttons
+        if (onUpdateTap != null) ...[
+          _buildIconBtn(Icons.system_update_rounded, AppTheme.accentBlue, onUpdateTap!),
+          const SizedBox(width: 8),
+        ],
         _buildIconBtn(Icons.new_releases_outlined, AppTheme.accentTeal, onChangelogTap),
         const SizedBox(width: 8),
         _buildIconBtn(Icons.logout_rounded, AppTheme.textSecondary, onLogoutTap),
