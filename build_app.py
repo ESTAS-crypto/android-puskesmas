@@ -116,6 +116,40 @@ def publish_to_supabase(apk_path, version_name, version_code):
             print(f"📲 Semua HP kader yang membuka aplikasi akan langsung")
             print(f"   menerima dialog update otomatis ala Play Store!")
             print("="*60)
+
+            # 🧹 AUTO CLEANUP: Otomatis hapus file APK versi lama agar storage Supabase tetap hemat
+            print("\n🧹 Memeriksa & membersihkan file APK lama di Supabase Storage...")
+            try:
+                list_url = f"{supabase_url}/storage/v1/object/list/{bucket}"
+                list_res = requests.post(
+                    list_url,
+                    json={"prefix": "", "limit": 100, "sortBy": {"column": "created_at", "order": "desc"}},
+                    headers={"apikey": anon_key, "Authorization": f"Bearer {anon_key}", "Content-Type": "application/json"}
+                )
+                if list_res.status_code == 200:
+                    files = list_res.json()
+                    apk_files = [f for f in files if f.get("name", "").endswith(".apk")]
+                    # Pertahankan maksimal 2 versi terbaru (versi saat ini + 1 versi sebelumnya untuk backup)
+                    MAX_KEEP = 2
+                    if len(apk_files) > MAX_KEEP:
+                        files_to_delete = apk_files[MAX_KEEP:]
+                        del_names = [f["name"] for f in files_to_delete]
+                        del_url = f"{supabase_url}/storage/v1/object/{bucket}"
+                        del_res = requests.delete(
+                            del_url,
+                            json={"prefixes": del_names},
+                            headers={"apikey": anon_key, "Authorization": f"Bearer {anon_key}", "Content-Type": "application/json"}
+                        )
+                        if del_res.status_code in (200, 204):
+                            print(f"🗑️ Otomatis menghapus {len(del_names)} file APK versi lama: {', '.join(del_names)}")
+                            print("✨ Kuota Storage Supabase Anda tetap aman, bersih, dan hemat kuota!")
+                        else:
+                            print(f"⚠️ Melewati penghapusan versi lama: {del_res.text}")
+                    else:
+                        print(f"✨ Storage Supabase optimal (tersimpan {len(apk_files)} versi APK, batas maksimal aman: {MAX_KEEP}).")
+            except Exception as e_clean:
+                print(f"⚠️ Melewati pembersihan storage: {e_clean}")
+
         else:
             print(f"\n⚠️ Upload APK berhasil, tapi gagal update status DB: {res_db.text}")
             print(f"💡 Anda bisa masukkan URL ini secara manual di Admin Panel aplikasi:")

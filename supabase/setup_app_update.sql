@@ -79,3 +79,11 @@ ON storage.objects FOR UPDATE
 TO authenticated, anon
 USING (bucket_id = 'app_releases');
 
+-- Policy Storage agar penghapusan APK versi lama diizinkan otomatis (hemat kuota)
+DROP POLICY IF EXISTS "Allow Delete APK" ON storage.objects;
+CREATE POLICY "Allow Delete APK"
+ON storage.objects FOR DELETE
+TO authenticated, anon
+USING (bucket_id = 'app_releases');
+
+
