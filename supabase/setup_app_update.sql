@@ -46,3 +46,36 @@ VALUES (
     )
 )
 ON CONFLICT (key) DO NOTHING;
+
+-- 6. Setup Storage Bucket untuk file APK rilis
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES (
+    'app_releases',
+    'app_releases',
+    true,
+    104857600, -- Maksimal 100 MB per APK
+    ARRAY['application/vnd.android.package-archive', 'application/octet-stream']
+)
+ON CONFLICT (id) DO UPDATE SET 
+    public = true,
+    file_size_limit = 104857600;
+
+-- 7. Policy Storage agar semua pengguna bisa mendownload file APK
+DROP POLICY IF EXISTS "Public Download APK" ON storage.objects;
+CREATE POLICY "Public Download APK"
+ON storage.objects FOR SELECT
+USING (bucket_id = 'app_releases');
+
+-- Policy Storage agar penguploadan APK diizinkan
+DROP POLICY IF EXISTS "Allow Upload APK" ON storage.objects;
+CREATE POLICY "Allow Upload APK"
+ON storage.objects FOR INSERT
+TO authenticated, anon
+WITH CHECK (bucket_id = 'app_releases');
+
+DROP POLICY IF EXISTS "Allow Update APK" ON storage.objects;
+CREATE POLICY "Allow Update APK"
+ON storage.objects FOR UPDATE
+TO authenticated, anon
+USING (bucket_id = 'app_releases');
+

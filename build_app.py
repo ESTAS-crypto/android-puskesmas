@@ -46,6 +46,84 @@ def run_command(cmd):
     process.communicate()
     return process.returncode
 
+def publish_to_supabase(apk_path, version_name, version_code):
+    """Upload APK ke Supabase Storage & perbarui config app_update secara otomatis"""
+    supabase_url = "https://pndkpooxkbmkgmcgqygl.supabase.co"
+    anon_key = "sb_publishable_3HttqlKQ2iv-CLGJyv-AjA_-AmS663B"
+    bucket = "app_releases"
+    file_name = os.path.basename(apk_path)
+
+    print("\n" + "="*60)
+    print("🚀 PUBLIKASI PEMBARUAN KE SUPABASE CLOUD")
+    print("="*60)
+    notes = input("📝 Masukkan Catatan Rilis (Release Notes) [Tekan Enter untuk default]: ").strip()
+    if not notes:
+        notes = f"Pembaruan versi {version_name} dengan peningkatan kinerja dan stabilitas."
+
+    print(f"\n⏳ Meng-upload {file_name} ke Supabase Storage...")
+    print("   Mohon tunggu beberapa detik...")
+
+    try:
+        import requests
+        with open(apk_path, "rb") as f:
+            file_bytes = f.read()
+
+        upload_url = f"{supabase_url}/storage/v1/object/{bucket}/{file_name}"
+        headers = {
+            "apikey": anon_key,
+            "Authorization": f"Bearer {anon_key}",
+            "Content-Type": "application/vnd.android.package-archive",
+            "x-upsert": "true"
+        }
+
+        res = requests.post(upload_url, data=file_bytes, headers=headers)
+        if res.status_code not in (200, 201):
+            print(f"\n❌ Gagal upload ke storage (HTTP {res.status_code}): {res.text}")
+            print("💡 Pastikan Anda sudah menjalankan SQL di supabase/setup_app_update.sql pada Supabase SQL Editor.")
+            return
+
+        public_download_url = f"{supabase_url}/storage/v1/object/public/{bucket}/{file_name}"
+        print(f"✅ File APK berhasil di-upload ke Cloud!")
+        print(f"🔗 Public URL: {public_download_url}")
+
+        # Update database app_config
+        db_url = f"{supabase_url}/rest/v1/app_config"
+        db_headers = {
+            "apikey": anon_key,
+            "Authorization": f"Bearer {anon_key}",
+            "Content-Type": "application/json",
+            "Prefer": "resolution=merge-duplicates"
+        }
+        from datetime import datetime, timezone
+        payload = {
+            "key": "app_update",
+            "value": {
+                "version": version_name,
+                "version_code": int(version_code),
+                "download_url": public_download_url,
+                "release_notes": notes,
+                "is_mandatory": False,
+                "released_at": datetime.now(timezone.utc).isoformat()
+            }
+        }
+
+        res_db = requests.post(db_url, json=payload, headers=db_headers)
+        if res_db.status_code in (200, 201, 204):
+            print("\n" + "="*60)
+            print("🎉 SUKSES BESAR! PEMBARUAN RESMI DIRILIS!")
+            print("="*60)
+            print(f"📢 Versi Baru : v{version_name} (Build Code {version_code})")
+            print(f"📲 Semua HP kader yang membuka aplikasi akan langsung")
+            print(f"   menerima dialog update otomatis ala Play Store!")
+            print("="*60)
+        else:
+            print(f"\n⚠️ Upload APK berhasil, tapi gagal update status DB: {res_db.text}")
+            print(f"💡 Anda bisa masukkan URL ini secara manual di Admin Panel aplikasi:")
+            print(f"   {public_download_url}")
+
+    except Exception as e:
+        print(f"\n❌ Terjadi kesalahan saat publikasi: {e}")
+
 def main():
     version_name, version_code = get_app_version()
     releases_dir = os.path.abspath("releases")
@@ -110,6 +188,12 @@ def main():
             print("="*60)
             print("\n💡 File APK ini siap di-upload ke Supabase Storage (bucket app_releases)")
             print("   atau langsung dikirim ke HP kader/petugas puskesmas!")
+
+            # Opsi otomatis upload ke Supabase
+            print("\n" + "-"*60)
+            tanya_upload = input("🚀 Mau langsung upload & rilis pembaruan ke Supabase Cloud? (y/n) [Default: n]: ").strip().lower()
+            if tanya_upload in ("y", "yes"):
+                publish_to_supabase(dest_apk, version_name, version_code)
 
             # Buka folder otomatis di Windows Explorer
             try:
