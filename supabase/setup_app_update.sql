@@ -13,23 +13,18 @@ CREATE TABLE IF NOT EXISTS public.app_config (
 -- 2. Aktifkan Row Level Security (RLS)
 ALTER TABLE public.app_config ENABLE ROW LEVEL SECURITY;
 
--- 3. Policy SELECT: Izinkan pembacaan config untuk semua pengguna (anon & authenticated)
--- Sangat penting agar aplikasi bisa memeriksa update saat pertama kali dibuka
+-- 3. Policy agar aplikasi & script build wizard bisa membaca dan menyimpan config update
 DROP POLICY IF EXISTS "Allow read app_config" ON public.app_config;
-CREATE POLICY "Allow read app_config"
-ON public.app_config
-FOR SELECT
-TO anon, authenticated
-USING (true);
-
--- 4. Policy INSERT & UPDATE: Hanya user yang login (admin/developer) yang boleh mengubah config
 DROP POLICY IF EXISTS "Allow authenticated upsert app_config" ON public.app_config;
-CREATE POLICY "Allow authenticated upsert app_config"
+DROP POLICY IF EXISTS "Allow all upsert app_config" ON public.app_config;
+
+CREATE POLICY "Allow all upsert app_config"
 ON public.app_config
 FOR ALL
-TO authenticated
+TO anon, authenticated
 USING (true)
 WITH CHECK (true);
+
 
 -- 5. Contoh konfigurasi awal app_update (opsional / template)
 -- Anda juga bisa mengaturnya langsung dari Admin Panel di dalam aplikasi!
