@@ -1,7 +1,7 @@
 name: laporan_kunjungan
 description: "Aplikasi Laporan Kunjungan Rumah - Offline First"
 publish_to: 'none'
-version: 2.7.5+9
+version: 2.7.6+10
 
 environment:
   sdk: ^3.8.0

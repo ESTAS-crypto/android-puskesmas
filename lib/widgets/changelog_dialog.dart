@@ -3,7 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../theme/app_theme.dart';
 
 class ChangelogDialog {
-  static const String _currentVersion = '2.7.5';
+  static const String _currentVersion = '2.7.6';
   static const String _seenVersionKey = 'changelog_seen_version';
 
   static final List<Map<String, dynamic>> _changelog = [

@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:open_file/open_file.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../theme/app_theme.dart';
 import '../widgets/update_dialog.dart';
@@ -48,8 +49,8 @@ class AppUpdateInfo {
 /// Service untuk menangani In-App Auto Update (OTA Update).
 class UpdateService {
   /// Versi aplikasi saat ini (sesuai pubspec.yaml: 2.7.5+9)
-  static const String currentVersion = '2.7.5';
-  static const int currentVersionCode = 9;
+  static const String currentVersion = '2.7.6';
+  static const int currentVersionCode = 10;
 
   static SupabaseClient get _client => Supabase.instance.client;
 
@@ -177,10 +178,51 @@ class UpdateService {
     }
   }
 
+  /// Cek apakah izin "Pasang aplikasi tidak dikenal" sudah aktif
+  static Future<bool> hasInstallPermission() async {
+    if (!Platform.isAndroid) return true;
+    try {
+      return await Permission.requestInstallPackages.isGranted;
+    } catch (e) {
+      debugPrint('[UpdateService] hasInstallPermission error: $e');
+      return true;
+    }
+  }
+
+  /// Buka layar pengaturan Android untuk mengizinkan "Pasang aplikasi tidak dikenal"
+  static Future<bool> openInstallPermissionSettings() async {
+    if (!Platform.isAndroid) return true;
+    try {
+      // 1. Coba minta izin via Permission.requestInstallPackages
+      // Pada Android 8.0+, ini langsung membuka pengaturan khusus aplikasi ini
+      final status = await Permission.requestInstallPackages.request();
+      if (status.isGranted) return true;
+
+      // 2. Jika tidak langsung aktif atau vendor OS tertentu memerlukan manual, buka Info Aplikasi
+      return await openAppSettings();
+    } catch (e) {
+      debugPrint('[UpdateService] openInstallPermissionSettings error: $e');
+      return await openAppSettings();
+    }
+  }
+
   /// Jalankan package installer Android untuk memasang file APK
   static Future<bool> installApk(File apkFile) async {
     try {
       if (!await apkFile.exists()) return false;
+
+      // Pada Android, pastikan izin install packages sudah diberikan sebelum memicu installer
+      if (Platform.isAndroid) {
+        final isGranted = await Permission.requestInstallPackages.isGranted;
+        if (!isGranted) {
+          debugPrint('[UpdateService] Meminta izin pasang aplikasi tidak dikenal...');
+          final reqResult = await Permission.requestInstallPackages.request();
+          if (!reqResult.isGranted) {
+            debugPrint('[UpdateService] Izin belum diberikan oleh pengguna');
+            return false;
+          }
+        }
+      }
 
       final result = await OpenFile.open(
         apkFile.path,

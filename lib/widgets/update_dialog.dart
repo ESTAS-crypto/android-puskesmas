@@ -733,17 +733,69 @@ class _UpdateDialogState extends State<UpdateDialog> with TickerProviderStateMix
               ),
             ),
             const SizedBox(height: 14),
-            ElevatedButton.icon(
-              onPressed: _startDownload,
-              icon: const Icon(Icons.refresh_rounded, size: 18),
-              label: const Text('Coba Lagi', style: TextStyle(fontWeight: FontWeight.w600)),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.accentTeal,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 13),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+
+            // Jika file APK sudah tersimpan di HP (hanya terganjal izin sistem), sediakan tombol buka izin & pasang langsung
+            if (_downloadedFile != null) ...[
+              ElevatedButton.icon(
+                onPressed: () async {
+                  await UpdateService.openInstallPermissionSettings();
+                },
+                icon: const Icon(Icons.settings_suggest_rounded, size: 20),
+                label: const Text('Buka Izin di Pengaturan HP', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.accentTeal,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 13),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  elevation: 4,
+                ),
               ),
-            ),
+              const SizedBox(height: 10),
+              ElevatedButton.icon(
+                onPressed: () async {
+                  setState(() {
+                    _status = _DownloadStatus.installing;
+                    _installCountdown = 1;
+                  });
+                  final success = await UpdateService.installApk(_downloadedFile!);
+                  if (!mounted) return;
+                  if (!success) {
+                    setState(() {
+                      _status = _DownloadStatus.error;
+                      _errorMessage = 'Izin belum aktif. Silakan ketuk "Buka Izin di Pengaturan HP" di atas dan aktifkan "Izinkan dari sumber ini", lalu coba pasang lagi.';
+                    });
+                  }
+                },
+                icon: const Icon(Icons.check_circle_rounded, size: 19),
+                label: const Text('Pasang Sekarang (File Siap)', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.secondaryDark,
+                  foregroundColor: Colors.white,
+                  side: const BorderSide(color: AppTheme.accentTeal, width: 1.5),
+                  padding: const EdgeInsets.symmetric(vertical: 13),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextButton.icon(
+                onPressed: _startDownload,
+                icon: const Icon(Icons.refresh_rounded, size: 16, color: AppTheme.textHint),
+                label: const Text('Unduh Ulang dari Server', style: TextStyle(color: AppTheme.textHint, fontSize: 12)),
+              ),
+            ] else ...[
+              ElevatedButton.icon(
+                onPressed: _startDownload,
+                icon: const Icon(Icons.refresh_rounded, size: 18),
+                label: const Text('Coba Lagi', style: TextStyle(fontWeight: FontWeight.w600)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.accentTeal,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 13),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ],
+
             if (!isMandatory) ...[
               const SizedBox(height: 6),
               TextButton(
