@@ -10,9 +10,6 @@ on:
 jobs:
   ping-and-notify:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      actions: write
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -28,7 +25,3 @@ jobs:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
         run: |
           python .github/scripts/ping_supabase.py
-
-      # Mencegah GitHub menonaktifkan workflow otomatis jika repo tidak ada commit selama 60 hari
-      - name: Keep GitHub Actions Alive
-        uses: gautamkrishnar/keepalive-workflow@v2
