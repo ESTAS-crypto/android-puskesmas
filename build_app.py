@@ -46,6 +46,56 @@ def run_command(cmd):
     process.communicate()
     return process.returncode
 
+class AnimatedUploadProgress:
+    """Wrapper file streaming dengan animasi progress bar, kecepatan realtime, dan estimasi hitungan mundur"""
+    def __init__(self, file_path):
+        self.file_path = file_path
+        self.file_obj = open(file_path, "rb")
+        self.total_size = os.path.getsize(file_path)
+        self.uploaded_bytes = 0
+        self.start_time = time.time()
+        self.last_update_time = 0
+
+    def read(self, size=-1):
+        chunk = self.file_obj.read(size)
+        self.uploaded_bytes += len(chunk)
+        self._render_bar()
+        return chunk
+
+    def _render_bar(self):
+        now = time.time()
+        if now - self.last_update_time < 0.15 and self.uploaded_bytes < self.total_size:
+            return
+        self.last_update_time = now
+
+        pct = (self.uploaded_bytes / self.total_size) * 100 if self.total_size > 0 else 0
+        elapsed = now - self.start_time
+        speed = self.uploaded_bytes / elapsed if elapsed > 0 else 0
+        speed_mb = speed / (1024 * 1024)
+        up_mb = self.uploaded_bytes / (1024 * 1024)
+        tot_mb = self.total_size / (1024 * 1024)
+
+        eta = (self.total_size - self.uploaded_bytes) / speed if speed > 0 else 0
+        eta_str = f"{int(eta)} dtk" if eta < 60 else f"{int(eta // 60)}m {int(eta % 60)}s"
+
+        bar_len = 22
+        filled = int(bar_len * (self.uploaded_bytes / self.total_size)) if self.total_size > 0 else 0
+        bar = "█" * filled + "░" * (bar_len - filled)
+
+        icons = ["🚀", "⚡", "🛸", "✨"]
+        icon = icons[int(now * 4) % len(icons)]
+
+        sys.stdout.write(
+            f"\r{icon} [{bar}] {pct:5.1f}% | {up_mb:4.1f}/{tot_mb:4.1f} MB | ⚡ {speed_mb:4.1f} MB/s | Sisa: {eta_str:6s} ⏳"
+        )
+        sys.stdout.flush()
+
+    def __len__(self):
+        return self.total_size
+
+    def close(self):
+        self.file_obj.close()
+
 def publish_to_supabase(apk_path, version_name, version_code):
     """Upload APK ke Supabase Storage & perbarui config app_update secara otomatis"""
     supabase_url = "https://pndkpooxkbmkgmcgqygl.supabase.co"
@@ -61,12 +111,11 @@ def publish_to_supabase(apk_path, version_name, version_code):
         notes = f"Pembaruan versi {version_name} dengan peningkatan kinerja dan stabilitas."
 
     print(f"\n⏳ Meng-upload {file_name} ke Supabase Storage...")
-    print("   Mohon tunggu beberapa detik...")
+    print("   Mohon tunggu (animasi upload sedang berjalan)...")
 
     try:
         import requests
-        with open(apk_path, "rb") as f:
-            file_bytes = f.read()
+        wrapped_file = AnimatedUploadProgress(apk_path)
 
         upload_url = f"{supabase_url}/storage/v1/object/{bucket}/{file_name}"
         headers = {
@@ -76,15 +125,27 @@ def publish_to_supabase(apk_path, version_name, version_code):
             "x-upsert": "true"
         }
 
-        res = requests.post(upload_url, data=file_bytes, headers=headers)
+        res = requests.post(upload_url, data=wrapped_file, headers=headers)
+        wrapped_file.close()
+
+        print("\n" + "-"*60)
         if res.status_code not in (200, 201):
-            print(f"\n❌ Gagal upload ke storage (HTTP {res.status_code}): {res.text}")
+            print(f"❌ Gagal upload ke storage (HTTP {res.status_code}): {res.text}")
             print("💡 Pastikan Anda sudah menjalankan SQL di supabase/setup_app_update.sql pada Supabase SQL Editor.")
             return
 
         public_download_url = f"{supabase_url}/storage/v1/object/public/{bucket}/{file_name}"
         print(f"✅ File APK berhasil di-upload ke Cloud!")
         print(f"🔗 Public URL: {public_download_url}")
+
+        # Animasi hitungan mundur peluncuran rilis
+        print("\n⏳ Mempersiapkan peluncuran rilis update ke seluruh kader...")
+        for count in range(3, 0, -1):
+            sys.stdout.write(f"\r✨ Mengaktifkan notifikasi pembaruan dalam {count}... ")
+            sys.stdout.flush()
+            time.sleep(1)
+        sys.stdout.write("\r✨ Mengaktifkan notifikasi pembaruan... SELESAI!            \n")
+        sys.stdout.flush()
 
         # Update database app_config
         db_url = f"{supabase_url}/rest/v1/app_config"
@@ -200,7 +261,7 @@ def main():
     if pilihan == "1":
         print("\n🔨 Memulai proses compile APK Universal...")
         print("⏳ Mohon tunggu beberapa saat (biasanya 1-2 menit)...")
-        code = run_command(["flutter", "build", "apk", "--release", "--android-skip-build-dependency-validation"])
+        code = run_command(["flutter", "build", "apk", "--release", "--target-platform", "android-arm,android-arm64", "--android-skip-build-dependency-validation"])
         
         if code != 0:
             print("\n❌ Build gagal! Periksa pesan error di atas.")

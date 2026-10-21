@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import '../services/update_service.dart';
@@ -21,6 +22,12 @@ class _UpdateDialogState extends State<UpdateDialog> with TickerProviderStateMix
   int _totalBytes = 0;
   String _errorMessage = '';
   File? _downloadedFile;
+
+  // Hitungan mundur otomatis (Countdown)
+  int _autoCountdown = 5;
+  Timer? _autoTimer;
+  int _installCountdown = 3;
+  Timer? _installTimer;
 
   // Kecepatan & estimasi waktu download
   int _lastBytes = 0;
@@ -68,10 +75,34 @@ class _UpdateDialogState extends State<UpdateDialog> with TickerProviderStateMix
     _pulseAnim = Tween<double>(begin: 0.96, end: 1.05).animate(
       CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut),
     );
+
+    // 4. Mulai Hitungan Mundur Unduh Otomatis (5 detik)
+    _startAutoCountdown();
+  }
+
+  void _startAutoCountdown() {
+    _autoTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      if (_status != _DownloadStatus.idle) {
+        timer.cancel();
+        return;
+      }
+      if (_autoCountdown > 1) {
+        setState(() => _autoCountdown--);
+      } else {
+        timer.cancel();
+        _startDownload();
+      }
+    });
   }
 
   @override
   void dispose() {
+    _autoTimer?.cancel();
+    _installTimer?.cancel();
     _animCtrl.dispose();
     _shimmerCtrl.dispose();
     _pulseCtrl.dispose();
@@ -104,6 +135,7 @@ class _UpdateDialogState extends State<UpdateDialog> with TickerProviderStateMix
   }
 
   Future<void> _startDownload() async {
+    _autoTimer?.cancel();
     setState(() {
       _status = _DownloadStatus.downloading;
       _progress = 0.0;
@@ -151,19 +183,29 @@ class _UpdateDialogState extends State<UpdateDialog> with TickerProviderStateMix
       setState(() {
         _status = _DownloadStatus.installing;
         _downloadedFile = file;
+        _installCountdown = 3;
       });
 
-      // Panggil package installer Android
-      final success = await UpdateService.installApk(file);
-
-      if (!mounted) return;
-
-      if (!success) {
-        setState(() {
-          _status = _DownloadStatus.error;
-          _errorMessage = 'Gagal membuka installer. Pastikan izin "Pasang aplikasi tidak dikenal" telah diizinkan di Pengaturan Android.';
-        });
-      }
+      // Hitungan mundur 3 detik sebelum otomatis memicu installer Android
+      _installTimer = Timer.periodic(const Duration(seconds: 1), (timer) async {
+        if (!mounted) {
+          timer.cancel();
+          return;
+        }
+        if (_installCountdown > 1) {
+          setState(() => _installCountdown--);
+        } else {
+          timer.cancel();
+          final success = await UpdateService.installApk(file);
+          if (!mounted) return;
+          if (!success) {
+            setState(() {
+              _status = _DownloadStatus.error;
+              _errorMessage = 'Gagal membuka installer. Pastikan izin "Pasang aplikasi tidak dikenal" telah diizinkan di Pengaturan Android.';
+            });
+          }
+        }
+      });
     } catch (e) {
       if (mounted) {
         _shimmerCtrl.stop();
@@ -381,8 +423,45 @@ class _UpdateDialogState extends State<UpdateDialog> with TickerProviderStateMix
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            // Banner Animasi Hitungan Mundur Unduh Otomatis
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+              margin: const EdgeInsets.only(bottom: 12),
+              decoration: BoxDecoration(
+                color: AppTheme.accentTeal.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: AppTheme.accentTeal.withValues(alpha: 0.3)),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                      value: _autoCountdown / 5.0,
+                      strokeWidth: 2.2,
+                      valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.accentTeal),
+                      backgroundColor: AppTheme.accentTeal.withValues(alpha: 0.2),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    'Mengunduh otomatis dalam $_autoCountdown detik...',
+                    style: const TextStyle(
+                      color: AppTheme.accentTeal,
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
             ElevatedButton(
-              onPressed: _startDownload,
+              onPressed: () {
+                _autoTimer?.cancel();
+                _startDownload();
+              },
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppTheme.accentTeal,
                 foregroundColor: Colors.white,
@@ -390,14 +469,14 @@ class _UpdateDialogState extends State<UpdateDialog> with TickerProviderStateMix
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                 elevation: 4,
               ),
-              child: const Row(
+              child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.download_rounded, size: 20),
-                  SizedBox(width: 8),
+                  const Icon(Icons.rocket_launch_rounded, size: 20),
+                  const SizedBox(width: 8),
                   Text(
-                    'Update Sekarang',
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                    'Update Sekarang (${_autoCountdown}s)',
+                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
                   ),
                 ],
               ),
@@ -405,7 +484,10 @@ class _UpdateDialogState extends State<UpdateDialog> with TickerProviderStateMix
             if (!isMandatory) ...[
               const SizedBox(height: 8),
               TextButton(
-                onPressed: () => Navigator.pop(context),
+                onPressed: () {
+                  _autoTimer?.cancel();
+                  Navigator.pop(context);
+                },
                 child: const Text(
                   'Nanti Saja',
                   style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
@@ -554,26 +636,53 @@ class _UpdateDialogState extends State<UpdateDialog> with TickerProviderStateMix
         return Column(
           children: [
             Container(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               decoration: BoxDecoration(
                 color: AppTheme.accentTeal.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: AppTheme.accentTeal.withValues(alpha: 0.3)),
               ),
-              child: const Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+              child: Row(
                 children: [
-                  SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2.5,
-                      valueColor: AlwaysStoppedAnimation<Color>(AppTheme.accentTeal),
-                    ),
+                  Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      SizedBox(
+                        width: 38,
+                        height: 38,
+                        child: CircularProgressIndicator(
+                          value: _installCountdown / 3.0,
+                          strokeWidth: 3.2,
+                          valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.accentTeal),
+                          backgroundColor: AppTheme.accentTeal.withValues(alpha: 0.2),
+                        ),
+                      ),
+                      Text(
+                        '$_installCountdown',
+                        style: const TextStyle(
+                          color: AppTheme.accentTeal,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
                   ),
-                  SizedBox(width: 12),
-                  Text(
-                    'Membuka Installer Android...',
-                    style: TextStyle(color: AppTheme.textPrimary, fontSize: 14, fontWeight: FontWeight.w600),
+                  const SizedBox(width: 14),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Membuka Installer Android...',
+                          style: TextStyle(color: AppTheme.textPrimary, fontSize: 13.5, fontWeight: FontWeight.w700),
+                        ),
+                        SizedBox(height: 3),
+                        Text(
+                          'Hitungan mundur peluncuran installer otomatis',
+                          style: TextStyle(color: AppTheme.textHint, fontSize: 11),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
