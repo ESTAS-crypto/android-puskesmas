@@ -42,6 +42,55 @@ def get_app_version():
                 break
     return version_str, build_num
 
+def set_app_version(new_version, new_code=None):
+    """Otomatis sinkronkan nomor versi baru ke seluruh file proyek"""
+    old_version, old_code = get_app_version()
+    if new_code is None:
+        try:
+            new_code = str(int(old_code) + 1)
+        except ValueError:
+            new_code = "1"
+
+    # 1. Update pubspec.yaml
+    pubspec_path = "pubspec.yaml"
+    if os.path.exists(pubspec_path):
+        with open(pubspec_path, "r", encoding="utf-8") as f:
+            content = f.read()
+        content = re.sub(r"version:\s*[^\n]+", f"version: {new_version}+{new_code}", content)
+        with open(pubspec_path, "w", encoding="utf-8") as f:
+            f.write(content)
+
+    # 2. Update lib/services/update_service.dart
+    update_svc_path = os.path.join("lib", "services", "update_service.dart")
+    if os.path.exists(update_svc_path):
+        with open(update_svc_path, "r", encoding="utf-8") as f:
+            content = f.read()
+        content = re.sub(r"static const String currentVersion = '[^']+';", f"static const String currentVersion = '{new_version}';", content)
+        content = re.sub(r"static const int currentVersionCode = \d+;", f"static const int currentVersionCode = {new_code};", content)
+        with open(update_svc_path, "w", encoding="utf-8") as f:
+            f.write(content)
+
+    # 3. Update lib/widgets/changelog_dialog.dart
+    changelog_path = os.path.join("lib", "widgets", "changelog_dialog.dart")
+    if os.path.exists(changelog_path):
+        with open(changelog_path, "r", encoding="utf-8") as f:
+            content = f.read()
+        content = re.sub(r"static const String _currentVersion = '[^']+';", f"static const String _currentVersion = '{new_version}';", content)
+        with open(changelog_path, "w", encoding="utf-8") as f:
+            f.write(content)
+
+    print("\n" + "="*60)
+    print("🏷️  VERSI APLIKASI BERHASIL DIPERBARUI!")
+    print("="*60)
+    print(f"📌 Versi Sebelumnya : v{old_version} (Build {old_code})")
+    print(f"🚀 Versi Baru       : v{new_version} (Build {new_code})")
+    print("📁 File yang otomatis disinkronkan:")
+    print("   • pubspec.yaml")
+    print("   • lib/services/update_service.dart")
+    print("   • lib/widgets/changelog_dialog.dart")
+    print("="*60)
+
+
 def run_command(cmd):
     """Jalankan command shell secara realtime"""
     print(f"\n⚙️ Menjalankan: {' '.join(cmd)}\n" + "-"*50)
@@ -242,10 +291,11 @@ def main():
     print("\n  [3] 🌐 App Bundle (.aab)")
     print("      • Format khusus untuk upload ke Google Play Store")
     print("\n  [4] 🩺 Periksa Kesehatan Lingkungan Flutter (flutter doctor)")
+    print("\n  [5] 🏷️  Ganti / Naikkan Versi Aplikasi (Otomatis sinkron ke semua file)")
     print("  [0] ❌ Keluar")
     print("-" * 60)
 
-    pilihan = input("Masukkan pilihan Anda (1/2/3/4/0) [Default: 1]: ").strip()
+    pilihan = input("Masukkan pilihan Anda (1/2/3/4/5/0) [Default: 1]: ").strip()
     if not pilihan:
         pilihan = "1"
 
@@ -257,11 +307,23 @@ def main():
         run_command(["flutter", "doctor"])
         return
 
+    if pilihan == "5":
+        new_v = input(f"\n🏷️  Masukkan versi baru [Versi saat ini: v{version_name}]: ").strip()
+        if new_v:
+            set_app_version(new_v)
+        return
+
     # Pastikan dependensi up-to-date
     print("\n📦 Memeriksa dependensi package (flutter pub get)...")
     run_command(["flutter", "pub", "get"])
 
     if pilihan == "1":
+        print(f"\n📌 Versi APK saat ini: v{version_name} (Build Code: {version_code})")
+        tanya_versi = input("Ketik versi baru jika ingin dinaikkan (contoh: 2.7.6), atau tekan [Enter] untuk tetap: ").strip()
+        if tanya_versi:
+            set_app_version(tanya_versi)
+            version_name, version_code = get_app_version()
+
         print("\n🔨 Memulai proses compile APK Universal...")
         print("⏳ Mohon tunggu beberapa saat (biasanya 1-2 menit)...")
         code = run_command(["flutter", "build", "apk", "--release", "--target-platform", "android-arm,android-arm64", "--android-skip-build-dependency-validation"])
