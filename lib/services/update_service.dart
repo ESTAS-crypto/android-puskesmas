@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:open_file/open_file.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -48,11 +49,38 @@ class AppUpdateInfo {
 
 /// Service untuk menangani In-App Auto Update (OTA Update).
 class UpdateService {
-  /// Versi aplikasi saat ini (sesuai pubspec.yaml: 2.7.5+9)
-  static const String currentVersion = '2.7.6';
-  static const int currentVersionCode = 10;
+  /// Versi fallback jika runtime platform gagal memberikan package info
+  static const String fallbackVersion = '2.7.6';
+  static const int fallbackVersionCode = 10;
+
+  static String _runtimeVersion = fallbackVersion;
+  static int _runtimeVersionCode = fallbackVersionCode;
+  static bool _versionInitialized = false;
+
+  /// Versi aplikasi saat ini (otomatis didapatkan langsung dari metadata aplikasi yang terpasang)
+  static String get currentVersion => _runtimeVersion;
+  static int get currentVersionCode => _runtimeVersionCode;
 
   static SupabaseClient get _client => Supabase.instance.client;
+
+  /// Inisialisasi dan baca versi nyata yang terpasang di HP secara realtime
+  static Future<void> initVersion() async {
+    if (_versionInitialized) return;
+    try {
+      final info = await PackageInfo.fromPlatform();
+      if (info.version.trim().isNotEmpty) {
+        _runtimeVersion = info.version.trim();
+      }
+      final code = int.tryParse(info.buildNumber.trim());
+      if (code != null && code > 0) {
+        _runtimeVersionCode = code;
+      }
+      _versionInitialized = true;
+      debugPrint('[UpdateService] Versi runtime terdeteksi: v$_runtimeVersion (code: $_runtimeVersionCode)');
+    } catch (e) {
+      debugPrint('[UpdateService] Gagal membaca PackageInfo, menggunakan fallback v$fallbackVersion: $e');
+    }
+  }
 
   /// Bandingkan apakah serverVersion lebih baru dari localVersion
   static bool isVersionNewer(String serverVersion, String localVersion) {
@@ -81,6 +109,9 @@ class UpdateService {
   /// Mengembalikan [AppUpdateInfo] jika ada versi baru, atau `null` jika sudah yang terbaru.
   static Future<AppUpdateInfo?> checkForUpdate() async {
     try {
+      // Pastikan versi runtime lokal sudah terinisialisasi dari sistem Android
+      await initVersion();
+
       final res = await _client
           .from('app_config')
           .select('value')
@@ -98,15 +129,17 @@ class UpdateService {
         return null;
       }
 
-      // Cek apakah versi lebih baru berdasarkan versionCode atau format string
+      // Cek apakah versi lebih baru berdasarkan versionCode atau format semver
       final isNewerByCode = updateInfo.versionCode > currentVersionCode;
       final isNewerByString = isVersionNewer(updateInfo.version, currentVersion);
 
+      // Hanya tampilkan update jika versi server BENAR-BENAR lebih tinggi dari aplikasi lokal
       if (isNewerByCode || isNewerByString) {
-        debugPrint('[UpdateService] Update ditemukan: v${updateInfo.version} (current: v$currentVersion)');
+        debugPrint('[UpdateService] Update ditemukan: server v${updateInfo.version} (code: ${updateInfo.versionCode}) vs lokal v$currentVersion (code: $currentVersionCode)');
         return updateInfo;
       }
 
+      debugPrint('[UpdateService] Aplikasi sudah versi terbaru: lokal v$currentVersion vs server v${updateInfo.version}');
       return null;
     } catch (e) {
       debugPrint('[UpdateService] Gagal memeriksa update: $e');
@@ -255,10 +288,10 @@ class UpdateService {
       // Dipicu manual oleh user dan aplikasi sudah paling baru
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Row(
+          content: Row(
             children: [
-              Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
-              SizedBox(width: 10),
+              const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+              const SizedBox(width: 10),
               Expanded(
                 child: Text('Aplikasi sudah menggunakan versi terbaru (v$currentVersion) ✨'),
               ),

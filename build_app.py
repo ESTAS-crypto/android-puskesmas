@@ -156,9 +156,15 @@ def publish_to_supabase(apk_path, version_name, version_code):
     file_name = os.path.basename(apk_path)
 
     print("\n" + "="*60)
-    print("🚀 PUBLIKASI PEMBARUAN KE SUPABASE CLOUD")
-    print("="*60)
-    notes = input("📝 Masukkan Catatan Rilis (Release Notes) [Tekan Enter untuk default]: ").strip()
+    # Pastikan version_name selalu sinkron dengan nama file APK yang diupload
+    match = re.search(r'_v([0-9\.]+)\.apk', file_name)
+    if match:
+        file_ver = match.group(1)
+        if file_ver != version_name:
+            print(f"⚠️ Menyesuaikan versi rilis dari v{version_name} ke v{file_ver} (sesuai file APK {file_name})")
+            version_name = file_ver
+
+    notes = input(f"📝 Masukkan Catatan Rilis v{version_name} [Tekan Enter untuk default]: ").strip()
     if not notes:
         notes = f"Pembaruan versi {version_name} dengan peningkatan kinerja dan stabilitas."
 
