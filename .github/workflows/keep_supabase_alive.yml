@@ -2,24 +2,33 @@ name: Keep Supabase Awake & Discord Notifier
 
 on:
   schedule:
-    # Jalankan otomatis setiap 3 hari sekali jam 00:00 UTC
-    - cron: '0 0 */3 * *'
+    # Jalankan otomatis 2x sehari (00:00 & 12:00 UTC = 07:00 & 19:00 WIB)
+    # Menjaga timer pause Supabase 7 hari tetap fresh dan tidak pernah kadaluwarsa
+    - cron: '0 0,12 * * *'
   workflow_dispatch: # Bisa dipicu manual dari tab Actions di GitHub
 
 jobs:
   ping-and-notify:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: write
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.x'
 
-      - name: Ping Supabase & Send Discord Webhook
+      - name: Ping Supabase & Auto-Resume Guardian
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
         run: |
           python .github/scripts/ping_supabase.py
+
+      # Mencegah GitHub menonaktifkan workflow otomatis jika repo tidak ada commit selama 60 hari
+      - name: Keep GitHub Actions Alive
+        uses: gautamkrishnar/keepalive-workflow@v2
