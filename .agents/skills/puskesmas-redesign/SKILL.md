@@ -27,10 +27,10 @@ description: Gunakan saat mendesain ulang atau mengimplementasikan SATU layar/ko
 | Riwayat | `main-canvas/Riwayat.dc.html` | `report_history_screen.dart` | selesai (Fase 4) |
 | Admin · User/Laporan/Foto | `main-canvas/AdminUser|AdminLaporan|AdminFoto.dc.html` | `admin_panel_screen.dart`, `admin_user_tab.dart`, `admin_laporan_tab.dart`, `admin_foto_tab.dart` | selesai (Fase 5.1-5.3) |
 | Role custom | `main-canvas/Roles.dc.html` | `custom_roles_screen.dart` | selesai (Fase 5.4) |
-| Layar sukses | `main-canvas/Sukses.dc.html`, `status-canvas/SuksesOffline.dc.html` | `success_screen.dart` | BELUM (Fase 7) |
-| Setup profil Google | `main-canvas/Google.dc.html` | `google_profile_setup_screen.dart` | BELUM |
+| Layar sukses | `main-canvas/Sukses.dc.html`, `status-canvas/SuksesOffline.dc.html` | `success_screen.dart` | selesai (Fase 7) |
+| Setup profil Google | `main-canvas/Google.dc.html` | `google_profile_setup_screen.dart` | selesai (Fase 7) |
 | Changelog | `main-canvas/Changelog.dc.html` | `widgets/changelog_dialog.dart` | ikon saja |
-| Dialog update | `main-canvas/Update.dc.html` | `widgets/update_dialog.dart` | BELUM |
+| Dialog update | `main-canvas/Update.dc.html` | `widgets/update_dialog.dart` | selesai (Fase 7) |
 | Banner koneksi | `status-canvas/Main.dc.html`, `status-prototype.html` | `widgets/connectivity_banner.dart` | selesai (Fase 2) |
 | Pesan singkat | `status-canvas/Pesan.dc.html` | semua `SnackBar` / `AppToast` | selesai (Fase 2) |
 | Konfirmasi | `status-canvas/Konfirmasi.dc.html` | semua `AlertDialog` / `AppConfirmSheet` | selesai (Fase 2) |
