@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Konfirmasi</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap">
+<style>
+body{margin:0}
+.t{font-family:"Plus Jakarta Sans",system-ui,sans-serif;color:#0B2A40;background:linear-gradient(180deg,#D6ECFA 0,#F1F8FD 340px);box-sizing:border-box;width:390px;position:relative;overflow:hidden;padding:56px 16px 32px}
+.t *{box-sizing:border-box;font-family:inherit}
+.card{box-shadow:0 1px 2px rgba(11,42,64,.06),0 8px 20px rgba(10,100,168,.08);background:#fff;border:1px solid #D3E4F1;border-radius:20px}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border-radius:999px;font-size:13px;font-weight:600;background:rgba(10,100,168,.10);color:#0A64A8;white-space:nowrap}
+.ok{background:rgba(27,127,75,.12);color:#176B40}.wn{background:rgba(176,106,0,.14);color:#8A5200}.er{background:rgba(198,40,40,.10);color:#B02323}.g{background:rgba(63,90,112,.10);color:#3F5A70}
+.btn{width:100%;min-height:52px;border-radius:14px;border:0;font-size:16px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px;color:#fff;background:#0A64A8}
+.tn{background:rgba(10,100,168,.10);color:#0A64A8}.gh{background:transparent;border:1px solid #D3E4F1;color:#3F5A70}.dg{background:#B02323}
+.m{color:#3F5A70;font-size:15px;line-height:1.45}.f{color:#4A667E;font-size:14px;line-height:1.4}.r{display:flex;align-items:center;gap:12px}.k{flex:1;min-width:0}
+.tile{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex:none}
+.cap{font-size:13px;font-weight:700;color:#0A64A8;letter-spacing:.02em;margin:22px 4px 8px}
+.bar{height:8px;border-radius:99px;background:#EAF3FA;overflow:hidden}.bar i{display:block;height:100%;background:#0A64A8;border-radius:99px}
+.sk{height:14px;border-radius:8px;background:#DCE9F4}
+.ban{display:flex;align-items:center;gap:12px;padding:12px 14px;background:#fff;border:1px solid #D3E4F1;border-radius:18px;box-shadow:0 8px 24px rgba(11,42,64,.14)}
+.toast{display:flex;align-items:center;gap:12px;background:#0B2A40;color:#fff;border-radius:14px;padding:12px 14px;box-shadow:0 10px 24px rgba(11,42,64,.25)}
+.toast b{font-weight:500;font-size:15px;line-height:1.4}.toast .a{color:#8FD0FF;font-weight:700;font-size:15px;padding:0 4px;min-height:44px;display:flex;align-items:center}
+.sheet{background:#fff;border:1px solid #D3E4F1;border-radius:26px;padding:20px;box-shadow:0 14px 34px rgba(11,42,64,.14)}
+h1,h2,h3,p{margin:0}b{font-weight:600}
+</style>
+</helmet>
+<div class="t" style="height:1180px"><h1 style="font-size:24px;font-weight:700">Konfirmasi</h1><p class="m" style="margin-top:6px">Tombol diberi nama aksi, bukan “Ya” dan “Tidak”. Aksi berbahaya berwarna merah dan tidak berada di posisi utama.</p><div class="sheet" style="margin-top:14px"><h2 style="font-size:20px;font-weight:700">Hapus laporan #24?</h2><p class="m" style="margin-top:8px;font-size:16px">3 data pasien dan fotonya ikut terhapus dari server. Tindakan ini tidak bisa dibatalkan.</p><div style="display:flex;flex-direction:column;gap:10px;margin-top:20px"><button class="btn dg">Hapus laporan</button><button class="btn gh">Batal</button></div></div><div class="sheet" style="margin-top:14px"><h2 style="font-size:20px;font-weight:700">Keluar dari akun?</h2><p class="m" style="margin-top:8px;font-size:16px">Laporan yang sudah dibuat tetap tersimpan di perangkat ini.</p><div style="display:flex;flex-direction:column;gap:10px;margin-top:20px"><button class="btn">Keluar</button><button class="btn gh">Batal</button></div></div><div class="sheet" style="margin-top:14px"><h2 style="font-size:20px;font-weight:700">Keluar dari akun?</h2><p class="m" style="margin-top:8px;font-size:16px">Ada 2 laporan yang belum terkirim. Laporan tetap aman di HP, tetapi baru terkirim setelah Anda masuk lagi dan online.</p><div class="pill wn" style="margin-top:12px">2 belum terkirim</div><div style="display:flex;flex-direction:column;gap:10px;margin-top:20px"><button class="btn gh">Tetap di sini</button><button class="btn dg">Keluar juga</button></div></div><div class="sheet" style="margin-top:14px"><h2 style="font-size:20px;font-weight:700">Hapus role “Koordinator”?</h2><p class="m" style="margin-top:8px;font-size:16px">User dengan role ini akan kehilangan akses khususnya. Role tidak bisa dikembalikan.</p><div style="display:flex;flex-direction:column;gap:10px;margin-top:20px"><button class="btn dg">Hapus role</button><button class="btn gh">Batal</button></div></div></div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":1180}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Masuk</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap">
+<style>
+body{margin:0}
+.t{font-family:"Plus Jakarta Sans",system-ui,sans-serif;color:#0B2A40;background:linear-gradient(180deg,#D6ECFA 0,#F1F8FD 360px);box-sizing:border-box}
+.t *{box-sizing:border-box;font-family:inherit}
+.card{box-shadow:0 1px 2px rgba(11,42,64,.06),0 8px 20px rgba(10,100,168,.08);background:#FFFFFF;border:1px solid #D3E4F1;border-radius:20px}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;font-size:14px;font-weight:600}
+.ib{width:44px;height:44px;border-radius:14px;background:#EAF3FA;border:1px solid #D3E4F1;display:flex;align-items:center;justify-content:center;color:#3F5A70;padding:0}
+.btn{width:100%;min-height:58px;border-radius:14px;border:0;font-size:17px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px;color:#fff;background:#0A64A8}
+.chip{width:40px;height:40px;border-radius:10px;background:#EAF3FA;color:#0A64A8;font-weight:700;font-size:14px;display:flex;align-items:center;justify-content:center;flex:none}
+.m{color:#3F5A70;font-size:16px}.f{color:#4A667E;font-size:14px}
+.fld{background:#EAF3FA;border:1px solid #D3E4F1;border-radius:14px;padding:10px 16px;display:flex;align-items:center;gap:12px;color:#4A667E}
+.fld label{display:block;font-size:14px;color:#4A667E}.fld input{background:none;border:0;outline:0;color:#0B2A40;font-size:17px;padding:0;width:100%}
+</style>
+</helmet>
+
+<div class="t" style="width:390px;height:844px;padding:72px 24px 32px;display:flex;flex-direction:column;gap:16px">
+<div style="text-align:center;margin-bottom:16px">
+<div style="width:64px;height:64px;border-radius:20px;background:#0A64A8;color:#fff;display:inline-flex;align-items:center;justify-content:center"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21V9l9-6 9 6v12M9 21v-6h6v6"/></svg></div>
+<div style="font-size:24px;font-weight:700;margin-top:20px">Laporan Kunjungan</div>
+<div class="m" style="margin-top:6px">Masuk untuk melanjutkan</div></div>
+<div class="fld"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0116 0"/></svg><div style="flex:1"><label for="u">Username atau email</label><input id="u" value="siti.kader"></div></div>
+<div class="fld"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></svg><div style="flex:1"><label for="p">Password</label><input id="p" type="password" value="secret123"></div></div>
+<div style="text-align:right;margin-top:-4px"><span style="color:#0A64A8;font-size:16px;font-weight:600">Lupa password?</span></div>
+<button class="btn" style="margin-top:8px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg>Masuk</button>
+<div style="display:flex;align-items:center;gap:12px;margin:4px 0"><div style="flex:1;height:1px;background:#D3E4F1"></div><span class="f">atau</span><div style="flex:1;height:1px;background:#D3E4F1"></div></div>
+<button class="btn" style="background:transparent;border:1px solid #D3E4F1;color:#3F5A70">Masuk dengan Google</button>
+<div style="text-align:center" class="m">Belum punya akun? <span style="color:#0A64A8;font-weight:600">Daftar</span></div>
+<div style="text-align:center;margin-top:auto" class="f">Data tersimpan di cloud &amp; di perangkat</div>
+</div>
+</x-dc>
+
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
+

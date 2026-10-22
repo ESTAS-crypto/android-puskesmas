@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Pesan singkat</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap">
+<style>
+body{margin:0}
+.t{font-family:"Plus Jakarta Sans",system-ui,sans-serif;color:#0B2A40;background:linear-gradient(180deg,#D6ECFA 0,#F1F8FD 340px);box-sizing:border-box;width:390px;position:relative;overflow:hidden;padding:56px 16px 32px}
+.t *{box-sizing:border-box;font-family:inherit}
+.card{box-shadow:0 1px 2px rgba(11,42,64,.06),0 8px 20px rgba(10,100,168,.08);background:#fff;border:1px solid #D3E4F1;border-radius:20px}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border-radius:999px;font-size:13px;font-weight:600;background:rgba(10,100,168,.10);color:#0A64A8;white-space:nowrap}
+.ok{background:rgba(27,127,75,.12);color:#176B40}.wn{background:rgba(176,106,0,.14);color:#8A5200}.er{background:rgba(198,40,40,.10);color:#B02323}.g{background:rgba(63,90,112,.10);color:#3F5A70}
+.btn{width:100%;min-height:52px;border-radius:14px;border:0;font-size:16px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px;color:#fff;background:#0A64A8}
+.tn{background:rgba(10,100,168,.10);color:#0A64A8}.gh{background:transparent;border:1px solid #D3E4F1;color:#3F5A70}.dg{background:#B02323}
+.m{color:#3F5A70;font-size:15px;line-height:1.45}.f{color:#4A667E;font-size:14px;line-height:1.4}.r{display:flex;align-items:center;gap:12px}.k{flex:1;min-width:0}
+.tile{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex:none}
+.cap{font-size:13px;font-weight:700;color:#0A64A8;letter-spacing:.02em;margin:22px 4px 8px}
+.bar{height:8px;border-radius:99px;background:#EAF3FA;overflow:hidden}.bar i{display:block;height:100%;background:#0A64A8;border-radius:99px}
+.sk{height:14px;border-radius:8px;background:#DCE9F4}
+.ban{display:flex;align-items:center;gap:12px;padding:12px 14px;background:#fff;border:1px solid #D3E4F1;border-radius:18px;box-shadow:0 8px 24px rgba(11,42,64,.14)}
+.toast{display:flex;align-items:center;gap:12px;background:#0B2A40;color:#fff;border-radius:14px;padding:12px 14px;box-shadow:0 10px 24px rgba(11,42,64,.25)}
+.toast b{font-weight:500;font-size:15px;line-height:1.4}.toast .a{color:#8FD0FF;font-weight:700;font-size:15px;padding:0 4px;min-height:44px;display:flex;align-items:center}
+.sheet{background:#fff;border:1px solid #D3E4F1;border-radius:26px;padding:20px;box-shadow:0 14px 34px rgba(11,42,64,.14)}
+h1,h2,h3,p{margin:0}b{font-weight:600}
+</style>
+</helmet>
+<div class="t" style="height:1000px"><h1 style="font-size:24px;font-weight:700">Pesan singkat</h1><p class="m" style="margin-top:6px">Muncul di bawah layar, hilang sendiri setelah 4 detik. Satu pesan sekali tampil.</p><div class="cap">Info</div><div class="toast"><div class="tile" style="width:36px;height:36px;background:rgba(255,255,255,.12)"><svg viewBox="0 0 24 24" width="20" height="20" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect fill="#8FD0FF" fill-opacity=".18" stroke="none" x="9" y="9" width="11" height="11" rx="3"/><rect fill="none" stroke="#8FD0FF" stroke-width="2" x="9" y="9" width="11" height="11" rx="3"/><path fill="none" stroke="#8FD0FF" stroke-width="2" d="M5 15V6a2 2 0 012-2h9"/></svg></div><b class="k">Data pasien disalin</b></div><div class="cap">Sukses</div><div class="toast"><div class="tile" style="width:36px;height:36px;background:rgba(255,255,255,.12)"><svg viewBox="0 0 24 24" width="20" height="20" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle fill="#7FE0A8" fill-opacity=".18" stroke="none" cx="12" cy="12" r="9"/><circle fill="none" stroke="#7FE0A8" stroke-width="2" cx="12" cy="12" r="9"/><path fill="none" stroke="#7FE0A8" stroke-width="2" d="M8 12.5l2.8 2.8L16.5 9.5"/></svg></div><b class="k">Laporan tersimpan</b></div><div class="cap">Dengan Urungkan</div><div class="toast"><div class="tile" style="width:36px;height:36px;background:rgba(255,255,255,.12)"><svg viewBox="0 0 24 24" width="20" height="20" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path fill="#8FD0FF" fill-opacity=".18" stroke="none" d="M6 7l1 13h10l1-13z"/><path fill="none" stroke="#8FD0FF" stroke-width="2" d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v5M14 11v5"/></svg></div><b class="k">Bu Rahmi dihapus dari laporan</b><span class="a">Urungkan</span></div><div class="cap">Peringatan</div><div class="toast"><div class="tile" style="width:36px;height:36px;background:rgba(255,255,255,.12)"><svg viewBox="0 0 24 24" width="20" height="20" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path fill="#FFD28A" fill-opacity=".18" stroke="none" d="M12 3.5 21.5 20h-19z"/><path fill="none" stroke="#FFD28A" stroke-width="2" d="M12 3.5 21.5 20h-19z"/><path fill="none" stroke="#FFD28A" stroke-width="2" d="M12 10v4.5M12 17.3h.01"/></svg></div><b class="k">Tambahkan minimal 1 pasien sebelum menyimpan.</b></div><div class="cap">Offline</div><div class="toast"><div class="tile" style="width:36px;height:36px;background:rgba(255,255,255,.12)"><svg viewBox="0 0 24 24" width="20" height="20" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path fill="none" stroke="#FFD28A" stroke-width="2" d="M2 9a15 15 0 013.5-2.4M8.5 5.2A15 15 0 0122 9M5 12.5a10.5 10.5 0 013.2-2.3M12 8.6a10.5 10.5 0 017 3.9M8.5 16a5.5 5.5 0 017 0M12 19.5h.01M3 3l18 18"/></svg></div><b class="k">Tersimpan di HP. Dikirim saat online.</b></div><div class="cap">Galat (bahasa manusia)</div><div class="toast"><div class="tile" style="width:36px;height:36px;background:rgba(255,255,255,.12)"><svg viewBox="0 0 24 24" width="20" height="20" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path fill="#FFB4AB" fill-opacity=".18" stroke="none" d="M12 3.5 21.5 20h-19z"/><path fill="none" stroke="#FFB4AB" stroke-width="2" d="M12 3.5 21.5 20h-19z"/><path fill="none" stroke="#FFB4AB" stroke-width="2" d="M12 10v4.5M12 17.3h.01"/></svg></div><b class="k">Dokumen PDF belum berhasil dibuat. Coba lagi.</b><span class="a">Coba lagi</span></div><div class="card" style="padding:16px;margin-top:24px"><b style="font-size:16px">Aturan</b><div class="f" style="margin-top:6px">Gerak: naik 300 ms (decelerate), turun 180 ms. Geser ke samping untuk menutup. Tombol aksi minimal 44 px. Kode galat teknis (misalnya isi pesan server) disembunyikan di balik “Lihat detail”, bukan ditampilkan ke ibu-ibu.</div></div></div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":1000}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

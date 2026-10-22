@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Pembaruan aplikasi</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap">
+<style>
+body{margin:0}
+.t{font-family:"Plus Jakarta Sans",system-ui,sans-serif;color:#0B2A40;background:linear-gradient(180deg,#D6ECFA 0,#F1F8FD 360px);box-sizing:border-box;width:390px;position:relative;overflow:hidden}
+.t *{box-sizing:border-box;font-family:inherit}
+.card{box-shadow:0 1px 2px rgba(11,42,64,.06),0 8px 20px rgba(10,100,168,.08);background:#fff;border:1px solid #D3E4F1;border-radius:20px}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border-radius:999px;font-size:13px;font-weight:600;background:rgba(10,100,168,.10);color:#0A64A8;white-space:nowrap}
+.g{background:rgba(63,90,112,.10);color:#3F5A70}.ok{background:rgba(27,127,75,.12);color:#176B40}.wn{background:rgba(176,106,0,.14);color:#8A5200}
+.ib{width:44px;height:44px;border-radius:14px;background:#EAF3FA;border:1px solid #D3E4F1;display:flex;align-items:center;justify-content:center;color:#3F5A70;padding:0;flex:none}
+.btn{width:100%;min-height:54px;border-radius:14px;border:0;font-size:16px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px;color:#fff;background:#0A64A8}
+.tn{background:rgba(10,100,168,.10);color:#0A64A8}
+.m{color:#3F5A70;font-size:15px}.f{color:#4A667E;font-size:14px}.r{display:flex;align-items:center;gap:12px}.k{flex:1;min-width:0}
+.chip{width:40px;height:40px;border-radius:12px;background:rgba(10,100,168,.10);color:#0A64A8;display:flex;align-items:center;justify-content:center;flex:none}
+.tabs{display:flex;background:#EAF3FA;border-radius:14px;padding:4px;gap:4px}.tabs div{flex:1;text-align:center;padding:10px 0;border-radius:11px;font-size:15px;font-weight:600;color:#3F5A70}.tabs .on{background:#fff;color:#0A64A8;box-shadow:0 1px 3px rgba(11,42,64,.12)}
+.bar{height:10px;border-radius:99px;background:#EAF3FA;overflow:hidden}.bar i{display:block;height:100%;background:#0A64A8;border-radius:99px}
+.fld{background:#EAF3FA;border:1px solid #D3E4F1;border-radius:14px;padding:13px 16px;display:flex;align-items:center;gap:12px;color:#4A667E;font-size:16px}
+h1,h2,h3,p{margin:0}b{font-weight:600}
+</style>
+</helmet>
+<div class="t" style="height:1000px;padding:56px 20px 24px">
+<div class="f" style="font-weight:600;margin:0 4px 8px">1 · Pembaruan tersedia</div><div class="card" style="padding:20px;margin-bottom:20px"><div class="r"><div class="chip" style="width:48px;height:48px"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M4 21h16"/></svg></div><div class="k"><h3 style="font-size:19px;font-weight:700">Versi 2.8.0 siap dipasang</h3><div class="f">38 MB · perbaikan &amp; tampilan baru</div></div></div><div style="height:16px"></div><button class="btn">Unduh &amp; pasang</button><div style="text-align:center;margin-top:10px" class="m">Nanti saja</div></div>
+<div class="f" style="font-weight:600;margin:0 4px 8px">2 · Sedang mengunduh</div><div class="card" style="padding:20px;margin-bottom:20px"><h3 style="font-size:19px;font-weight:700">Mengunduh pembaruan…</h3><div style="height:16px"></div><div class="bar"><i style="width:64%"></i></div><div class="r" style="margin-top:10px"><span class="k m">24 dari 38 MB</span><b style="color:#0A64A8">64%</b></div><div class="f" style="margin-top:2px">Sekitar 12 detik lagi. Jangan tutup aplikasi.</div></div>
+<div class="f" style="font-weight:600;margin:0 4px 8px">3 · Perlu izin pemasangan</div><div class="card" style="padding:20px;margin-bottom:20px"><div class="r"><span class="pill wn">Perlu izin</span></div><h3 style="font-size:19px;font-weight:700;margin-top:10px">Izinkan pasang dari aplikasi ini</h3><p class="m" style="margin-top:6px;line-height:1.45">Android meminta izin sekali saja. Buka pengaturan, aktifkan, lalu kembali ke sini.</p><div style="height:16px"></div><button class="btn">Buka izin di pengaturan HP</button><div style="height:10px"></div><button class="btn tn">Coba lagi</button></div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":1000}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

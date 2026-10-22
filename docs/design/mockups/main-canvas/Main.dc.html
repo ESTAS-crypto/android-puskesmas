@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Beranda</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap">
+<style>
+body{margin:0}
+.t{font-family:"Plus Jakarta Sans",system-ui,sans-serif;color:#0B2A40;background:linear-gradient(180deg,#D6ECFA 0,#F1F8FD 360px);box-sizing:border-box}
+.t *{box-sizing:border-box;font-family:inherit}
+.card{box-shadow:0 1px 2px rgba(11,42,64,.06),0 8px 20px rgba(10,100,168,.08);background:#FFFFFF;border:1px solid #D3E4F1;border-radius:20px}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;font-size:14px;font-weight:600}
+.ib{width:44px;height:44px;border-radius:14px;background:#EAF3FA;border:1px solid #D3E4F1;display:flex;align-items:center;justify-content:center;color:#3F5A70;padding:0}
+.btn{width:100%;min-height:58px;border-radius:14px;border:0;font-size:17px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px;color:#fff;background:#0A64A8}
+.chip{width:40px;height:40px;border-radius:10px;background:#EAF3FA;color:#0A64A8;font-weight:700;font-size:14px;display:flex;align-items:center;justify-content:center;flex:none}
+.m{color:#3F5A70;font-size:16px}.f{color:#4A667E;font-size:14px}
+.fld{background:#EAF3FA;border:1px solid #D3E4F1;border-radius:14px;padding:10px 16px;display:flex;align-items:center;gap:12px;color:#4A667E}
+.fld label{display:block;font-size:14px;color:#4A667E}.fld input{background:none;border:0;outline:0;color:#0B2A40;font-size:17px;padding:0;width:100%}
+</style>
+</helmet>
+
+<div class="t" style="width:390px;height:1080px;padding:56px 20px 32px;display:flex;flex-direction:column;gap:24px">
+<div>
+<div style="display:flex;align-items:center;gap:14px">
+<div style="width:48px;height:48px;border-radius:50%;background:rgba(10,100,168,.10);color:#0A64A8;font-weight:700;font-size:20px;display:flex;align-items:center;justify-content:center">S</div>
+<div style="flex:1"><div class="m">Selamat pagi</div><div style="font-size:20px;font-weight:700">Siti</div></div>
+<button class="ib" aria-label="Apa yang baru" style="color:#0A64A8"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l2.4 5 5.6.8-4 4 1 5.6-5-2.7-5 2.7 1-5.6-4-4 5.6-.8z"/></svg></button>
+<button class="ib" aria-label="Keluar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg></button>
+</div>
+<div style="display:flex;gap:8px;margin-top:14px"><span class="pill" style="background:rgba(63,90,112,.10);color:#3F5A70">Puskesmas Balas Klumprik</span><span class="pill" style="background:rgba(10,100,168,.10);color:#0A64A8">Kader</span></div>
+</div>
+<div style="background:linear-gradient(160deg,#1273BC 0%,#0A5391 100%);border-radius:24px;padding:22px;display:flex;align-items:center;gap:16px">
+<div style="flex:1"><span class="pill" style="background:rgba(255,255,255,.16);color:#fff;margin-bottom:12px">Draf tersimpan · 3 pasien</span>
+<div style="font-size:24px;font-weight:700;line-height:1.25;color:#fff">Lanjutkan laporan</div>
+<div style="font-size:16px;line-height:1.4;color:rgba(255,255,255,.95);margin-top:6px">Teruskan dari data yang sudah Anda isi.</div></div>
+<div style="width:52px;height:52px;border-radius:50%;background:rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;color:#fff"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>
+</div>
+<div style="display:flex;gap:10px;margin-top:-8px">
+<div class="card" style="flex:1;padding:14px"><div style="font-size:30px;font-weight:700">24</div><div class="f">Laporan</div></div>
+<div class="card" style="flex:1;padding:14px"><div style="font-size:30px;font-weight:700">87</div><div class="f">Pasien</div></div>
+<div class="card" style="flex:1;padding:14px"><div style="font-size:30px;font-weight:700">6</div><div class="f">Bulan ini</div></div>
+</div>
+<div><div style="font-size:18px;font-weight:600;margin-bottom:12px">Akses cepat</div>
+<div style="display:flex;gap:12px">
+<div class="card" style="flex:1;padding:16px"><div style="width:44px;height:44px;border-radius:14px;background:rgba(10,100,168,.10);color:#0A64A8;display:flex;align-items:center;justify-content:center;margin-bottom:14px"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 109-9 9 9 0 00-6.4 2.6L3 8M3 3v5h5M12 7v5l3 2"/></svg></div><div style="font-size:18px;font-weight:600">Riwayat</div><div class="f" style="margin-top:2px">Cari &amp; kelola laporan</div></div>
+<div class="card" style="flex:1;padding:16px"><div style="width:44px;height:44px;border-radius:14px;background:rgba(10,100,168,.10);color:#0A64A8;display:flex;align-items:center;justify-content:center;margin-bottom:14px"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8zM14 3v5h5M9 13h6M9 17h6"/></svg></div><div style="font-size:18px;font-weight:600">Dokumen</div><div class="f" style="margin-top:2px">Ekspor ke PDF atau DOCX</div></div>
+</div></div>
+<div><div style="display:flex;align-items:center;margin-bottom:8px"><div style="flex:1;font-size:18px;font-weight:600">Laporan terbaru</div><span style="color:#0A64A8;font-size:16px;font-weight:600">Lihat semua</span></div>
+<div class="card" style="padding:12px 14px;display:flex;align-items:center;gap:12px;margin-bottom:10px"><div class="chip">#24</div><div style="flex:1"><div style="font-size:17px;font-weight:600">Bu Rahmi, Pak Joko &amp; 1 lainnya</div><div class="f">3 pasien · 20 Okt 2026</div></div></div>
+<div class="card" style="padding:12px 14px;display:flex;align-items:center;gap:12px"><div class="chip">#23</div><div style="flex:1"><div style="font-size:17px;font-weight:600">Bu Sari</div><div class="f">1 pasien · 19 Okt 2026</div></div></div>
+</div>
+</div>
+</x-dc>
+
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":1080}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
+

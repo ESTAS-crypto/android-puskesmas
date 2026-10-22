@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Laporan Kunjungan — Prototipe</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap">
+<style>
+:root{--bg:#F1F8FD;--sky:#D6ECFA;--surface:#fff;--line:#D3E4F1;--soft:#EAF3FA;--text:#0B2A40;--muted:#3F5A70;--faint:#4A667E;--deep:#0A64A8;--tint:rgba(10,100,168,.10);--danger:#C62828;
+--decel:cubic-bezier(.05,.7,.1,1);--std:cubic-bezier(.2,0,0,1);--accel:cubic-bezier(.3,0,.8,.15);color-scheme:light dark;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+:root:not([data-theme="light"]){}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0C1B2A;--sky:#123452;--surface:#12273A;--line:#23405A;--soft:#193349;--text:#E6F1FA;--muted:#A9C0D4;--faint:#9DB5CA;--deep:#2D86CC;--tint:rgba(108,182,240,.14);--danger:#FF8A80}}
+:root[data-theme="dark"]{--bg:#0C1B2A;--sky:#123452;--surface:#12273A;--line:#23405A;--soft:#193349;--text:#E6F1FA;--muted:#A9C0D4;--faint:#9DB5CA;--deep:#2D86CC;--tint:rgba(108,182,240,.14);--danger:#FF8A80}
+html,body{height:100%;margin:0}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:"Plus Jakarta Sans",system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--soft);color:var(--text);font-size:16px;line-height:1.45;display:flex;justify-content:center}
+button{font:inherit;color:inherit;cursor:pointer;border:0;background:none;padding:0;text-align:left}
+input{font:inherit}
+:focus-visible{outline:3px solid var(--deep);outline-offset:2px}
+.ic{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+#app{position:relative;width:100%;max-width:430px;height:100%;overflow:hidden;background:var(--bg)}
+@media(min-width:600px){#app{height:min(880px,100%);margin:auto;border-radius:32px;border:1px solid var(--line);box-shadow:0 20px 60px rgba(10,100,168,.18)}}
+.screen{position:absolute;inset:0;overflow-y:auto;padding:28px 20px 36px;background:linear-gradient(180deg,var(--sky) 0,var(--bg) 360px);z-index:1}
+.hidden{display:none}
+.enter{animation:in 300ms var(--decel) both;z-index:2}.leave{animation:out 300ms var(--std) both}
+.enter-back{animation:inb 300ms var(--decel) both;z-index:1}.leave-back{animation:outb 300ms var(--accel) both;z-index:2}
+@keyframes in{from{opacity:0;transform:translateX(7%)}}@keyframes out{to{transform:translateX(-5%)}}
+@keyframes inb{from{transform:translateX(-5%)}}@keyframes outb{to{opacity:0;transform:translateX(7%)}}
+@keyframes rise{from{opacity:0;transform:translateY(16px)}}
+@keyframes pop{0%{transform:scale(.8);opacity:.4}100%{transform:none;opacity:1}}
+.press{transition:transform 180ms var(--std)}.press:active{transform:scale(.97);transition-duration:100ms}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:20px;box-shadow:0 1px 2px rgba(11,42,64,.06),0 8px 20px rgba(10,100,168,.08)}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;font-size:14px;font-weight:600;background:var(--tint);color:var(--deep)}
+.pill.g{background:rgba(63,90,112,.10);color:var(--muted)}
+.m{color:var(--muted)}.f{color:var(--faint);font-size:14px}
+.icb{width:44px;height:44px;border-radius:14px;background:var(--soft);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;color:var(--muted);flex:none}
+.btn{position:relative;width:100%;min-height:58px;border-radius:14px;background:var(--deep);color:#fff;font-size:17px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px;transition:transform 180ms var(--std)}
+.btn:active{transform:scale(.97);transition-duration:100ms}
+.btn.tonal{background:var(--tint);color:var(--deep)}.btn.ghost{background:transparent;border:1px solid var(--line);color:var(--muted)}
+.btn .lab{display:flex;gap:8px;align-items:center;transition:opacity 180ms var(--decel),transform 180ms var(--decel)}
+.btn .spin{position:absolute;width:24px;height:24px;border:3px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;opacity:0;transform:scale(.85);transition:opacity 180ms,transform 180ms;animation:sp .8s linear infinite}
+.btn.load{pointer-events:none}.btn.load .lab{opacity:0;transform:scale(.85)}.btn.load .spin{opacity:1;transform:none}
+@keyframes sp{to{rotate:360deg}}
+.link{color:var(--deep);font-weight:600;font-size:16px;min-height:44px;padding:0 8px;display:inline-flex;align-items:center}
+.row{display:flex;align-items:center;gap:12px}.grow{flex:1;min-width:0}
+h1,h2,h3,p{margin:0}h2{font-size:18px;font-weight:600}
+.chip{width:40px;height:40px;border-radius:10px;background:var(--tint);color:var(--deep);font-weight:700;display:flex;align-items:center;justify-content:center;flex:none}
+/* login */
+.fld{display:flex;align-items:center;gap:12px;background:var(--soft);border:1px solid var(--line);border-radius:14px;padding:10px 16px;color:var(--faint);transition:border-color 180ms,box-shadow 180ms}
+.fld:focus-within{border-color:var(--deep);box-shadow:0 0 0 2px var(--deep)}
+.fld label{display:block;font-size:14px;color:var(--faint)}.fld input{background:none;border:0;outline:0;color:var(--text);font-size:17px;width:100%;padding:0}
+.rv{display:grid;grid-template-rows:0fr;opacity:0;visibility:hidden;transition:grid-template-rows 300ms var(--std),opacity 300ms var(--decel),visibility 0s 300ms}
+.rv>div{overflow:hidden;min-height:0}
+#login:not(.reg) .rv-log,#login.reg .rv-reg{grid-template-rows:1fr;opacity:1;visibility:visible;transition-delay:0s}
+.gap{height:16px}
+/* home */
+.hero{width:100%;display:flex;align-items:center;gap:16px;padding:22px;border-radius:24px;color:#fff;background:linear-gradient(160deg,#1273BC,#0A5391)}
+.hero .go{width:52px;height:52px;border-radius:50%;background:rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;flex:none}
+.stat{flex:1;padding:14px}.stat b{display:block;font-size:30px;line-height:1.2}
+.qa{flex:1;padding:16px;display:block}.qa .ico{width:44px;height:44px;border-radius:14px;background:var(--tint);color:var(--deep);display:flex;align-items:center;justify-content:center;margin-bottom:14px}
+/* form */
+.collapse{display:grid;grid-template-rows:1fr;opacity:1;transition:grid-template-rows 300ms var(--std),opacity 300ms var(--std)}
+.collapse>.in{overflow:hidden;min-height:0;padding-bottom:10px}
+.collapse.closed{grid-template-rows:0fr;opacity:0}
+.pr{padding:10px 6px 10px 14px}.pr b{display:block;font-size:17px}
+.savebar{position:sticky;bottom:-36px;margin:24px -20px -36px;padding:12px 20px 28px;background:var(--bg);border-top:1px solid var(--line)}
+#toast{position:absolute;left:16px;right:16px;bottom:24px;z-index:9;display:flex;align-items:center;gap:12px;background:var(--text);color:var(--bg);padding:14px 16px;border-radius:14px;transform:translateY(140%);opacity:0;transition:transform 300ms var(--decel),opacity 300ms var(--decel)}
+#toast.on{transform:none;opacity:1}#toast span{flex:1}#toast button{color:#7CC4FF;font-weight:700;min-height:44px;padding:0 8px}
+:root[data-theme="light"] #toast button,#toast button{color:#7CC4FF}
+@media(prefers-color-scheme:light){#toast button{color:#9CD2FF}}
+@media(prefers-reduced-motion:reduce){*{animation-duration:1ms!important;transition-duration:1ms!important}}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+<symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0116 0"/></symbol>
+<symbol id="i-lock" viewBox="0 0 24 24"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></symbol>
+<symbol id="i-mail" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></symbol>
+<symbol id="i-in" viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4M10 17l5-5-5-5M15 12H3"/></symbol>
+<symbol id="i-out" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></symbol>
+<symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+<symbol id="i-back" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></symbol>
+<symbol id="i-hist" viewBox="0 0 24 24"><path d="M3 12a9 9 0 109-9 9 9 0 00-6.4 2.6L3 8M3 3v5h5M12 7v5l3 2"/></symbol>
+<symbol id="i-doc" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8zM14 3v5h5M9 13h6M9 17h6"/></symbol>
+<symbol id="i-add" viewBox="0 0 24 24"><circle cx="10" cy="8" r="4"/><path d="M2 21a8 8 0 0116 0M19 8v6M16 11h6"/></symbol>
+<symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></symbol>
+<symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></symbol>
+<symbol id="i-hosp" viewBox="0 0 24 24"><path d="M3 21V8l9-5 9 5v13M10 21v-5h4v5M12 9v4M10 11h4"/></symbol>
+</svg>
+
+<main id="app">
+<!-- LOGIN -->
+<section class="screen" id="login" aria-label="Masuk">
+  <div style="text-align:center;margin:44px 0 28px">
+    <div style="width:64px;height:64px;border-radius:20px;background:var(--deep);color:#fff;display:inline-flex;align-items:center;justify-content:center"><svg class="ic" style="width:32px;height:32px"><use href="#i-hosp"/></svg></div>
+    <h1 style="font-size:24px;font-weight:700;margin-top:20px">Laporan Kunjungan</h1>
+    <p class="m" id="sub" style="margin-top:6px;transition:opacity 180ms">Masuk untuk melanjutkan</p>
+  </div>
+  <form id="lf" onsubmit="return false">
+    <div class="fld"><svg class="ic"><use href="#i-user"/></svg><div class="grow"><label for="u" id="ulab">Username atau email</label><input id="u" value="siti.kader" autocomplete="username"></div></div>
+    <div class="rv rv-reg"><div><div class="gap"></div><div class="fld"><svg class="ic"><use href="#i-mail"/></svg><div class="grow"><label for="e">Email</label><input id="e" placeholder="contoh@email.com" inputmode="email"></div></div></div></div>
+    <div class="gap"></div>
+    <div class="fld"><svg class="ic"><use href="#i-lock"/></svg><div class="grow"><label for="p">Password</label><input id="p" type="password" value="rahasia123" autocomplete="current-password"></div></div>
+    <div class="rv rv-log"><div style="text-align:right"><button type="button" class="link">Lupa password?</button></div></div>
+    <div class="rv rv-reg"><div><div class="gap"></div><div class="fld"><svg class="ic"><use href="#i-user"/></svg><div class="grow"><label for="n">Nama kader / petugas</label><input id="n" placeholder="Nama Anda"></div></div><div class="gap"></div><div class="fld"><svg class="ic"><use href="#i-hosp"/></svg><div class="grow"><label for="pk">Nama Puskesmas</label><input id="pk" placeholder="Contoh: Balas Klumprik"></div></div></div></div>
+    <div style="height:24px"></div>
+    <button class="btn" id="lbtn" type="submit"><span class="lab"><svg class="ic"><use href="#i-in"/></svg><span id="lbl">Masuk</span></span><i class="spin"></i></button>
+  </form>
+  <div class="rv rv-log"><div>
+    <div class="row" style="margin:20px 0"><div style="flex:1;height:1px;background:var(--line)"></div><span class="f">atau</span><div style="flex:1;height:1px;background:var(--line)"></div></div>
+    <button class="btn ghost" style="justify-content:center">Masuk dengan Google</button>
+  </div></div>
+  <p style="text-align:center;margin-top:16px" class="m">
+    <span id="ask">Belum punya akun?</span> <button class="link" id="tg" type="button">Daftar</button></p>
+  <p class="f" style="text-align:center;margin-top:8px">Data tersimpan di cloud &amp; di perangkat</p>
+</section>
+
+<!-- HOME -->
+<section class="screen hidden" id="home" aria-label="Beranda">
+  <div class="row st" style="gap:14px">
+    <div style="width:48px;height:48px;border-radius:50%;background:var(--tint);color:var(--deep);font-weight:700;font-size:20px;display:flex;align-items:center;justify-content:center">S</div>
+    <div class="grow"><div class="m">Selamat pagi</div><div style="font-size:20px;font-weight:700">Siti</div></div>
+    <button class="icb press" aria-label="Keluar" id="lo"><svg class="ic"><use href="#i-out"/></svg></button>
+  </div>
+  <div class="row st" style="margin:14px 0 24px;flex-wrap:wrap;gap:8px"><span class="pill g">Puskesmas Balas Klumprik</span><span class="pill">Kader</span></div>
+  <button class="hero press st" id="hero"><div class="grow"><span class="pill" style="background:rgba(255,255,255,.18);color:#fff;margin-bottom:12px" id="draft">Draf tersimpan · 3 pasien</span><div style="font-size:24px;font-weight:700;line-height:1.25">Lanjutkan laporan</div><div style="font-size:16px;margin-top:6px;opacity:.95">Teruskan dari data yang sudah Anda isi.</div></div><span class="go"><svg class="ic" style="width:26px;height:26px"><use href="#i-arrow"/></svg></span></button>
+  <div class="row st" style="gap:10px;margin:16px 0 28px">
+    <div class="card stat"><b data-n="24" id="s1">24</b><span class="f">Laporan</span></div>
+    <div class="card stat"><b data-n="87" id="s2">87</b><span class="f">Pasien</span></div>
+    <div class="card stat"><b data-n="6" id="s3">6</b><span class="f">Bulan ini</span></div>
+  </div>
+  <div class="st"><h2 style="margin-bottom:12px">Akses cepat</h2>
+  <div class="row" style="gap:12px;align-items:stretch">
+    <button class="card qa press" data-t="Layar Riwayat dikerjakan di fase 2"><span class="ico"><svg class="ic" style="width:24px;height:24px"><use href="#i-hist"/></svg></span><b style="font-size:18px">Riwayat</b><div class="f">Cari &amp; kelola laporan</div></button>
+    <button class="card qa press" data-t="Layar Dokumen dikerjakan di fase 2"><span class="ico"><svg class="ic" style="width:24px;height:24px"><use href="#i-doc"/></svg></span><b style="font-size:18px">Dokumen</b><div class="f">Ekspor ke PDF atau DOCX</div></button>
+  </div></div>
+  <div class="st" style="margin-top:28px"><h2 style="margin-bottom:12px">Laporan terbaru</h2>
+    <div class="card row" style="padding:12px 14px;margin-bottom:10px"><div class="chip" id="rn">#24</div><div class="grow"><b style="font-size:17px">Bu Rahmi, Pak Joko &amp; 1 lainnya</b><div class="f">3 pasien · 20 Okt 2026</div></div></div>
+    <div class="card row" style="padding:12px 14px"><div class="chip">#23</div><div class="grow"><b style="font-size:17px">Bu Sari</b><div class="f">1 pasien · 19 Okt 2026</div></div></div>
+  </div>
+</section>
+
+<!-- FORM -->
+<section class="screen hidden" id="form" aria-label="Laporan baru">
+  <div class="row" style="margin:0 -8px 12px"><button class="icb press" id="bk" aria-label="Kembali" style="background:none;border:0"><svg class="ic"><use href="#i-back"/></svg></button><h1 style="font-size:20px;font-weight:700">Laporan baru</h1></div>
+  <div class="row" style="margin-bottom:12px"><h2 class="grow">Daftar pasien</h2><span class="pill" id="cnt">3 orang</span></div>
+  <div id="list"></div>
+  <button class="btn tonal" id="add"><span class="lab"><svg class="ic"><use href="#i-add"/></svg>Tambah pasien</span></button>
+  <div class="savebar"><button class="btn" id="save"><span class="lab"><svg class="ic"><use href="#i-check"/></svg>Simpan laporan</span><i class="spin"></i></button></div>
+</section>
+
+<div id="toast" role="status" aria-live="polite"><span id="tm"></span><button id="tu" hidden>Urungkan</button></div>
+</main>
+
+<script>
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+let cur='login',reg=false,tt;
+const stats={a:24,b:87,c:6};
+const DB=[["Bu Rahmi","62 th · RT 03 · Tensi 150/90"],["Pak Joko","58 th · RT 03 · Tensi 130/80"],["Bu Sari","71 th · RT 05 · Gula darah 210"],["Bu Wati","66 th · RT 02 · Tensi 140/85"],["Pak Anton","54 th · RT 04 · Gula darah 160"]];
+let P=[0,1,2].map(i=>({id:i,n:DB[i][0],m:DB[i][1]})),nid=3;
+
+function go(to,back){
+  if(to===cur)return;const a=$('#'+cur),b=$('#'+to);
+  b.classList.remove('hidden');b.className='screen '+(back?'enter-back':'enter');a.className='screen '+(back?'leave-back':'leave');
+  b.scrollTop=0;if(to==='home')playHome();
+  setTimeout(()=>{a.className='screen hidden';b.className='screen'},320);cur=to;
+}
+function count(el,to){const t0=performance.now(),d=520;(function f(t){const p=Math.min(1,(t-t0)/d),e=1-Math.pow(1-p,3);el.textContent=Math.round(to*e);if(p<1)requestAnimationFrame(f)})(t0)}
+function playHome(){
+  $$('#home .st').forEach((el,i)=>{el.style.animation='none';void el.offsetHeight;el.style.animation='rise 520ms var(--decel) '+(i*80)+'ms both'});
+  count($('#s1'),stats.a);count($('#s2'),stats.b);count($('#s3'),stats.c);
+  $('#draft').textContent='Draf tersimpan · '+P.length+' pasien';
+}
+function toast(msg,undo){
+  clearTimeout(tt);$('#tm').textContent=msg;const u=$('#tu');u.hidden=!undo;u.onclick=()=>{undo();$('#toast').classList.remove('on')};
+  $('#toast').classList.add('on');tt=setTimeout(()=>$('#toast').classList.remove('on'),4000);
+}
+function swap(el,txt){el.style.opacity=0;setTimeout(()=>{el.textContent=txt;el.style.opacity=1},180)}
+
+/* login */
+$('#tg').onclick=()=>{
+  reg=!reg;$('#login').classList.toggle('reg',reg);
+  swap($('#sub'),reg?'Buat akun untuk mulai mencatat':'Masuk untuk melanjutkan');
+  $('#lbl').textContent=reg?'Daftar':'Masuk';$('#ask').textContent=reg?'Sudah punya akun?':'Belum punya akun?';
+  $('#tg').textContent=reg?'Masuk':'Daftar';$('#ulab').textContent=reg?'Username':'Username atau email';
+};
+$('#lf').addEventListener('submit',()=>{const b=$('#lbtn');b.classList.add('load');setTimeout(()=>{b.classList.remove('load');go('home')},900)});
+$('#lo').onclick=()=>go('login',true);
+
+/* home */
+$('#hero').onclick=()=>go('form');
+$$('[data-t]').forEach(b=>b.onclick=()=>toast(b.dataset.t));
+
+/* form */
+function row(p){
+  const d=document.createElement('div');d.className='collapse closed';d.dataset.id=p.id;
+  d.innerHTML='<div class="in"><div class="card row pr press"><div class="chip" style="width:36px;height:36px"></div><div class="grow"><b></b><span class="f"></span></div><button class="icb" aria-label="Hapus" style="background:none;border:0;color:var(--danger)"><svg class="ic"><use href="#i-trash"/></svg></button></div></div>';
+  d.querySelector('b').textContent=p.n;d.querySelector('.f').textContent=p.m;
+  d.querySelector('button').setAttribute('aria-label','Hapus '+p.n);
+  d.querySelector('button').onclick=()=>del(p.id);return d;
+}
+function renum(){$$('#list .collapse:not(.closed) .chip').forEach((c,i)=>c.textContent=i+1);const n=P.length,c=$('#cnt');c.textContent=n+' orang';c.style.animation='none';void c.offsetHeight;c.style.animation='pop 180ms var(--decel)'}
+function show(el){requestAnimationFrame(()=>requestAnimationFrame(()=>{el.classList.remove('closed');renum()}))}
+function build(){const l=$('#list');l.innerHTML='';P.forEach(p=>{const e=row(p);l.appendChild(e);show(e)})}
+$('#add').onclick=()=>{const s=DB[nid%DB.length],p={id:nid++,n:s[0],m:s[1]};P.push(p);const e=row(p);$('#list').appendChild(e);show(e)};
+function del(id){
+  const i=P.findIndex(p=>p.id===id),p=P[i],el=$('#list [data-id="'+id+'"]');if(i<0)return;
+  P.splice(i,1);el.classList.add('closed');renum();
+  setTimeout(()=>el.remove(),300);
+  toast(p.n+' dihapus dari laporan',()=>{P.splice(Math.min(i,P.length),0,p);build()});
+}
+$('#bk').onclick=()=>go('home',true);
+$('#save').onclick=()=>{
+  if(!P.length){toast('Tambahkan minimal 1 pasien sebelum menyimpan.');return}
+  const b=$('#save');b.classList.add('load');
+  setTimeout(()=>{b.classList.remove('load');stats.a++;stats.b+=P.length;stats.c++;$('#rn').textContent='#'+stats.a;
+    P=[0,1,2].map(i=>({id:nid++,n:DB[i][0],m:DB[i][1]}));build();go('home',true);setTimeout(()=>toast('Laporan tersimpan'),400)},900);
+};
+build();
+</script>
+</body>
+</html>

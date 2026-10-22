@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Form pasien</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap">
+<style>
+body{margin:0}
+.t{font-family:"Plus Jakarta Sans",system-ui,sans-serif;color:#0B2A40;background:linear-gradient(180deg,#D6ECFA 0,#F1F8FD 360px);box-sizing:border-box;width:390px;position:relative;overflow:hidden}
+.t *{box-sizing:border-box;font-family:inherit}
+.card{box-shadow:0 1px 2px rgba(11,42,64,.06),0 8px 20px rgba(10,100,168,.08);background:#fff;border:1px solid #D3E4F1;border-radius:20px}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border-radius:999px;font-size:13px;font-weight:600;background:rgba(10,100,168,.10);color:#0A64A8;white-space:nowrap}
+.g{background:rgba(63,90,112,.10);color:#3F5A70}.ok{background:rgba(27,127,75,.12);color:#176B40}.wn{background:rgba(176,106,0,.14);color:#8A5200}
+.ib{width:44px;height:44px;border-radius:14px;background:#EAF3FA;border:1px solid #D3E4F1;display:flex;align-items:center;justify-content:center;color:#3F5A70;padding:0;flex:none}
+.btn{width:100%;min-height:54px;border-radius:14px;border:0;font-size:16px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px;color:#fff;background:#0A64A8}
+.tn{background:rgba(10,100,168,.10);color:#0A64A8}
+.m{color:#3F5A70;font-size:15px}.f{color:#4A667E;font-size:14px}.r{display:flex;align-items:center;gap:12px}.k{flex:1;min-width:0}
+.chip{width:40px;height:40px;border-radius:12px;background:rgba(10,100,168,.10);color:#0A64A8;display:flex;align-items:center;justify-content:center;flex:none}
+.tabs{display:flex;background:#EAF3FA;border-radius:14px;padding:4px;gap:4px}.tabs div{flex:1;text-align:center;padding:10px 0;border-radius:11px;font-size:15px;font-weight:600;color:#3F5A70}.tabs .on{background:#fff;color:#0A64A8;box-shadow:0 1px 3px rgba(11,42,64,.12)}
+.bar{height:10px;border-radius:99px;background:#EAF3FA;overflow:hidden}.bar i{display:block;height:100%;background:#0A64A8;border-radius:99px}
+.fld{background:#EAF3FA;border:1px solid #D3E4F1;border-radius:14px;padding:13px 16px;display:flex;align-items:center;gap:12px;color:#4A667E;font-size:16px}
+h1,h2,h3,p{margin:0}b{font-weight:600}
+</style>
+</helmet>
+<div class="t" style="height:1560px"><div style="padding:52px 12px 8px;display:flex;align-items:center;gap:4px"><div class="ib" style="background:none;border:0;color:#0B2A40"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></div><h1 style="font-size:20px;font-weight:700">Data pasien</h1></div>
+<div style="padding:0 20px 120px;display:flex;flex-direction:column;gap:14px">
+<div><div class="r"><span class="k m">3 dari 5 bagian terisi</span><b style="color:#0A64A8">60%</b></div><div class="bar" style="margin-top:8px"><i style="width:60%"></i></div></div>
+<div class="card" style="padding:16px;display:flex;flex-direction:column;gap:12px"><div class="r"><h2 class="k" style="font-size:18px;font-weight:600">Identitas pasien</h2><span class="pill ok">Lengkap</span></div><div class="fld" style="flex-direction:column;align-items:flex-start;gap:0;padding:9px 16px"><span class="f">Nama lengkap</span><b style="font-size:17px;color:#0B2A40;font-weight:500">Bu Rahmi</b></div><div class="r"><div class="k"><div class="fld" style="flex-direction:column;align-items:flex-start;gap:0;padding:9px 16px"><span class="f">Usia</span><b style="font-size:17px;color:#0B2A40;font-weight:500">62 tahun</b></div></div><div class="k"><div class="fld" style="flex-direction:column;align-items:flex-start;gap:0;padding:9px 16px"><span class="f">Alamat</span><b style="font-size:17px;color:#0B2A40;font-weight:500">RT 03 / RW 02</b></div></div></div><div class="fld" style="flex-direction:column;align-items:flex-start;gap:0;padding:9px 16px"><span class="f">Tanggal kunjungan</span><b style="font-size:17px;color:#0B2A40;font-weight:500">20 Oktober 2026</b></div></div>
+<div class="card" style="padding:16px;display:flex;flex-direction:column;gap:12px"><div class="r"><h2 class="k" style="font-size:18px;font-weight:600">Hasil pemeriksaan</h2><span class="pill ok">Terisi</span></div><div class="r"><div class="k"><div class="fld" style="flex-direction:column;align-items:flex-start;gap:0;padding:9px 16px"><span class="f">BB (kg)</span><b style="font-size:17px;color:#0B2A40;font-weight:500">58</b></div></div><div class="k"><div class="fld" style="flex-direction:column;align-items:flex-start;gap:0;padding:9px 16px"><span class="f">TB (cm)</span><b style="font-size:17px;color:#0B2A40;font-weight:500">152</b></div></div></div><div class="r"><div class="k"><div class="fld" style="flex-direction:column;align-items:flex-start;gap:0;padding:9px 16px"><span class="f">LP (cm)</span><b style="font-size:17px;color:#0B2A40;font-weight:500">88</b></div></div><div class="k"><div class="fld" style="flex-direction:column;align-items:flex-start;gap:0;padding:9px 16px"><span class="f">Tensi</span><b style="font-size:17px;color:#0B2A40;font-weight:500">150/90</b></div></div></div><div class="r"><div class="k"><div class="fld" style="flex-direction:column;align-items:flex-start;gap:0;padding:9px 16px"><span class="f">LILA (cm)</span><b style="font-size:17px;color:#0B2A40;font-weight:500">26</b></div></div><div class="k"><div class="fld" style="flex-direction:column;align-items:flex-start;gap:0;padding:9px 16px"><span class="f">LiKa (cm)</span><b style="font-size:17px;color:#0B2A40;font-weight:500">31</b></div></div></div><div class="fld" style="flex-direction:column;align-items:flex-start;gap:0;padding:9px 16px"><span class="f">Gula darah</span><b style="font-size:17px;color:#0B2A40;font-weight:500">145</b></div><button class="btn tn" style="min-height:50px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg> Tambah hasil pemeriksaan</button></div>
+<div class="card" style="padding:16px;display:flex;flex-direction:column;gap:12px"><div class="r"><h2 class="k" style="font-size:18px;font-weight:600">Keluhan</h2><span class="pill ">2 keluhan</span></div><div style="display:flex;flex-wrap:wrap;gap:8px"><span class="pill" style="font-size:15px;padding:9px 14px">Pusing</span><span class="pill" style="font-size:15px;padding:9px 14px">Sulit tidur</span></div><button class="btn tn" style="min-height:50px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg> Tambah keluhan</button></div>
+<div class="card" style="padding:16px;display:flex;flex-direction:column;gap:12px"><div class="r"><h2 class="k" style="font-size:18px;font-weight:600">Tindak lanjut</h2><span class="pill g">Belum ada</span></div><p class="m">Contoh: rujuk ke puskesmas, kontrol ulang 1 minggu.</p><button class="btn tn" style="min-height:50px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg> Tambah tindak lanjut</button></div>
+<div class="card" style="padding:16px;display:flex;flex-direction:column;gap:12px"><div class="r"><h2 class="k" style="font-size:18px;font-weight:600">Foto geotag</h2><span class="pill g">Opsional</span></div><div style="height:130px;border-radius:14px;border:2px dashed #9FC4E0;background:#EAF3FA;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:#0A64A8"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h4l2-3h6l2 3h4v13H3zM12 17a4 4 0 100-8 4 4 0 000 8z"/></svg><b>Ambil foto</b></div><div class="f">Lokasi dicatat otomatis saat foto diambil.</div></div>
+</div>
+<div style="position:absolute;left:0;right:0;bottom:0;background:#F1F8FD;border-top:1px solid #D3E4F1;padding:12px 20px 28px"><button class="btn"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg> Simpan pasien</button></div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":1560}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

@@ -1,5 +1,9 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../theme/app_theme.dart';
+import '../theme/motion.dart';
+import '../widgets/ui/ui.dart';
 import '../models/report.dart';
 import '../models/resident_exam.dart';
 import '../models/user_session.dart';
@@ -29,6 +33,7 @@ class ReportFormScreen extends StatefulWidget {
 class _ReportFormScreenState extends State<ReportFormScreen> {
   List<ResidentExam> _exams = [];
   bool _isSaving = false;
+  final Set<String> _removingIds = {};
 
   @override
   void initState() {
@@ -63,28 +68,37 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
     }
   }
 
-  void _removeExam(int index) {
-    showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppTheme.cardDark,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Hapus Data Pasien?', style: TextStyle(color: AppTheme.textPrimary)),
-        content: Text(
-          'Data "${_exams[index].nama}" akan dihapus dari laporan ini.',
-          style: const TextStyle(color: AppTheme.textSecondary),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Batal', style: TextStyle(color: AppTheme.textSecondary))),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Hapus', style: TextStyle(color: AppTheme.error))),
-        ],
-      ),
-    ).then((confirm) {
-      if (confirm == true) {
-        setState(() => _exams.removeAt(index));
-        _saveDraft();
-      }
+  /// Hapus dengan animasi kartu menciut, lalu beri kesempatan "Urungkan".
+  Future<void> _removeExam(int index) async {
+    final exam = _exams[index];
+    HapticFeedback.mediumImpact();
+    setState(() => _removingIds.add(exam.id));
+    await Future.delayed(AppMotion.of(context, AppMotion.medium));
+    if (!mounted) return;
+    final at = _exams.indexWhere((e) => e.id == exam.id);
+    if (at == -1) return;
+    setState(() {
+      _exams.removeAt(at);
+      _removingIds.remove(exam.id);
     });
+    _saveDraft();
+
+    final label = exam.nama.isNotEmpty ? exam.nama : 'Pasien';
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text('$label dihapus dari laporan'),
+          action: SnackBarAction(
+            label: 'Urungkan',
+            onPressed: () {
+              if (!mounted) return;
+              setState(() => _exams.insert(math.min(at, _exams.length), exam));
+              _saveDraft();
+            },
+          ),
+        ),
+      );
   }
 
   Future<void> _saveDraft() async {
@@ -102,12 +116,7 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
     if (_exams.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Row(children: [
-            Icon(Icons.warning_amber_rounded, color: AppTheme.warning),
-            SizedBox(width: 8),
-            Text('Tambahkan minimal 1 data pasien dulu!'),
-          ]),
-          backgroundColor: AppTheme.cardDark,
+          content: Text('Tambahkan minimal 1 pasien sebelum menyimpan.'),
         ),
       );
       return;
@@ -140,9 +149,11 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
         context,
         PageRouteBuilder(
           pageBuilder: (_, __, ___) => SuccessScreen(session: widget.session, report: report),
-          transitionsBuilder: (_, anim, __, child) =>
-              FadeTransition(opacity: anim, child: child),
-          transitionDuration: const Duration(milliseconds: 300),
+          transitionsBuilder: (_, anim, __, child) => FadeTransition(
+            opacity: CurvedAnimation(parent: anim, curve: AppMotion.decelerate),
+            child: child,
+          ),
+          transitionDuration: AppMotion.medium,
         ),
       );
     } catch (e) {
@@ -158,217 +169,231 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    final editing = widget.existingReport != null;
+
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(gradient: AppTheme.backgroundGradient),
-        child: SafeArea(
-          child: Column(
-            children: [
-              // ===== AppBar =====
-              Padding(
-                padding: const EdgeInsets.fromLTRB(8, 8, 16, 0),
-                child: Row(
+      appBar: AppBar(
+        title: Text(editing ? 'Ubah laporan' : 'Laporan baru'),
+      ),
+      body: Column(
+        children: [
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+              children: [
+                Row(
                   children: [
-                    IconButton(
-                      onPressed: () => Navigator.pop(context),
-                      icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppTheme.textSecondary),
+                    Expanded(
+                      child: Semantics(
+                        header: true,
+                        child: Text('Daftar pasien', style: t.titleMedium),
+                      ),
                     ),
-                    const SizedBox(width: 4),
-                    const Expanded(
-                      child: Text(
-                        'Buat Laporan',
-                        style: TextStyle(color: AppTheme.textPrimary, fontSize: 20, fontWeight: FontWeight.w700),
+                    // Penghitung: bergeser halus tiap jumlah berubah
+                    AnimatedSwitcher(
+                      duration: AppMotion.fast,
+                      transitionBuilder: (child, anim) => FadeTransition(
+                        opacity: anim,
+                        child: ScaleTransition(scale: anim, child: child),
+                      ),
+                      child: StatusPill(
+                        key: ValueKey(_exams.length),
+                        label: '${_exams.length} orang',
                       ),
                     ),
                   ],
                 ),
-              ),
-              const Divider(color: AppTheme.divider, height: 1),
-
-              // ===== Body =====
-              Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.all(20),
-                  children: [
-                    // -- Header Daftar Warga --
-                    Row(
-                      children: [
-                        const Text('Daftar Pasien', style: TextStyle(color: AppTheme.accentTeal, fontSize: 14, fontWeight: FontWeight.w600, letterSpacing: 0.5)),
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: AppTheme.accentTeal.withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(20),
+                const SizedBox(height: 12),
+                AnimatedSize(
+                  duration: AppMotion.medium,
+                  curve: AppMotion.standard,
+                  alignment: Alignment.topCenter,
+                  child: _exams.isEmpty
+                      ? EmptyState(
+                          icon: AppGlyph.users,
+                          title: 'Belum ada pasien',
+                          message:
+                              'Tambahkan pasien yang Anda kunjungi. Data tersimpan otomatis sebagai draf.',
+                          action: AppButton(
+                            label: 'Tambah pasien pertama',
+                            icon: AppGlyph.userAdd,
+                            expand: false,
+                            onPressed: () => _addOrEditExam(),
                           ),
-                          child: Text('${_exams.length} Orang', style: const TextStyle(color: AppTheme.accentTeal, fontSize: 12, fontWeight: FontWeight.w600)),
+                        )
+                      : ReorderableListView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: _exams.length,
+                          proxyDecorator: (child, index, animation) {
+                            // Kartu "terangkat" halus saat diseret
+                            return AnimatedBuilder(
+                              animation: animation,
+                              builder: (_, c) {
+                                final v = Curves.easeOut.transform(animation.value);
+                                return Transform.scale(
+                                  scale: 1 + 0.02 * v,
+                                  child: Material(
+                                    color: Colors.transparent,
+                                    elevation: 10 * v,
+                                    shadowColor: Colors.black,
+                                    borderRadius:
+                                        BorderRadius.circular(AppRadius.lg),
+                                    child: c,
+                                  ),
+                                );
+                              },
+                              child: child,
+                            );
+                          },
+                          onReorder: (oldIndex, newIndex) {
+                            HapticFeedback.selectionClick();
+                            setState(() {
+                              if (newIndex > oldIndex) newIndex--;
+                              final item = _exams.removeAt(oldIndex);
+                              _exams.insert(newIndex, item);
+                            });
+                            _saveDraft();
+                          },
+                          itemBuilder: (context, index) {
+                            final exam = _exams[index];
+                            return _examCard(exam, index,
+                                key: ValueKey(exam.id));
+                          },
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-
-                    // -- List Warga --
-                    if (_exams.isEmpty)
-                      Container(
-                        padding: const EdgeInsets.all(32),
-                        decoration: BoxDecoration(
-                          color: AppTheme.surfaceDark,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: AppTheme.divider),
-                        ),
-                        child: const Column(
-                          children: [
-                            Icon(Icons.people_outline_rounded, color: AppTheme.textHint, size: 48),
-                            SizedBox(height: 12),
-                            Text('Belum ada data pasien', style: TextStyle(color: AppTheme.textSecondary, fontSize: 15)),
-                            SizedBox(height: 4),
-                            Text('Tekan "+ Tambah Pasien" untuk mulai', style: TextStyle(color: AppTheme.textHint, fontSize: 13)),
-                          ],
-                        ),
-                      )
-                    else
-                      ReorderableListView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: _exams.length,
-                        onReorder: (oldIndex, newIndex) {
-                          setState(() {
-                            if (newIndex > oldIndex) newIndex--;
-                            final item = _exams.removeAt(oldIndex);
-                            _exams.insert(newIndex, item);
-                          });
-                        },
-                        itemBuilder: (context, index) {
-                          final exam = _exams[index];
-                          return _examCard(exam, index, key: ValueKey(exam.id));
-                        },
-                      ),
-                    const SizedBox(height: 16),
-
-                    // -- Tombol Tambah Warga --
-                    GestureDetector(
-                      onTap: () => _addOrEditExam(),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        decoration: BoxDecoration(
-                          border: Border.all(color: AppTheme.accentTeal.withValues(alpha: 0.5)),
-                          borderRadius: BorderRadius.circular(16),
-                          color: AppTheme.accentTeal.withValues(alpha: 0.05),
-                        ),
-                        child: const Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.person_add_alt_1_rounded, color: AppTheme.accentTeal, size: 24),
-                            SizedBox(width: 10),
-                            Text('Tambah Pasien', style: TextStyle(color: AppTheme.accentTeal, fontWeight: FontWeight.w700, fontSize: 15)),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 32),
-
-                    // -- Tombol Simpan --
-                    SizedBox(
-                      height: 56,
-                      child: ElevatedButton(
-                        onPressed: _isSaving ? null : _saveReport,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.transparent,
-                          shadowColor: Colors.transparent,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                        ),
-                        child: Ink(
-                          decoration: BoxDecoration(gradient: AppTheme.primaryGradient, borderRadius: BorderRadius.circular(16)),
-                          child: Container(
-                            alignment: Alignment.center,
-                            child: _isSaving
-                                ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                                : Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                                    const Icon(Icons.save_rounded, color: Colors.white),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      widget.existingReport != null ? 'Update Laporan' : 'Simpan Laporan',
-                                      style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
-                                    ),
-                                  ]),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                  ],
                 ),
-              ),
-            ],
+                if (_exams.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  AppButton(
+                    label: 'Tambah pasien',
+                    icon: AppGlyph.userAdd,
+                    kind: AppButtonKind.tonal,
+                    onPressed: () => _addOrEditExam(),
+                  ),
+                ],
+              ],
+            ),
           ),
-        ),
+
+          // ── Bar simpan: menempel di bawah, mudah dijangkau ibu jari ──
+          Container(
+            decoration: const BoxDecoration(
+              color: AppTheme.bg,
+              border: Border(top: BorderSide(color: AppTheme.outline)),
+            ),
+            child: SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
+                child: AppButton(
+                  label: editing ? 'Perbarui laporan' : 'Simpan laporan',
+                  icon: AppGlyph.tick,
+                  loading: _isSaving,
+                  onPressed: _saveReport,
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
 
   Widget _examCard(ResidentExam exam, int index, {required Key key}) {
-    return Container(
-      key: key,
-      margin: const EdgeInsets.only(bottom: 10),
-      decoration: BoxDecoration(
-        color: AppTheme.cardDark,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.divider),
+    final t = Theme.of(context).textTheme;
+    final removing = _removingIds.contains(exam.id);
+    final meta = [
+      if (exam.usia.isNotEmpty) exam.usia,
+      if (exam.alamat.isNotEmpty) exam.alamat,
+      if (exam.tensi.isNotEmpty) 'Tensi ${exam.tensi}',
+    ].join(' · ');
+
+    final card = Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: AppCard(
+        onTap: () => _addOrEditExam(existing: exam, index: index),
+        padding: const EdgeInsets.fromLTRB(14, 10, 6, 10),
+        semanticLabel:
+            'Pasien ${index + 1}, ${exam.nama.isNotEmpty ? exam.nama : 'tanpa nama'}. Ketuk untuk mengubah.',
+        child: Row(
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: AppTheme.tint(AppTheme.accent),
+                borderRadius: BorderRadius.circular(AppRadius.sm),
+              ),
+              child: Text(
+                '${index + 1}',
+                style: t.titleSmall?.copyWith(color: AppTheme.accent),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    exam.nama.isNotEmpty ? exam.nama : '(Tanpa nama)',
+                    style: t.titleMedium?.copyWith(fontSize: 15),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  if (meta.isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Text(meta,
+                        style: t.bodySmall,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis),
+                  ],
+                ],
+              ),
+            ),
+            ReorderableDragStartListener(
+              index: index,
+              child: const SizedBox(
+                width: 40,
+                height: 44,
+                child: AppIcon(AppGlyph.drag,
+                    color: AppTheme.textFaint, size: 22),
+              ),
+            ),
+            IconButton(
+              tooltip: 'Hapus pasien',
+              onPressed: removing ? null : () => _removeExam(index),
+              icon: const AppIcon(AppGlyph.trash,
+                  color: AppTheme.error, size: 22),
+            ),
+          ],
+        ),
       ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(16),
-          onTap: () => _addOrEditExam(existing: exam, index: index),
-          child: Padding(
-            padding: const EdgeInsets.all(14),
-            child: Row(
-              children: [
-                // Number badge
-                Container(
-                  width: 36, height: 36,
-                  decoration: BoxDecoration(gradient: AppTheme.primaryGradient, borderRadius: BorderRadius.circular(10)),
-                  child: Center(child: Text('${index + 1}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15))),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(exam.nama.isNotEmpty ? exam.nama : '(Tidak ada nama)',
-                          style: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w600, fontSize: 15),
-                          maxLines: 1, overflow: TextOverflow.ellipsis),
-                      const SizedBox(height: 2),
-                      Text(
-                        [
-                          if (exam.usia.isNotEmpty) exam.usia,
-                          if (exam.alamat.isNotEmpty) exam.alamat,
-                          if (exam.tensi.isNotEmpty) 'Tensi: ${exam.tensi}',
-                        ].join(' · '),
-                        style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12),
-                        maxLines: 1, overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
+    );
+
+    return KeyedSubtree(
+      key: key,
+      child: AnimatedSize(
+        duration: AppMotion.medium,
+        curve: AppMotion.standard,
+        alignment: Alignment.topCenter,
+        child: removing
+            ? const SizedBox(width: double.infinity)
+            : TweenAnimationBuilder<double>(
+                // Masuk halus saat kartu pertama kali muncul
+                tween: Tween<double>(begin: 0, end: 1),
+                duration: AppMotion.of(context, AppMotion.medium),
+                curve: AppMotion.decelerate,
+                builder: (_, v, child) => Opacity(
+                  opacity: v,
+                  child: Transform.translate(
+                    offset: Offset(0, 12 * (1 - v)),
+                    child: child,
                   ),
                 ),
-                // Drag handle & actions
-                Column(
-                  children: [
-                    ReorderableDragStartListener(
-                      index: index,
-                      child: const Icon(Icons.drag_handle_rounded, color: AppTheme.textHint, size: 20),
-                    ),
-                    const SizedBox(height: 4),
-                    GestureDetector(
-                      onTap: () => _removeExam(index),
-                      child: const Icon(Icons.delete_outline_rounded, color: AppTheme.error, size: 20),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
+                child: card,
+              ),
       ),
     );
   }

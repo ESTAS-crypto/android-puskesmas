@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Role custom</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap">
+<style>
+body{margin:0}
+.t{font-family:"Plus Jakarta Sans",system-ui,sans-serif;color:#0B2A40;background:linear-gradient(180deg,#D6ECFA 0,#F1F8FD 360px);box-sizing:border-box;width:390px;position:relative;overflow:hidden}
+.t *{box-sizing:border-box;font-family:inherit}
+.card{box-shadow:0 1px 2px rgba(11,42,64,.06),0 8px 20px rgba(10,100,168,.08);background:#fff;border:1px solid #D3E4F1;border-radius:20px}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border-radius:999px;font-size:13px;font-weight:600;background:rgba(10,100,168,.10);color:#0A64A8;white-space:nowrap}
+.g{background:rgba(63,90,112,.10);color:#3F5A70}.ok{background:rgba(27,127,75,.12);color:#176B40}.wn{background:rgba(176,106,0,.14);color:#8A5200}
+.ib{width:44px;height:44px;border-radius:14px;background:#EAF3FA;border:1px solid #D3E4F1;display:flex;align-items:center;justify-content:center;color:#3F5A70;padding:0;flex:none}
+.btn{width:100%;min-height:54px;border-radius:14px;border:0;font-size:16px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px;color:#fff;background:#0A64A8}
+.tn{background:rgba(10,100,168,.10);color:#0A64A8}
+.m{color:#3F5A70;font-size:15px}.f{color:#4A667E;font-size:14px}.r{display:flex;align-items:center;gap:12px}.k{flex:1;min-width:0}
+.chip{width:40px;height:40px;border-radius:12px;background:rgba(10,100,168,.10);color:#0A64A8;display:flex;align-items:center;justify-content:center;flex:none}
+.tabs{display:flex;background:#EAF3FA;border-radius:14px;padding:4px;gap:4px}.tabs div{flex:1;text-align:center;padding:10px 0;border-radius:11px;font-size:15px;font-weight:600;color:#3F5A70}.tabs .on{background:#fff;color:#0A64A8;box-shadow:0 1px 3px rgba(11,42,64,.12)}
+.bar{height:10px;border-radius:99px;background:#EAF3FA;overflow:hidden}.bar i{display:block;height:100%;background:#0A64A8;border-radius:99px}
+.fld{background:#EAF3FA;border:1px solid #D3E4F1;border-radius:14px;padding:13px 16px;display:flex;align-items:center;gap:12px;color:#4A667E;font-size:16px}
+h1,h2,h3,p{margin:0}b{font-weight:600}
+</style>
+</helmet>
+<div class="t" style="height:1240px"><div style="padding:52px 12px 8px;display:flex;align-items:center;gap:4px"><div class="ib" style="background:none;border:0;color:#0B2A40"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></div><h1 style="font-size:20px;font-weight:700">Kelola role custom</h1></div>
+<div style="padding:0 20px;display:flex;flex-direction:column;gap:14px">
+<button class="btn"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg> Buat role</button>
+<div class="card" style="padding:16px"><div class="r"><span style="width:14px;height:14px;border-radius:50%;background:#0A64A8;flex:none"></span><div class="k"><b style="font-size:18px">Koordinator Kader</b><div class="f">4 permission aktif</div></div></div><div style="display:flex;flex-wrap:wrap;gap:8px;margin:12px 0"><span class="pill" style="font-size:13px">Lihat laporan</span><span class="pill" style="font-size:13px">Edit laporan</span><span class="pill" style="font-size:13px">Cetak</span><span class="pill" style="font-size:13px">Kelola foto</span></div><div style="display:flex;gap:10px"><button class="btn tn" style="min-height:46px;font-size:15px">Edit</button><button class="btn tn" style="min-height:46px;font-size:15px;color:#C62828;background:rgba(198,40,40,.08)">Hapus</button></div></div>
+<div class="card" style="padding:16px"><div class="r"><span style="width:14px;height:14px;border-radius:50%;background:#2E9C6A;flex:none"></span><div class="k"><b style="font-size:18px">Petugas Data</b><div class="f">2 permission aktif</div></div></div><div style="display:flex;flex-wrap:wrap;gap:8px;margin:12px 0"><span class="pill" style="font-size:13px">Lihat laporan</span><span class="pill" style="font-size:13px">Cetak</span></div><div style="display:flex;gap:10px"><button class="btn tn" style="min-height:46px;font-size:15px">Edit</button><button class="btn tn" style="min-height:46px;font-size:15px;color:#C62828;background:rgba(198,40,40,.08)">Hapus</button></div></div>
+<div class="card" style="padding:16px;display:flex;flex-direction:column;gap:14px;border:2px solid #0A64A8"><h2 style="font-size:18px;font-weight:600">Role baru</h2>
+<div class="fld" style="flex-direction:column;align-items:flex-start;gap:0;padding:9px 16px"><span class="f">Nama role</span><b style="font-size:17px;color:#0B2A40;font-weight:500">Supervisor wilayah</b></div>
+<div><div class="f" style="margin-bottom:8px">Warna label</div><div style="display:flex;gap:10px"><i style="width:34px;height:34px;border-radius:50%;background:#0A64A8;box-shadow:0 0 0 3px #fff,0 0 0 5px #0A64A8"></i><i style="width:34px;height:34px;border-radius:50%;background:#2E9C6A"></i><i style="width:34px;height:34px;border-radius:50%;background:#B06A00"></i><i style="width:34px;height:34px;border-radius:50%;background:#6B5BD6"></i></div></div>
+<div style="height:1px;background:#D3E4F1"></div>
+<div class="r"><span class="k" style="font-size:16px">Lihat laporan</span><div style="width:52px;height:30px;border-radius:99px;background:#0A64A8;position:relative;flex:none"><i style="position:absolute;right:3px;background:#fff;width:24px;height:24px;top:3px;border-radius:50%"></i></div></div><div class="r"><span class="k" style="font-size:16px">Edit laporan</span><div style="width:52px;height:30px;border-radius:99px;background:#0A64A8;position:relative;flex:none"><i style="position:absolute;right:3px;background:#fff;width:24px;height:24px;top:3px;border-radius:50%"></i></div></div><div class="r"><span class="k" style="font-size:16px">Cetak laporan</span><div style="width:52px;height:30px;border-radius:99px;background:#EAF3FA;border:1px solid #D3E4F1;position:relative;flex:none"><i style="position:absolute;left:3px;background:#4A667E;width:22px;height:22px;top:3px;border-radius:50%"></i></div></div><div class="r"><span class="k" style="font-size:16px">Kelola foto</span><div style="width:52px;height:30px;border-radius:99px;background:#EAF3FA;border:1px solid #D3E4F1;position:relative;flex:none"><i style="position:absolute;left:3px;background:#4A667E;width:22px;height:22px;top:3px;border-radius:50%"></i></div></div><div class="r"><span class="k" style="font-size:16px">Lihat semua puskesmas</span><div style="width:52px;height:30px;border-radius:99px;background:#EAF3FA;border:1px solid #D3E4F1;position:relative;flex:none"><i style="position:absolute;left:3px;background:#4A667E;width:22px;height:22px;top:3px;border-radius:50%"></i></div></div>
+<button class="btn">Simpan role</button></div>
+</div></div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":1240}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

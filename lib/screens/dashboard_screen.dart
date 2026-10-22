@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../theme/app_theme.dart';
+import '../models/report.dart';
+import '../theme/motion.dart';
+import '../widgets/ui/ui.dart';
 import '../models/user_session.dart';
 import '../models/resident_exam.dart';
 import '../services/storage_service.dart';
@@ -23,31 +26,23 @@ class DashboardScreen extends StatefulWidget {
   State<DashboardScreen> createState() => _DashboardScreenState();
 }
 
-class _DashboardScreenState extends State<DashboardScreen>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _animController;
+enum _DraftChoice { resume, discard }
+
+class _DashboardScreenState extends State<DashboardScreen> {
   int _reportCount = 0;
+  int _patientCount = 0;
+  int _monthCount = 0;
+  List<Report> _recent = [];
+  Report? _draft;
 
   @override
   void initState() {
     super.initState();
-    _animController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 600),
-    );
-    _animController.forward();
-    _loadReportCount();
+    _loadSummary();
     _checkChangelog();
     _checkAppUpdate();
-    // Jalankan background tasks — tidak blocking UI
+    // Background tasks — tidak memblokir UI
     _runBackgroundTasks();
-  }
-
-  /// Periksa pembaruan aplikasi OTA (silent = jangan tampilkan apa-apa jika sudah terbaru)
-  Future<void> _checkAppUpdate() async {
-    await Future.delayed(const Duration(milliseconds: 1500));
-    if (!mounted) return;
-    UpdateService.checkAndShowUpdate(context, silent: true);
   }
 
   /// Jalankan auto-cleanup lokal dan (jika admin) server cleanup.
@@ -56,7 +51,7 @@ class _DashboardScreenState extends State<DashboardScreen>
     StorageService.cleanupOldLocalData().then((count) {
       if (count > 0) {
         debugPrint('[Dashboard] Local cleanup: $count laporan dihapus');
-        _loadReportCount(); // Reload count setelah cleanup
+        _loadSummary();
       }
     });
 
@@ -71,9 +66,12 @@ class _DashboardScreenState extends State<DashboardScreen>
       int toDays(int v, String u) {
         if (v <= 0) return 0;
         switch (u) {
-          case 'hari': return v;
-          case 'minggu': return v * 7;
-          default: return v * 30;
+          case 'hari':
+            return v;
+          case 'minggu':
+            return v * 7;
+          default:
+            return v * 30;
         }
       }
 
@@ -84,17 +82,28 @@ class _DashboardScreenState extends State<DashboardScreen>
     }
   }
 
-  Future<void> _loadReportCount() async {
+  Future<void> _loadSummary() async {
     final reports = await StorageService.getReports();
-    if (mounted) {
-      setState(() => _reportCount = reports.length);
-    }
+    final draft = await StorageService.getDraft();
+    if (!mounted) return;
+    final now = DateTime.now();
+    final sorted = [...reports]
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    setState(() {
+      _reportCount = reports.length;
+      _patientCount = reports.fold<int>(0, (sum, r) => sum + r.totalPasien);
+      _monthCount = reports
+          .where((r) =>
+              r.createdAt.year == now.year && r.createdAt.month == now.month)
+          .length;
+      _recent = sorted.take(3).toList();
+      _draft = (draft != null && draft.exams.isNotEmpty) ? draft : null;
+    });
   }
 
   Future<void> _checkChangelog() async {
     final shouldShow = await ChangelogDialog.shouldShowChangelog();
     if (shouldShow && mounted) {
-      // Small delay so dashboard renders first
       await Future.delayed(const Duration(milliseconds: 800));
       if (mounted) {
         ChangelogDialog.show(context, isAutoShow: true);
@@ -102,31 +111,38 @@ class _DashboardScreenState extends State<DashboardScreen>
     }
   }
 
-  @override
-  void dispose() {
-    _animController.dispose();
-    super.dispose();
+  /// Periksa pembaruan aplikasi OTA (silent = tidak menampilkan apa-apa jika sudah terbaru)
+  Future<void> _checkAppUpdate() async {
+    await Future.delayed(const Duration(milliseconds: 1500));
+    if (!mounted) return;
+    UpdateService.checkAndShowUpdate(context, silent: true);
+  }
+
+  String _greeting() {
+    final h = DateTime.now().hour;
+    if (h < 11) return 'Selamat pagi';
+    if (h < 15) return 'Selamat siang';
+    if (h < 18) return 'Selamat sore';
+    return 'Selamat malam';
   }
 
   Future<void> _logout() async {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: AppTheme.cardDark,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Keluar?', style: TextStyle(color: AppTheme.textPrimary)),
+        title: const Text('Keluar dari akun?'),
         content: const Text(
-          'Data laporan akan tetap tersimpan di perangkat.',
-          style: TextStyle(color: AppTheme.textSecondary),
-        ),
+            'Laporan yang sudah dibuat tetap tersimpan di perangkat ini.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Batal', style: TextStyle(color: AppTheme.textSecondary)),
+            child: const Text('Batal',
+                style: TextStyle(color: AppTheme.textSecondary)),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Keluar', style: TextStyle(color: AppTheme.error)),
+            child:
+                const Text('Keluar', style: TextStyle(color: AppTheme.error)),
           ),
         ],
       ),
@@ -147,371 +163,66 @@ class _DashboardScreenState extends State<DashboardScreen>
     final draft = await StorageService.getDraft();
     if (draft != null && draft.exams.isNotEmpty) {
       if (!mounted) return;
-      final confirm = await showDialog<bool>(
+      final choice = await showModalBottomSheet<_DraftChoice>(
         context: context,
-        builder: (ctx) => AlertDialog(
-          backgroundColor: AppTheme.cardDark,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Text('Lanjutkan Draf?', style: TextStyle(color: AppTheme.textPrimary)),
-          content: Text(
-            'Ada draf laporan sebelumnya dengan ${draft.totalPasien} pasien yang belum disimpan. Ingin melanjutkannya?',
-            style: const TextStyle(color: AppTheme.textSecondary),
+        builder: (ctx) => SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(24, 4, 24, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Lanjutkan draf?',
+                    style: Theme.of(ctx).textTheme.titleLarge),
+                const SizedBox(height: 8),
+                Text(
+                  'Ada draf dengan ${draft.totalPasien} pasien yang belum disimpan.',
+                  style: Theme.of(ctx).textTheme.bodyMedium,
+                ),
+                const SizedBox(height: 20),
+                AppButton(
+                  label: 'Lanjutkan draf',
+                  icon: AppGlyph.edit,
+                  onPressed: () => Navigator.pop(ctx, _DraftChoice.resume),
+                ),
+                const SizedBox(height: 10),
+                AppButton(
+                  label: 'Hapus draf & mulai baru',
+                  kind: AppButtonKind.danger,
+                  onPressed: () => Navigator.pop(ctx, _DraftChoice.discard),
+                ),
+              ],
+            ),
           ),
-          actions: [
-            TextButton(
-              onPressed: () async {
-                await StorageService.clearDraft();
-                if (ctx.mounted) Navigator.pop(ctx, false);
-              },
-              child: const Text('Hapus & Buat Baru', style: TextStyle(color: AppTheme.error)),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Lanjutkan', style: TextStyle(color: AppTheme.accentTeal)),
-            ),
-          ],
         ),
       );
 
-      if (confirm == true) {
+      if (choice == null) return; // sheet ditutup
+      if (choice == _DraftChoice.resume) {
         _openForm(initialExams: draft.exams);
         return;
-      } else if (confirm == null) {
-        return; // Dialog dismissed
       }
+      await StorageService.clearDraft();
     }
     _openForm();
   }
 
   void _openForm({List<ResidentExam>? initialExams}) {
-    Navigator.push(
-      context,
-      PageRouteBuilder(
-        pageBuilder: (_, __, ___) => ReportFormScreen(
-          session: widget.session,
-          initialExams: initialExams,
-        ),
-        transitionsBuilder: (_, anim, __, child) {
-          return FadeTransition(
-            opacity: anim,
-            child: SlideTransition(
-              position: Tween<Offset>(
-                begin: const Offset(0, 0.1),
-                end: Offset.zero,
-              ).animate(CurvedAnimation(parent: anim, curve: Curves.easeOutCubic)),
-              child: child,
-            ),
-          );
-        },
-        transitionDuration: const Duration(milliseconds: 400),
-      ),
-    ).then((_) => _loadReportCount());
+    _push(ReportFormScreen(
+      session: widget.session,
+      initialExams: initialExams,
+    ));
   }
 
-  void _navigateToHistory() {
-    Navigator.push(
-      context,
-      PageRouteBuilder(
-        pageBuilder: (_, __, ___) => ReportHistoryScreen(session: widget.session),
-        transitionsBuilder: (_, anim, __, child) {
-          return FadeTransition(
-            opacity: anim,
-            child: SlideTransition(
-              position: Tween<Offset>(
-                begin: const Offset(0, 0.1),
-                end: Offset.zero,
-              ).animate(CurvedAnimation(parent: anim, curve: Curves.easeOutCubic)),
-              child: child,
-            ),
-          );
-        },
-        transitionDuration: const Duration(milliseconds: 400),
-      ),
-    ).then((_) => _loadReportCount());
-  }
+  void _navigateToHistory() =>
+      _push(ReportHistoryScreen(session: widget.session));
 
-  void _navigateToAdmin() {
-    Navigator.push(
-      context,
-      PageRouteBuilder(
-        pageBuilder: (_, __, ___) => AdminPanelScreen(session: widget.session),
-        transitionsBuilder: (_, anim, __, child) {
-          return FadeTransition(
-            opacity: anim,
-            child: SlideTransition(
-              position: Tween<Offset>(
-                begin: const Offset(0, 0.1),
-                end: Offset.zero,
-              ).animate(CurvedAnimation(parent: anim, curve: Curves.easeOutCubic)),
-              child: child,
-            ),
-          );
-        },
-        transitionDuration: const Duration(milliseconds: 400),
-      ),
-    );
-  }
+  void _navigateToAdmin() => _push(AdminPanelScreen(session: widget.session));
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: ConnectivityBanner(
-        child: Container(
-          decoration: const BoxDecoration(gradient: AppTheme.backgroundGradient),
-          child: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Header
-                  _buildAnimatedChild(
-                    delay: 0,
-                    child: DashboardHeader(
-                      session: widget.session,
-                      onChangelogTap: () => ChangelogDialog.show(context),
-                      onLogoutTap: _logout,
-                      onUpdateTap: () => UpdateService.checkAndShowUpdate(context, silent: false),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-
-                  // Info Card
-                  _buildAnimatedChild(
-                    delay: 100,
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        gradient: AppTheme.primaryGradient,
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppTheme.accentTeal.withValues(alpha: 0.3),
-                            blurRadius: 20,
-                            offset: const Offset(0, 8),
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              const Icon(Icons.local_hospital_rounded, color: Colors.white, size: 20),
-                              const SizedBox(width: 8),
-                              Text(
-                                'Puskesmas ${widget.session.puskesmas}',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 16),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.2),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(Icons.description_outlined, color: Colors.white, size: 18),
-                                const SizedBox(width: 6),
-                                Text(
-                                  '$_reportCount Laporan',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 32),
-
-                  // Menu Label
-                  _buildAnimatedChild(
-                    delay: 200,
-                    child: const Text(
-                      'Menu',
-                      style: TextStyle(
-                        color: AppTheme.textSecondary,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Buttons
-                  _buildAnimatedChild(
-                    delay: 300,
-                    child: _buildMenuButton(
-                      icon: Icons.add_circle_outline_rounded,
-                      title: 'Buat Laporan Baru',
-                      subtitle: 'Tambah data kunjungan rumah',
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF00BFA6), Color(0xFF00ACC1)],
-                      ),
-                      onTap: _navigateToForm,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-
-                  _buildAnimatedChild(
-                    delay: 400,
-                    child: _buildMenuButton(
-                      icon: Icons.history_rounded,
-                      title: 'Riwayat Laporan',
-                      subtitle: 'Lihat & kelola laporan sebelumnya',
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF448AFF), Color(0xFF7C4DFF)],
-                      ),
-                      onTap: _navigateToHistory,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-
-                  _buildAnimatedChild(
-                    delay: 500,
-                    child: _buildMenuButton(
-                      icon: Icons.picture_as_pdf_rounded,
-                      title: 'Generate Dokumen',
-                      subtitle: 'Ekspor semua laporan ke PDF atau DOCX',
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFFFF6B6B), Color(0xFFFF8E53)],
-                      ),
-                      onTap: () => _showExportDialog(),
-                    ),
-                  ),
-
-                  // Admin Panel (hanya muncul untuk admin)
-                  if (widget.session.isAdmin) ...[
-                    const SizedBox(height: 12),
-                    _buildAnimatedChild(
-                      delay: 600,
-                      child: _buildMenuButton(
-                        icon: Icons.admin_panel_settings_rounded,
-                        title: 'Admin Panel',
-                        subtitle: 'Kelola user, laporan & foto',
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFF9C27B0), Color(0xFFE040FB)],
-                        ),
-                        onTap: _navigateToAdmin,
-                      ),
-                    ),
-                  ],
-
-                  const Spacer(),
-
-                  // Footer
-                  Center(
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.cloud_done_rounded, size: 14, color: AppTheme.textHint),
-                        const SizedBox(width: 6),
-                        Text(
-                          'Online + Offline',
-                          style: TextStyle(color: AppTheme.textHint, fontSize: 12),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAnimatedChild({required int delay, required Widget child}) {
-    return AnimatedBuilder(
-      animation: _animController,
-      builder: (context, _) {
-        final delayedProgress = ((_animController.value - (delay / 1000)).clamp(0.0, 1.0) * 2.5).clamp(0.0, 1.0);
-        return Opacity(
-          opacity: delayedProgress,
-          child: Transform.translate(
-            offset: Offset(0, 20 * (1 - delayedProgress)),
-            child: child,
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildMenuButton({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required LinearGradient gradient,
-    required VoidCallback onTap,
-  }) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(20),
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: AppTheme.cardDark,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: AppTheme.divider),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 52,
-                height: 52,
-                decoration: BoxDecoration(
-                  gradient: gradient,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Icon(icon, color: Colors.white, size: 26),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        color: AppTheme.textPrimary,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      subtitle,
-                      style: const TextStyle(
-                        color: AppTheme.textSecondary,
-                        fontSize: 13,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const Icon(Icons.chevron_right_rounded, color: AppTheme.textHint),
-            ],
-          ),
-        ),
-      ),
-    );
+  /// Transisi layar diatur terpusat oleh PageTransitionsTheme (lihat motion.dart).
+  void _push(Widget page) {
+    Navigator.push(context, MaterialPageRoute(builder: (_) => page))
+        .then((_) => _loadSummary());
   }
 
   Future<void> _showExportDialog() async {
@@ -519,29 +230,457 @@ class _DashboardScreenState extends State<DashboardScreen>
     if (reports.isEmpty) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Row(
-            children: [
-              Icon(Icons.info_outline, color: AppTheme.warning),
-              SizedBox(width: 8),
-              Text('Belum ada laporan untuk diekspor'),
-            ],
-          ),
-          backgroundColor: AppTheme.cardDark,
+        const SnackBar(
+          content: Text('Belum ada laporan untuk diekspor. Buat laporan dulu.'),
         ),
       );
       return;
     }
 
     if (!mounted) return;
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => ReportHistoryScreen(
-          session: widget.session,
-          showExportOnLoad: true,
+    _push(ReportHistoryScreen(
+      session: widget.session,
+      showExportOnLoad: true,
+    ));
+  }
+
+  // ───────────────────────────── UI ─────────────────────────────
+
+  @override
+  Widget build(BuildContext context) {
+    final nama = widget.session.nama.trim();
+    final firstName = nama.isEmpty ? 'Kader' : nama.split(' ').first;
+
+    return Scaffold(
+      body: ConnectivityBanner(
+        child: SafeArea(
+          child: RefreshIndicator(
+            onRefresh: _loadSummary,
+            color: AppTheme.accent,
+            backgroundColor: AppTheme.surfaceRaised,
+            child: StaggerScope(
+              builder: (context, anim) {
+                var i = 0;
+                return ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+                  children: [
+                    StaggerIn(
+                      animation: anim,
+                      index: i++,
+                      child: _buildHeader(firstName),
+                    ),
+                    const SizedBox(height: 24),
+                    StaggerIn(
+                      animation: anim,
+                      index: i++,
+                      child: _buildHero(),
+                    ),
+                    const SizedBox(height: 16),
+                    StaggerIn(
+                      animation: anim,
+                      index: i++,
+                      child: _buildStats(),
+                    ),
+                    const SizedBox(height: 28),
+                    StaggerIn(
+                      animation: anim,
+                      index: i++,
+                      child: _buildQuickActions(),
+                    ),
+                    const SizedBox(height: 28),
+                    StaggerIn(
+                      animation: anim,
+                      index: i++,
+                      child: _buildRecent(),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
         ),
       ),
-    ).then((_) => _loadReportCount());
+    );
+  }
+
+  Widget _buildHeader(String firstName) {
+    final t = Theme.of(context).textTheme;
+    final initial = firstName.isNotEmpty ? firstName[0].toUpperCase() : '?';
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: AppTheme.tint(AppTheme.accent),
+                shape: BoxShape.circle,
+              ),
+              child: Text(
+                initial,
+                style: const TextStyle(
+                  color: AppTheme.accent,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(_greeting(), style: t.bodyMedium),
+                  Text(
+                    firstName,
+                    style: t.titleLarge,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            AppIconButton(
+              icon: AppGlyph.spark,
+              tooltip: 'Apa yang baru',
+              color: AppTheme.accent,
+              onTap: () => ChangelogDialog.show(context),
+            ),
+            const SizedBox(width: 8),
+            AppIconButton(
+              icon: AppGlyph.update,
+              tooltip: 'Cek pembaruan aplikasi',
+              onTap: () => UpdateService.checkAndShowUpdate(context, silent: false),
+            ),
+            const SizedBox(width: 8),
+            AppIconButton(
+              icon: AppGlyph.logout,
+              tooltip: 'Keluar',
+              onTap: _logout,
+            ),
+          ],
+        ),
+        const SizedBox(height: 14),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            StatusPill(
+              label: 'Puskesmas ${widget.session.puskesmas}',
+              icon: AppGlyph.hospital,
+              color: AppTheme.textMuted,
+            ),
+            RoleBadge(session: widget.session),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHero() {
+    final hasDraft = _draft != null;
+    return AppCard(
+      onTap: _navigateToForm,
+      color: AppTheme.primaryDeep,
+      borderColor: Colors.transparent,
+      padding: const EdgeInsets.all(22),
+      semanticLabel: hasDraft
+          ? 'Buat laporan baru. Ada draf ${_draft!.totalPasien} pasien yang belum disimpan.'
+          : 'Buat laporan baru',
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                AnimatedSwitcher(
+                  duration: AppMotion.medium,
+                  switchInCurve: AppMotion.decelerate,
+                  child: hasDraft
+                      ? Container(
+                          key: const ValueKey('draft'),
+                          margin: const EdgeInsets.only(bottom: 12),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.16),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Text(
+                            'Draf tersimpan · ${_draft!.totalPasien} pasien',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        )
+                      : const SizedBox.shrink(key: ValueKey('nodraft')),
+                ),
+                Text(
+                  hasDraft ? 'Lanjutkan laporan' : 'Buat laporan baru',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w700,
+                    height: 1.25,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  hasDraft
+                      ? 'Teruskan dari data yang sudah Anda isi.'
+                      : 'Catat pasien yang Anda kunjungi hari ini.',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.85),
+                    fontSize: 14,
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 16),
+          Container(
+            width: 52,
+            height: 52,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.18),
+              shape: BoxShape.circle,
+            ),
+            child: AppIcon(hasDraft ? AppGlyph.arrow : AppGlyph.plus,
+              color: Colors.white,
+              size: 28,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStats() {
+    Widget tile(String label, int value) {
+      return Expanded(
+        child: AppCard(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+          semanticLabel: '$label: $value',
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              CountUp(
+                value,
+                style: Theme.of(context)
+                    .textTheme
+                    .headlineSmall
+                    ?.copyWith(fontSize: 26),
+              ),
+              const SizedBox(height: 2),
+              Text(label,
+                  style: Theme.of(context).textTheme.bodySmall,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Row(
+      children: [
+        tile('Laporan', _reportCount),
+        const SizedBox(width: 10),
+        tile('Pasien', _patientCount),
+        const SizedBox(width: 10),
+        tile('Bulan ini', _monthCount),
+      ],
+    );
+  }
+
+  Widget _quickAction({
+    required Object icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    final t = Theme.of(context).textTheme;
+    return AppCard(
+      onTap: onTap,
+      semanticLabel: '$title. $subtitle',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: AppTheme.tint(AppTheme.accent),
+              borderRadius: BorderRadius.circular(AppRadius.md),
+            ),
+            child: AppIcon(icon, color: AppTheme.accent, size: 24),
+          ),
+          const SizedBox(height: 14),
+          Text(title, style: t.titleMedium),
+          const SizedBox(height: 2),
+          Text(subtitle,
+              style: t.bodySmall, maxLines: 2, overflow: TextOverflow.ellipsis),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuickActions() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SectionTitle('Akses cepat'),
+        const SizedBox(height: 12),
+        IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: _quickAction(
+                  icon: AppGlyph.history,
+                  title: 'Riwayat',
+                  subtitle: 'Cari & kelola laporan',
+                  onTap: _navigateToHistory,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _quickAction(
+                  icon: AppGlyph.export,
+                  title: 'Dokumen',
+                  subtitle: 'Ekspor ke PDF atau DOCX',
+                  onTap: _showExportDialog,
+                ),
+              ),
+            ],
+          ),
+        ),
+        if (widget.session.isAdmin) ...[
+          const SizedBox(height: 12),
+          AppCard(
+            onTap: _navigateToAdmin,
+            semanticLabel: 'Panel admin. Kelola pengguna, laporan, dan foto.',
+            child: Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: AppTheme.tint(AppTheme.accent),
+                    borderRadius: BorderRadius.circular(AppRadius.md),
+                  ),
+                  child: const AppIcon(AppGlyph.shield,
+                      color: AppTheme.accent, size: 24),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Panel admin',
+                          style: Theme.of(context).textTheme.titleMedium),
+                      Text('Kelola pengguna, laporan & foto',
+                          style: Theme.of(context).textTheme.bodySmall),
+                    ],
+                  ),
+                ),
+                const AppIcon(AppGlyph.chevron,
+                    color: AppTheme.textFaint),
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildRecent() {
+    final t = Theme.of(context).textTheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SectionTitle(
+          'Laporan terbaru',
+          actionLabel: _recent.isEmpty ? null : 'Lihat semua',
+          onAction: _navigateToHistory,
+        ),
+        const SizedBox(height: 8),
+        AnimatedSwitcher(
+          duration: AppMotion.medium,
+          switchInCurve: AppMotion.decelerate,
+          child: _recent.isEmpty
+              ? const EmptyState(
+                  key: ValueKey('empty'),
+                  icon: AppGlyph.report,
+                  title: 'Belum ada laporan',
+                  message:
+                      'Laporan pertama Anda akan muncul di sini setelah disimpan.',
+                )
+              : Column(
+                  key: const ValueKey('list'),
+                  children: [
+                    for (final r in _recent)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: AppCard(
+                          onTap: _navigateToHistory,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 12),
+                          semanticLabel:
+                              'Laporan nomor ${r.no}, ${r.totalPasien} pasien. ${r.summaryNames}',
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 40,
+                                height: 40,
+                                alignment: Alignment.center,
+                                decoration: BoxDecoration(
+                                  color: AppTheme.surfaceRaised,
+                                  borderRadius:
+                                      BorderRadius.circular(AppRadius.sm),
+                                ),
+                                child: Text('#${r.no}',
+                                    style: t.titleSmall
+                                        ?.copyWith(color: AppTheme.accent)),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(r.summaryNames,
+                                        style: t.titleMedium?.copyWith(
+                                            fontSize: 15),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      '${r.totalPasien} pasien · ${r.tanggalDisplay}',
+                                      style: t.bodySmall,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const AppIcon(AppGlyph.chevron,
+                                  color: AppTheme.textFaint),
+                            ],
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+        ),
+      ],
+    );
   }
 }

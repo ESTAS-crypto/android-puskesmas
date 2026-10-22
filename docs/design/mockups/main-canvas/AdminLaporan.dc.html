@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Admin · Laporan</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap">
+<style>
+body{margin:0}
+.t{font-family:"Plus Jakarta Sans",system-ui,sans-serif;color:#0B2A40;background:linear-gradient(180deg,#D6ECFA 0,#F1F8FD 360px);box-sizing:border-box;width:390px;position:relative;overflow:hidden}
+.t *{box-sizing:border-box;font-family:inherit}
+.card{box-shadow:0 1px 2px rgba(11,42,64,.06),0 8px 20px rgba(10,100,168,.08);background:#fff;border:1px solid #D3E4F1;border-radius:20px}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border-radius:999px;font-size:13px;font-weight:600;background:rgba(10,100,168,.10);color:#0A64A8;white-space:nowrap}
+.g{background:rgba(63,90,112,.10);color:#3F5A70}.ok{background:rgba(27,127,75,.12);color:#176B40}.wn{background:rgba(176,106,0,.14);color:#8A5200}
+.ib{width:44px;height:44px;border-radius:14px;background:#EAF3FA;border:1px solid #D3E4F1;display:flex;align-items:center;justify-content:center;color:#3F5A70;padding:0;flex:none}
+.btn{width:100%;min-height:54px;border-radius:14px;border:0;font-size:16px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px;color:#fff;background:#0A64A8}
+.tn{background:rgba(10,100,168,.10);color:#0A64A8}
+.m{color:#3F5A70;font-size:15px}.f{color:#4A667E;font-size:14px}.r{display:flex;align-items:center;gap:12px}.k{flex:1;min-width:0}
+.chip{width:40px;height:40px;border-radius:12px;background:rgba(10,100,168,.10);color:#0A64A8;display:flex;align-items:center;justify-content:center;flex:none}
+.tabs{display:flex;background:#EAF3FA;border-radius:14px;padding:4px;gap:4px}.tabs div{flex:1;text-align:center;padding:10px 0;border-radius:11px;font-size:15px;font-weight:600;color:#3F5A70}.tabs .on{background:#fff;color:#0A64A8;box-shadow:0 1px 3px rgba(11,42,64,.12)}
+.bar{height:10px;border-radius:99px;background:#EAF3FA;overflow:hidden}.bar i{display:block;height:100%;background:#0A64A8;border-radius:99px}
+.fld{background:#EAF3FA;border:1px solid #D3E4F1;border-radius:14px;padding:13px 16px;display:flex;align-items:center;gap:12px;color:#4A667E;font-size:16px}
+h1,h2,h3,p{margin:0}b{font-weight:600}
+</style>
+</helmet>
+<div class="t" style="height:900px"><div style="padding:52px 12px 8px;display:flex;align-items:center;gap:4px"><div class="ib" style="background:none;border:0;color:#0B2A40"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></div><h1 style="font-size:20px;font-weight:700">Panel admin</h1></div>
+<div style="padding:0 20px;display:flex;flex-direction:column;gap:16px">
+<div class="tabs"><div>User</div><div class="on">Laporan</div><div>Foto</div></div>
+<div class="card" style="padding:16px"><div class="r"><div class="k"><b style="font-size:17px">Hapus otomatis laporan lama</b><div class="f">Dihitung dari tanggal laporan dibuat</div></div><div style="width:52px;height:30px;border-radius:99px;background:#0A64A8;position:relative;flex:none"><i style="position:absolute;right:3px;top:3px;width:24px;height:24px;border-radius:50%;background:#fff"></i></div></div>
+<div style="height:14px"></div><div class="tabs"><div>Hari</div><div>Minggu</div><div class="on">Bulan</div></div>
+<div class="r" style="margin-top:14px;justify-content:center;gap:24px"><div class="ib"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/></svg></div><b style="font-size:30px">3</b><div class="ib"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></div></div>
+<div class="f" style="text-align:center;margin-top:8px">Laporan lebih tua dari 3 bulan akan dihapus</div></div>
+<div class="card" style="padding:14px 16px"><div class="r"><div class="chip">#24</div><div class="k"><b style="font-size:17px">Laporan #24</b><div class="f">Balas Klumprik · 3 pasien · 20 Okt</div></div><span class="pill ok">Terkirim</span></div><div style="display:flex;gap:8px;margin-top:12px"><button class="btn tn" style="min-height:44px;font-size:15px">Lihat</button><button class="btn tn" style="min-height:44px;font-size:15px">Cetak</button><button class="btn tn" style="min-height:44px;font-size:15px">Edit</button><div class="ib" style="color:#C62828;background:#fff"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg></div></div></div>
+<div class="card" style="padding:14px 16px"><div class="r"><div class="chip">#18</div><div class="k"><b style="font-size:17px">Laporan #18</b><div class="f">Wiyung · 2 pasien · 2 Agu</div></div><span class="pill wn">Hapus 12 hari lagi</span></div><div style="display:flex;gap:8px;margin-top:12px"><button class="btn tn" style="min-height:44px;font-size:15px">Lihat</button><button class="btn tn" style="min-height:44px;font-size:15px">Cetak</button><button class="btn tn" style="min-height:44px;font-size:15px">Edit</button><div class="ib" style="color:#C62828;background:#fff"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg></div></div></div>
+</div></div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":900}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

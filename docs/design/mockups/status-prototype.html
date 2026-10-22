@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="id"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Prototipe status koneksi &amp; pesan</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap">
+<style>
+:root{--bg:#F1F8FD;--sky:#D6ECFA;--card:#fff;--line:#D3E4F1;--soft:#EAF3FA;--text:#0B2A40;--muted:#3F5A70;--deep:#0A64A8;--k:1;
+--dec:cubic-bezier(.05,.7,.1,1);--std:cubic-bezier(.2,0,0,1);--acc:cubic-bezier(.3,0,.8,.15);color-scheme:light dark;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0C1B2A;--sky:#123452;--card:#12273A;--line:#23405A;--soft:#193349;--text:#E6F1FA;--muted:#A9C0D4;--deep:#5AA9E6}}
+:root[data-theme="dark"]{--bg:#0C1B2A;--sky:#123452;--card:#12273A;--line:#23405A;--soft:#193349;--text:#E6F1FA;--muted:#A9C0D4;--deep:#5AA9E6}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}*{box-sizing:border-box}
+body{margin:0;font-family:"Plus Jakarta Sans",system-ui,-apple-system,"Segoe UI",sans-serif;background:linear-gradient(180deg,var(--sky) 0,var(--bg) 420px) no-repeat var(--bg);color:var(--text);line-height:1.5;font-size:16px}
+.w{max-width:960px;margin:0 auto;padding:24px 20px 56px}h1{font-size:25px;margin:0 0 6px;line-height:1.25}h2{font-size:17px;margin:0 0 10px}p{margin:0 0 10px;color:var(--muted)}
+.hero{display:flex;gap:28px;flex-wrap:wrap;align-items:flex-start;margin-top:18px}
+.cp{flex:1 1 300px;min-width:280px;background:var(--card);border:1px solid var(--line);border-radius:20px;padding:18px;box-shadow:0 8px 24px rgba(10,100,168,.08)}
+.cp button{font:inherit;min-height:48px;border-radius:14px;border:1px solid var(--line);background:var(--soft);color:var(--deep);font-weight:600;padding:0 16px;cursor:pointer;margin:0 8px 8px 0;transition:transform calc(var(--k)*180ms) var(--std)}
+.cp button:active{transform:scale(.97)}.cp button.p{background:var(--deep);color:#fff;border:0}
+.cp label{display:flex;gap:10px;align-items:center;min-height:44px;color:var(--muted)}.cp select{font:inherit;min-height:44px;border-radius:12px;border:1px solid var(--line);background:var(--card);color:var(--text);padding:0 10px}
+.log{margin-top:6px;padding:12px 14px;border-radius:14px;background:var(--soft);color:var(--text);font-size:15px;min-height:70px}
+:focus-visible{outline:3px solid var(--deep);outline-offset:2px}
+.fr{position:relative;border-radius:30px;overflow:hidden;border:1px solid var(--line);box-shadow:0 18px 40px rgba(10,100,168,.22)}
+.st{position:absolute;left:0;top:0;width:390px;height:844px;transform-origin:0 0;overflow:hidden;background:linear-gradient(180deg,#D6ECFA 0,#F1F8FD 340px);color:#0B2A40}
+.st *{box-sizing:border-box}.st button{font:inherit;color:inherit;cursor:pointer;border:0;background:none;padding:0;text-align:left}
+.ban{position:absolute;left:16px;right:16px;top:16px;z-index:5;transform:translateY(-150%);opacity:0;transition:transform calc(var(--k)*180ms) var(--acc),opacity calc(var(--k)*180ms)}
+.ban.show{transform:none;opacity:1;transition:transform calc(var(--k)*300ms) var(--dec),opacity calc(var(--k)*300ms)}
+.bi{display:flex;align-items:center;gap:12px;padding:12px 14px;background:#fff;border:1px solid #D3E4F1;border-radius:18px;box-shadow:0 8px 24px rgba(11,42,64,.16);transition:opacity calc(var(--k)*140ms)}
+.bi.sw{opacity:0}
+.tl{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex:none}
+.bt{flex:1;min-width:0}.bt b{display:block;font-size:16px}.bt span{font-size:14px;color:#4A667E;line-height:1.35;display:block}
+.pg{height:8px;border-radius:99px;background:#EAF3FA;overflow:hidden;margin-top:10px}.pg i{display:block;height:100%;width:0;background:#0A64A8;border-radius:99px}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border-radius:999px;font-size:13px;font-weight:600;white-space:nowrap}
+.pill.ok{background:rgba(27,127,75,.12);color:#176B40}.pill.wn{background:rgba(176,106,0,.14);color:#8A5200}.pill.bl{background:rgba(10,100,168,.10);color:#0A64A8}
+.pop{animation:pop calc(var(--k)*220ms) var(--dec)}@keyframes pop{from{transform:scale(.85);opacity:.5}}
+.hd{display:flex;align-items:center;gap:14px;padding:70px 20px 0}
+.av{width:48px;height:48px;border-radius:50%;background:rgba(10,100,168,.10);color:#0A64A8;font-weight:700;font-size:20px;display:flex;align-items:center;justify-content:center}
+.ib{width:44px;height:44px;border-radius:14px;background:#EAF3FA;border:1px solid #D3E4F1;display:flex;align-items:center;justify-content:center;color:#3F5A70;transition:transform calc(var(--k)*180ms) var(--std)}
+.ib:active,.hb:active,.xb:active{transform:scale(.97)}
+.hb{display:block;width:calc(100% - 40px);margin:18px 20px 0;padding:20px;border-radius:24px;color:#fff;background:linear-gradient(160deg,#1273BC,#0A5391);transition:transform calc(var(--k)*180ms) var(--std)}
+.hb b{display:block;font-size:22px;line-height:1.25}.hb span{display:block;font-size:15px;margin-top:4px;opacity:.95}
+.sr{display:flex;gap:10px;margin:14px 20px 0}.sc{flex:1;background:#fff;border:1px solid #D3E4F1;border-radius:18px;padding:12px 14px;box-shadow:0 8px 20px rgba(10,100,168,.08)}
+.sc b{display:block;font-size:28px;line-height:1.2}.sc span{font-size:13px;color:#4A667E}
+.lt{margin:20px 20px 8px;font-size:17px;font-weight:600}
+.cl{display:grid;grid-template-rows:1fr;opacity:1;margin:0 20px;transition:grid-template-rows calc(var(--k)*300ms) var(--std),opacity calc(var(--k)*300ms) var(--std)}
+.cl.cz{grid-template-rows:0fr;opacity:0}.cl>div{overflow:hidden;min-height:0;padding-bottom:10px}
+.rw{display:flex;align-items:center;gap:12px;background:#fff;border:1px solid #D3E4F1;border-radius:18px;padding:11px 14px}
+.rn{width:40px;height:40px;border-radius:12px;background:rgba(10,100,168,.10);color:#0A64A8;font-weight:700;font-size:14px;display:flex;align-items:center;justify-content:center;flex:none}
+.rw .bt b{font-size:15px}.rw .bt span{font-size:13px}
+.ts{position:absolute;left:16px;right:16px;bottom:24px;z-index:6;display:flex;align-items:center;gap:12px;background:#0B2A40;color:#fff;border-radius:14px;padding:12px 14px;box-shadow:0 10px 24px rgba(11,42,64,.3);transform:translateY(160%);opacity:0;transition:transform calc(var(--k)*180ms) var(--acc),opacity calc(var(--k)*180ms)}
+.ts.show{transform:none;opacity:1;transition:transform calc(var(--k)*300ms) var(--dec),opacity calc(var(--k)*300ms)}
+.ts b{flex:1;font-weight:500;font-size:15px;line-height:1.4}.ts .xb{color:#8FD0FF;font-weight:700;font-size:15px;min-height:44px;padding:0 6px}
+.scr{position:absolute;inset:0;z-index:7;background:rgba(11,42,64,.45);opacity:0;pointer-events:none;transition:opacity calc(var(--k)*240ms) var(--std)}.scr.show{opacity:1;pointer-events:auto}
+.sh{position:absolute;left:0;right:0;bottom:0;z-index:8;background:#fff;border-radius:26px 26px 0 0;padding:22px 20px 28px;transform:translateY(105%);transition:transform calc(var(--k)*200ms) var(--acc)}
+.sh.show{transform:none;transition:transform calc(var(--k)*300ms) var(--dec)}
+.sh h3{margin:0;font-size:20px}.sh p{color:#3F5A70;font-size:16px;margin:8px 0 0}
+.sb{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:52px;border-radius:14px;font-weight:600;font-size:16px;margin-top:10px}
+.sb.d{background:#B02323;color:#fff}.sb.g{border:1px solid #D3E4F1;color:#3F5A70}.sb.b{background:#0A64A8;color:#fff}
+@media(prefers-reduced-motion:reduce){:root{--k:.01}}
+</style></head><body><div class="w">
+<h1>Prototipe: status koneksi &amp; pesan</h1>
+<p>Ketuk tombol di panel kanan atau langsung di layar HP. Coba: putuskan sinyal, buat laporan, lalu sambungkan lagi.</p>
+<div class="hero">
+ <div><div class="fr" id="fr"><div class="st" id="st">
+  <div class="ban" id="ban"><div class="bi" id="bi"></div></div>
+  <div class="hd"><div class="av">S</div><div class="bt"><span style="font-size:15px;color:#3F5A70">Selamat pagi</span><b style="font-size:20px">Siti</b></div><button class="ib" id="lo" aria-label="Keluar"></button></div>
+  <button class="hb" id="hb"><b>Buat laporan baru</b><span id="hs">Catat pasien yang Anda kunjungi hari ini.</span></button>
+  <div class="sr"><div class="sc"><b id="n1">24</b><span>Laporan</span></div><div class="sc"><b id="n2">0</b><span>Belum terkirim</span></div><div class="sc"><b id="n3">6</b><span>Bulan ini</span></div></div>
+  <div class="lt">Laporan terbaru</div><div id="ls"></div>
+  <div class="ts" id="ts" role="status" aria-live="polite"><span id="ti" style="display:flex"></span><b id="tt"></b><button class="xb" id="ta"></button></div>
+  <div class="scr" id="scr"></div><div class="sh" id="sh" role="dialog" aria-modal="true"></div>
+ </div></div></div>
+ <div class="cp">
+  <h2>Koneksi</h2>
+  <button class="p" id="net">Putuskan sinyal</button>
+  <label><input type="checkbox" id="fl"> Pengiriman berikutnya gagal sekali</label>
+  <h2 style="margin-top:12px">Aksi</h2>
+  <button id="a1">Buat laporan</button><button id="a2">Salin data pasien</button><button id="a3">Hapus laporan terbaru</button><button id="a4">Ekspor PDF gagal</button><button id="a5">Keluar akun</button>
+  <h2 style="margin-top:12px">Kecepatan</h2>
+  <select id="sp" aria-label="Kecepatan animasi"><option value="1">Normal</option><option value="2">Pelan 0,5×</option><option value="4">Sangat pelan 0,25×</option></select>
+  <h2 style="margin-top:14px">Yang sedang terjadi</h2><div class="log" id="lg" aria-live="polite">Online. Belum ada yang perlu dikirim.</div>
+ </div>
+</div></div>
+<script>
+const $=s=>document.querySelector(s);
+const P={wifi:'M2 9a15 15 0 0120 0M5 12.5a10.5 10.5 0 0114 0M8.5 16a5.5 5.5 0 017 0M12 19.5h.01',wifiOff:'M2 9a15 15 0 013.5-2.4M8.5 5.2A15 15 0 0122 9M5 12.5a10.5 10.5 0 013.2-2.3M12 8.6a10.5 10.5 0 017 3.9M8.5 16a5.5 5.5 0 017 0M12 19.5h.01M3 3l18 18',check:'M5 12.5l4.5 4.5L19 7.5',warn:'M12 3.5 21.5 20h-19zM12 10v4.5M12 17.3h.01',copy:'M9 9h11v11H9zM5 15V6a2 2 0 012-2h9',trash:'M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13',out:'M10 4H6a2 2 0 00-2 2v12a2 2 0 002 2h4M15 8l4 4-4 4M19 12H9',clock:'M12 7v5l3 2M12 3a9 9 0 100 18 9 9 0 000-18z'};
+const ic=(k,s=22)=>`<svg viewBox="0 0 24 24" width="${s}" height="${s}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${P[k]}"/></svg>`;
+$('#lo').innerHTML=ic('out',20);
+let online=true,sp=1,tok=0,cnt=24,month=6,nid=24,failOnce=false,hideT,toastT;const rows=[];
+const wait=ms=>new Promise(r=>setTimeout(r,ms*sp));
+const log=t=>{$('#lg').textContent=t};
+function fit(){const s=Math.min(.82,(innerWidth-40)/390);$('#st').style.transform='scale('+s+')';const f=$('#fr');f.style.width=390*s+'px';f.style.height=844*s+'px'}addEventListener('resize',fit);fit();
+$('#sp').onchange=e=>{sp=+e.target.value;document.documentElement.style.setProperty('--k',sp)};
+/* banner */
+const KIND={off:['rgba(176,106,0,.14)','#8A5200','wifiOff','Mode offline',()=>'Data tersimpan di HP. Terkirim otomatis saat ada sinyal.'],
+sync:['rgba(10,100,168,.12)','#0A64A8','wifi','Kembali online',n=>'Menyinkronkan '+n+' laporan…'],
+done:['rgba(27,127,75,.12)','#176B40','check','Semua data sudah terkirim',n=>n?n+' laporan berhasil disinkronkan':'Tidak ada yang perlu dikirim'],
+fail:['rgba(176,106,0,.14)','#8A5200','warn','Belum berhasil mengirim',()=>'Akan dicoba lagi otomatis.']};
+async function banner(kind,n=0){const b=$('#bi'),k=KIND[kind],had=$('#ban').classList.contains('show');
+ const html=`<div class="tl" style="background:${k[0]};color:${k[1]}">${ic(k[2])}</div><div class="bt"><b>${k[3]}</b><span>${k[4](n)}</span>${kind==='sync'?'<div class="pg"><i id="pgi"></i></div>':''}</div>${kind==='off'?`<span class="pill wn" id="bp">${pending().length} belum terkirim</span>`:''}${kind==='fail'?'<button class="xb" id="rt" style="color:#0A64A8;font-weight:700;font-size:15px;min-height:44px;padding:0 4px">Coba lagi</button>':''}`;
+ if(had){b.classList.add('sw');await wait(140)}b.innerHTML=html;b.classList.remove('sw');$('#ban').classList.add('show');
+ const r=$('#rt');if(r)r.onclick=()=>sync(true)}
+const hideBanner=()=>$('#ban').classList.remove('show');
+/* data */
+const pending=()=>rows.filter(r=>!r.sent);
+function setNum(el,v){const old=+el.textContent;if(old===v)return;const t0=performance.now(),d=420*sp;(function f(t){const p=Math.min(1,(t-t0)/d),e=1-Math.pow(1-p,3);el.textContent=Math.round(old+(v-old)*e);if(p<1)requestAnimationFrame(f)})(t0)}
+function stats(){setNum($('#n1'),cnt);setNum($('#n3'),month);const p=pending().length;setNum($('#n2'),p);$('#n2').style.color=p?'#8A5200':'';const bp=$('#bp');if(bp)bp.textContent=p+' belum terkirim'}
+function pill(r){r.pill.className='pill '+(r.sent?'ok':'wn')+' pop';r.pill.textContent=r.sent?'Terkirim':'Menunggu sinyal';setTimeout(()=>r.pill.classList.remove('pop'),300*sp)}
+function addRow(id,name,meta,sent,animate=true){const d=document.createElement('div');d.className='cl'+(animate?' cz':'');
+ d.innerHTML=`<div><div class="rw"><div class="rn">#${id}</div><div class="bt"><b>${name}</b><span>${meta}</span></div><span class="pill"></span></div></div>`;
+ const r={id,name,meta,sent,el:d,pill:d.querySelector('.pill')};pill(r);r.pill.classList.remove('pop');$('#ls').prepend(d);
+ if(animate)requestAnimationFrame(()=>requestAnimationFrame(()=>d.classList.remove('cz')));rows.push(r);return r}
+function rmRow(r){r.el.classList.add('cz');setTimeout(()=>{r.el.remove()},320*sp);rows.splice(rows.indexOf(r),1)}
+addRow(23,'Bu Sari','1 pasien · 19 Okt',true,false);addRow(24,'Bu Rahmi &amp; 2 lainnya','3 pasien · 20 Okt',true,false);
+/* toast */
+function toast(ic_,msg,act,fn){clearTimeout(toastT);$('#ti').innerHTML=ic(ic_,20);$('#tt').textContent=msg;const a=$('#ta');a.style.display=act?'':'none';a.textContent=act||'';a.onclick=()=>{fn&&fn();$('#ts').classList.remove('show')};$('#ts').classList.add('show');toastT=setTimeout(()=>$('#ts').classList.remove('show'),4000*sp)}
+/* sheet */
+function sheet(h,p,btns){$('#sh').innerHTML=`<h3>${h}</h3><p>${p}</p>`+btns.map((b,i)=>`<button class="sb ${b[1]}" data-i="${i}">${b[0]}</button>`).join('');$('#scr').classList.add('show');$('#sh').classList.add('show');
+ [...$('#sh').querySelectorAll('button')].forEach(el=>el.onclick=()=>{closeSheet();const f=btns[+el.dataset.i][2];f&&setTimeout(f,120)})}
+function closeSheet(){$('#scr').classList.remove('show');$('#sh').classList.remove('show')}$('#scr').onclick=closeSheet;
+/* sync */
+async function sync(retry){const my=++tok,list=pending(),n=list.length;log('Sinyal kembali. Banner berubah jadi biru, bar progres berjalan, lalu setiap laporan ditandai “Terkirim”.');
+ await banner('sync',n);if(my!==tok)return;const pg=$('#pgi');if(pg){pg.style.transition='width '+(Math.max(1,n)*600*sp+300)+'ms linear';requestAnimationFrame(()=>pg.style.width=(failOnce&&!retry?'55%':'100%'))}
+ if(failOnce&&!retry){await wait(1100);if(my!==tok)return;failOnce=false;$('#fl').checked=false;log('Pengiriman gagal. Banner tetap tampil dengan “Coba lagi”, data tetap aman di HP.');await banner('fail');return}
+ for(const r of list){await wait(600);if(my!==tok)return;r.sent=true;pill(r);stats()}
+ await wait(300);if(my!==tok)return;await banner('done',n);log(n?n+' laporan terkirim. Banner hilang sendiri setelah 4 detik.':'Semua sudah terkirim.');clearTimeout(hideT);hideT=setTimeout(()=>{if(my===tok&&online)hideBanner()},4000*sp)}
+function setNet(on){if(on===online)return;online=on;tok++;clearTimeout(hideT);$('#net').textContent=on?'Putuskan sinyal':'Sambungkan sinyal';$('#net').className=on?'p':'';
+ $('#hs').textContent=on?'Catat pasien yang Anda kunjungi hari ini.':'Bisa dikerjakan tanpa sinyal.';
+ if(on)sync();else{log('Sinyal hilang. Banner turun dari atas (300 ms). Aplikasi tetap bisa dipakai, data disimpan di HP.');banner('off')}}
+$('#net').onclick=()=>setNet(!online);$('#fl').onchange=e=>failOnce=e.target.checked;
+/* aksi */
+const NAMES=[['Bu Tini','1 pasien'],['Pak Anton &amp; Bu Wati','2 pasien'],['Bu Lastri','1 pasien'],['Pak Joko','1 pasien']];
+function makeReport(){const [n,m]=NAMES[nid%NAMES.length];nid++;cnt++;month++;addRow(nid,n,m+' · hari ini',online);stats();
+ if(online){toast('check','Laporan tersimpan');log('Online: laporan langsung terkirim, muncul dengan status “Terkirim”.')}
+ else{toast('clock','Tersimpan di HP. Dikirim saat online.');log('Offline: laporan tersimpan di HP dengan status “Menunggu sinyal”, angka “Belum terkirim” bertambah.')}}
+$('#a1').onclick=$('#hb').onclick=makeReport;
+$('#a2').onclick=()=>{toast('copy','Data pasien disalin');log('Pesan singkat: naik 300 ms, hilang sendiri setelah 4 detik.')};
+$('#a4').onclick=()=>{toast('warn','Dokumen PDF belum berhasil dibuat.','Coba lagi',()=>toast('check','Dokumen PDF siap'));log('Galat memakai kalimat biasa, ada tombol Coba lagi.')};
+$('#a3').onclick=()=>{const r=rows[rows.length-1];if(!r){toast('warn','Tidak ada laporan untuk dihapus');return}
+ sheet('Hapus laporan #'+r.id+'?','Laporan dan fotonya ikut terhapus. Tindakan ini tidak bisa dibatalkan.',[['Hapus laporan','d',()=>{const was=r.sent;rmRow(r);cnt--;stats();toast('trash','Laporan #'+r.id+' dihapus','Urungkan',()=>{const x=addRow(r.id,r.name,r.meta,was);cnt++;stats();})}],['Batal','g']])}
+$('#a5').onclick=$('#lo').onclick=()=>{const p=pending().length;
+ if(p)sheet('Keluar dari akun?','Ada '+p+' laporan yang belum terkirim. Laporan tetap aman di HP, tetapi baru terkirim setelah Anda masuk lagi dan online.',[['Tetap di sini','b'],['Keluar juga','d',()=>toast('out','Demo: kembali ke layar Masuk')]]);
+ else sheet('Keluar dari akun?','Laporan yang sudah dibuat tetap tersimpan di perangkat ini.',[['Keluar','b',()=>toast('out','Demo: kembali ke layar Masuk')],['Batal','g']])};
+</script></body></html>

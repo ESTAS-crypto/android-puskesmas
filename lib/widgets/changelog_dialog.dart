@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../theme/app_theme.dart';
+import 'ui/ui.dart';
 
 class ChangelogDialog {
   static const String _currentVersion = '2.7.6';
@@ -259,11 +260,29 @@ class ChangelogDialog {
                                 child: Row(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Icon(change['icon'] as IconData, color: iconColor, size: 18),
+                                    Container(
+                                      width: 30,
+                                      height: 30,
+                                      decoration: BoxDecoration(
+                                        color: AppTheme.tint(iconColor),
+                                        borderRadius: BorderRadius.circular(9),
+                                      ),
+                                      child: Center(
+                                        child: AppIcon(
+                                          change['type'] == 'fix'
+                                              ? AppGlyph.bandage
+                                              : change['type'] == 'improve'
+                                                  ? AppGlyph.trendUp
+                                                  : AppGlyph.spark,
+                                          color: iconColor,
+                                          size: 18,
+                                        ),
+                                      ),
+                                    ),
                                     const SizedBox(width: 10),
                                     Expanded(
                                       child: Text(
-                                        change['text'] as String,
+                                        (change['text'] as String).replaceFirst(RegExp(r'^[^\p{L}\p{N}]+', unicode: true), ''),
                                         style: const TextStyle(color: AppTheme.textPrimary, fontSize: 13, height: 1.3),
                                       ),
                                     ),
