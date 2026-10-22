@@ -96,6 +96,7 @@ class ChangelogDialog {
     await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      showDragHandle: false,
       backgroundColor: Colors.transparent,
       builder: (ctx) => const _ChangelogBottomSheet(),
     );

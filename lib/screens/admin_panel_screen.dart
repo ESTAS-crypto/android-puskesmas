@@ -253,8 +253,10 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
                             final n = notesCtrl.text.trim();
 
                             if (v.isEmpty || u.isEmpty) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Nomor versi dan URL APK tidak boleh kosong!')),
+                              AppToast.show(
+                                context,
+                                'Nomor versi dan URL APK tidak boleh kosong!',
+                                kind: AppToastKind.warning,
                               );
                               return;
                             }
@@ -273,7 +275,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
 
                             if (!mounted) return;
                             if (err == null) {
-                              _showSnack('✅ Berhasil merilis pembaruan v$v! Semua pengguna akan menerima notifikasi update.');
+                              _showSnack('Berhasil merilis pembaruan v$v! Semua pengguna akan menerima notifikasi update.');
                             } else {
                               _showSnack('Gagal rilis update: $err', isError: true);
                             }
@@ -658,6 +660,10 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
                   children: [
                     Expanded(
                       child: AppCard(
+                        onTap: () {
+                          _tabController.animateTo(0);
+                          _loadTabData(0);
+                        },
                         padding: const EdgeInsets.all(14),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -686,6 +692,10 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
                     const SizedBox(width: 10),
                     Expanded(
                       child: AppCard(
+                        onTap: () {
+                          _tabController.animateTo(1);
+                          _loadTabData(1);
+                        },
                         padding: const EdgeInsets.all(14),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -714,6 +724,10 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
                     const SizedBox(width: 10),
                     Expanded(
                       child: AppCard(
+                        onTap: () {
+                          _tabController.animateTo(2);
+                          _loadTabData(2);
+                        },
                         padding: const EdgeInsets.all(14),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1243,20 +1257,85 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
     );
   }
 
+  void _showLoadingDialog(String message) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => PopScope(
+        canPop: false,
+        child: Dialog(
+          backgroundColor: AppTheme.surface,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.lg)),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 22),
+            child: Row(
+              children: [
+                const SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(strokeWidth: 2.6, color: AppTheme.accent),
+                ),
+                const SizedBox(width: 18),
+                Expanded(
+                  child: Text(
+                    message,
+                    style: const TextStyle(
+                      color: AppTheme.text,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _hideLoadingDialog() {
+    if (mounted) {
+      Navigator.of(context, rootNavigator: true).pop();
+    }
+  }
+
   Future<void> _deleteReport(String reportId, int no) async {
-    final confirm = await _confirmDialog('Hapus Laporan', 'Hapus Laporan #$no beserta semua data pasien?\n\nTidak bisa dibatalkan.');
-    if (confirm != true) return;
+    final confirm = await AppConfirmSheet.show(
+      context,
+      title: 'Hapus Laporan #$no?',
+      message: 'Hapus Laporan #$no beserta semua data pemeriksaan pasien di dalamnya?\n\nData yang dihapus tidak dapat dipulihkan.',
+      confirmLabel: 'Hapus Laporan',
+      cancelLabel: 'Batal',
+      isDangerous: true,
+    );
+    if (!confirm) return;
+
+    _showLoadingDialog('Menghapus laporan #$no...');
     final error = await SupabaseService.adminDeleteReport(reportId);
+    _hideLoadingDialog();
+
     if (!mounted) return;
-    if (error != null) { _showSnack(error, isError: true); } else { _showSnack('Laporan #$no dihapus'); _loadReports(); }
+    if (error != null) {
+      _showSnack(error, isError: true);
+    } else {
+      _showSnack('Laporan #$no berhasil dihapus');
+      _loadReports();
+    }
   }
 
   Future<void> _deleteOldReports(List<Map<String, dynamic>> oldReports) async {
-    final confirm = await _confirmDialog(
-      'Hapus Laporan Lama',
-      'Hapus ${oldReports.length} laporan yang lebih dari $_reportDeleteValue $_reportDeleteUnit?\n\nSemua data pasien dalam laporan ini ikut terhapus.\n\nTidak bisa dibatalkan.',
+    final confirm = await AppConfirmSheet.show(
+      context,
+      title: 'Hapus Laporan Lama?',
+      message: 'Hapus ${oldReports.length} laporan yang lebih dari $_reportDeleteValue $_reportDeleteUnit?\n\nSemua data pasien dalam laporan ini akan ikut terhapus.',
+      confirmLabel: 'Hapus Semua',
+      cancelLabel: 'Batal',
+      isDangerous: true,
     );
-    if (confirm != true) return;
+    if (!confirm) return;
+
+    _showLoadingDialog('Menghapus ${oldReports.length} laporan lama...');
     int deleted = 0;
     for (final r in oldReports) {
       final id = r['id'] as String? ?? '';
@@ -1264,16 +1343,16 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
       final err = await SupabaseService.adminDeleteReport(id);
       if (err == null) deleted++;
     }
+    _hideLoadingDialog();
+
     if (!mounted) return;
-    _showSnack('$deleted laporan lama dihapus');
+    _showSnack('$deleted laporan lama berhasil dihapus');
     _loadReports();
   }
 
   // ═══════════════════════════════════════════════
   // TAB 3: KELOLA FOTO + AUTO-DELETE
   // ═══════════════════════════════════════════════
-
-
 
   void _showPhotoPreview(BuildContext ctx, String url, String title) {
     showDialog(
@@ -1283,11 +1362,17 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
   }
 
   Future<void> _deleteOldPhotos(List<Map<String, dynamic>> oldPhotos) async {
-    final confirm = await _confirmDialog(
-      'Hapus Foto Lama',
-      'Hapus ${oldPhotos.length} foto yang lebih dari $_photoDeleteValue $_photoDeleteUnit?\n\nTidak bisa dibatalkan.',
+    final confirm = await AppConfirmSheet.show(
+      context,
+      title: 'Hapus Foto Lama?',
+      message: 'Hapus ${oldPhotos.length} foto yang lebih dari $_photoDeleteValue $_photoDeleteUnit?\n\nFoto yang dihapus tidak bisa dikembalikan.',
+      confirmLabel: 'Hapus Semua',
+      cancelLabel: 'Batal',
+      isDangerous: true,
     );
-    if (confirm != true) return;
+    if (!confirm) return;
+
+    _showLoadingDialog('Menghapus ${oldPhotos.length} foto lama...');
     int deleted = 0;
     for (final p in oldPhotos) {
       final name = p['name'] as String? ?? '';
@@ -1295,45 +1380,57 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
       final err = await SupabaseService.adminDeletePhoto(name);
       if (err == null) deleted++;
     }
+    _hideLoadingDialog();
+
     if (!mounted) return;
-    _showSnack('$deleted foto lama dihapus');
+    _showSnack('$deleted foto lama berhasil dihapus');
     _loadPhotos();
   }
 
   Future<void> _deletePhoto(String fileName) async {
-    final confirm = await _confirmDialog('Hapus Foto', 'Hapus "$fileName"?\n\nTidak bisa dibatalkan.');
-    if (confirm != true) return;
+    final confirm = await AppConfirmSheet.show(
+      context,
+      title: 'Hapus Foto?',
+      message: 'Hapus file "$fileName" dari penyimpanan cloud?\n\nTidak bisa dibatalkan.',
+      confirmLabel: 'Hapus Foto',
+      cancelLabel: 'Batal',
+      isDangerous: true,
+    );
+    if (!confirm) return;
+
+    _showLoadingDialog('Menghapus foto...');
     final error = await SupabaseService.adminDeletePhoto(fileName);
+    _hideLoadingDialog();
+
     if (!mounted) return;
-    if (error != null) { _showSnack(error, isError: true); } else { _showSnack('Foto dihapus'); _loadPhotos(); }
+    if (error != null) {
+      _showSnack(error, isError: true);
+    } else {
+      _showSnack('Foto berhasil dihapus');
+      _loadPhotos();
+    }
   }
 
   // ═══════════════════════════════════════════════
   // COMMON
   // ═══════════════════════════════════════════════
 
-  Future<bool?> _confirmDialog(String title, String message) => showDialog<bool>(
-    context: context,
-    builder: (ctx) => AlertDialog(
-      backgroundColor: AppTheme.cardDark,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      title: Text(title, style: const TextStyle(color: AppTheme.textPrimary)),
-      content: Text(message, style: const TextStyle(color: AppTheme.textSecondary)),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Batal', style: TextStyle(color: AppTheme.textSecondary))),
-        TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Ya, Lanjutkan', style: TextStyle(color: AppTheme.error))),
-      ],
-    ),
+  Future<bool> _confirmDialog(String title, String message) => AppConfirmSheet.show(
+    context,
+    title: title,
+    message: message,
+    confirmLabel: 'Ya, Lanjutkan',
+    cancelLabel: 'Batal',
+    isDangerous: true,
   );
 
   void _showSnack(String message, {bool isError = false}) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(message),
-      backgroundColor: isError ? AppTheme.error : const Color(0xFF4CAF50),
-      behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-    ));
+    AppToast.show(
+      context,
+      message,
+      kind: isError ? AppToastKind.error : AppToastKind.success,
+    );
   }
 }
 
@@ -1763,10 +1860,12 @@ class _ReportDetailSheetState extends State<_ReportDetailSheet> {
     final error = await SupabaseService.adminUpdateExam(examId, updates);
     if (!mounted) return;
     if (error != null) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error), backgroundColor: AppTheme.error));
+      AppToast.show(context, error, kind: AppToastKind.error);
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(newFotoUrl != null ? 'Data & foto berhasil diperbarui' : 'Data pasien berhasil diperbarui'), backgroundColor: const Color(0xFF4CAF50)),
+      AppToast.show(
+        context,
+        newFotoUrl != null ? 'Data & foto berhasil diperbarui' : 'Data pasien berhasil diperbarui',
+        kind: AppToastKind.success,
       );
       _load();
     }

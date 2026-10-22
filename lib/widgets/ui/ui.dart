@@ -205,11 +205,15 @@ class _AppButtonState extends State<AppButton> {
                   }
                 : null,
             onHighlightChanged: (v) => setState(() => _down = v),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(minHeight: 54, minWidth: 54),
+            child: SizedBox(
+              height: 52,
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                child: Center(child: content),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                child: Center(
+                  widthFactor: 1.0,
+                  heightFactor: 1.0,
+                  child: content,
+                ),
               ),
             ),
           ),
@@ -597,6 +601,7 @@ class AppConfirmSheet {
     final result = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
+      showDragHandle: false,
       backgroundColor: Colors.transparent,
       builder: (ctx) => Container(
         decoration: const BoxDecoration(

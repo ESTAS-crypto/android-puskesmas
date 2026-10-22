@@ -594,7 +594,7 @@ class _ResidentExamFormScreenState extends State<ResidentExamFormScreen> {
                 child: Form(
                   key: _formKey,
                   child: ListView(
-                    padding: const EdgeInsets.fromLTRB(20, 4, 20, 120),
+                    padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
                     children: [
                       // ── Progress Bar Section ──
                       Row(
@@ -661,31 +661,29 @@ class _ResidentExamFormScreenState extends State<ResidentExamFormScreen> {
       ),
 
       // ── Sticky Footer Simpan ──
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: const Color(0xFFF1F8FD),
-          border: const Border(
-            top: BorderSide(color: AppTheme.divider, width: 1),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFF0B2A40).withValues(alpha: 0.06),
-              blurRadius: 10,
-              offset: const Offset(0, -4),
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: Container(
+          decoration: BoxDecoration(
+            color: const Color(0xFFF1F8FD),
+            border: const Border(
+              top: BorderSide(color: AppTheme.divider, width: 1),
             ),
-          ],
-        ),
-        padding: EdgeInsets.fromLTRB(
-          20,
-          12,
-          20,
-          16 + MediaQuery.of(context).padding.bottom,
-        ),
-        child: AppButton(
-          label: 'Simpan pasien',
-          icon: AppGlyph.check,
-          kind: AppButtonKind.primary,
-          onPressed: _save,
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF0B2A40).withValues(alpha: 0.06),
+                blurRadius: 10,
+                offset: const Offset(0, -4),
+              ),
+            ],
+          ),
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 14),
+          child: AppButton(
+            label: 'Simpan pasien',
+            icon: AppGlyph.check,
+            kind: AppButtonKind.primary,
+            onPressed: _save,
+          ),
         ),
       ),
     );
