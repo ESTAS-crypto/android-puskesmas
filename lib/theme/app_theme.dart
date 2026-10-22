@@ -37,6 +37,7 @@ class AppTheme {
   static const Color surface = Color(0xFFFFFFFF);
   static const Color surfaceRaised = Color(0xFFEAF3FA);
   static const Color outline = Color(0xFFD3E4F1);
+  static const Color border = outline;
 
   // ── Aksen ──────────────────────────────────────────────────
   /// Biru laut primer untuk tombol terisi, ikon aksen, tautan, dan indikator.
