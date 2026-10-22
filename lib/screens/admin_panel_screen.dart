@@ -13,8 +13,11 @@ import '../services/pdf_service.dart';
 import '../services/supabase_service.dart';
 import '../services/update_service.dart';
 import '../theme/app_theme.dart';
+import '../theme/motion.dart';
 import '../models/custom_role.dart';
 import 'custom_roles_screen.dart';
+import '../widgets/ui/ui.dart';
+import 'admin/admin_user_tab.dart';
 
 class AdminPanelScreen extends StatefulWidget {
   final UserSession session;
@@ -531,30 +534,24 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
     final isConnected = _supabaseConnected == true;
     final isChecking = _checkingSupabase;
     final color = isChecking
-        ? AppTheme.accentTeal
-        : (isConnected ? const Color(0xFF4CAF50) : AppTheme.error);
+        ? AppTheme.accent
+        : (isConnected ? AppTheme.success : AppTheme.error);
 
     return Container(
-      margin: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: AppTheme.cardDark,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withValues(alpha: 0.4)),
-        boxShadow: [
-          BoxShadow(
-            color: color.withValues(alpha: 0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        color: AppTheme.surface,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+        boxShadow: AppTheme.cardShadow,
       ),
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.15),
+              color: color.withValues(alpha: 0.12),
               shape: BoxShape.circle,
             ),
             child: isChecking
@@ -562,14 +559,14 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
                     width: 18,
                     height: 18,
                     child: CircularProgressIndicator(
-                      strokeWidth: 2.5,
-                      color: AppTheme.accentTeal,
+                      strokeWidth: 2,
+                      color: AppTheme.accent,
                     ),
                   )
-                : Icon(
-                    isConnected ? Icons.cloud_done_rounded : Icons.cloud_off_rounded,
+                : AppIcon(
+                    isConnected ? AppGlyph.cloud : AppGlyph.warning,
                     color: color,
-                    size: 20,
+                    size: 18,
                   ),
           ),
           const SizedBox(width: 10),
@@ -580,71 +577,43 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
               children: [
                 Row(
                   children: [
-                    const Flexible(
-                      child: Text(
-                        'Status Cloud Supabase',
-                        style: TextStyle(
-                          color: AppTheme.textPrimary,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                        ),
-                        overflow: TextOverflow.ellipsis,
+                    const Text(
+                      'Status Cloud Supabase',
+                      style: TextStyle(
+                        color: AppTheme.text,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                     const SizedBox(width: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: color.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        isChecking
-                            ? 'CHECKING...'
-                            : (isConnected ? 'TERKONEKSI' : (_supabaseIsPaused ? 'TER-PAUSE' : 'TERPUTUS')),
-                        style: TextStyle(
-                          color: color,
-                          fontSize: 9,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
+                    StatusPill(
+                      label: isChecking
+                          ? 'Checking'
+                          : (isConnected ? 'Terkoneksi' : (_supabaseIsPaused ? 'Ter-pause' : 'Terputus')),
+                      color: isConnected ? AppTheme.success : AppTheme.error,
                     ),
                   ],
                 ),
                 const SizedBox(height: 2),
                 Text(
                   _supabaseStatusMsg,
-                  style: TextStyle(
-                    color: AppTheme.textSecondary,
+                  style: const TextStyle(
+                    color: AppTheme.textFaint,
                     fontSize: 11,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
-                if (isConnected) ...[
-                  const SizedBox(height: 2),
-                  Row(
-                    children: [
-                      const Icon(Icons.check_circle_outline_rounded, color: Color(0xFF4CAF50), size: 12),
-                      const SizedBox(width: 4),
-                      Text(
-                        'Ping: ${_supabaseLatencyMs}ms • Auto-Ping aktif',
-                        style: const TextStyle(color: Color(0xFF81C784), fontSize: 10),
-                      ),
-                    ],
-                  ),
-                ],
               ],
             ),
           ),
-          const SizedBox(width: 4),
           IconButton(
-            tooltip: 'Tes Ping Koneksi Supabase',
+            tooltip: 'Tes Koneksi Supabase',
             onPressed: isChecking ? null : _checkSupabaseConnection,
-            icon: Icon(
-              Icons.refresh_rounded,
-              color: isChecking ? AppTheme.textHint : AppTheme.accentTeal,
-              size: 20,
+            icon: const AppIcon(
+              AppGlyph.update,
+              color: AppTheme.textMuted,
+              size: 18,
             ),
           ),
         ],
@@ -652,239 +621,265 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppTheme.primaryDark,
-      appBar: AppBar(
-        backgroundColor: AppTheme.primaryDark,
-        elevation: 0,
-        leading: IconButton(
-          onPressed: () => Navigator.pop(context),
-          icon: const Icon(Icons.arrow_back_ios_rounded, color: AppTheme.textPrimary, size: 20),
-        ),
-        title: const Row(children: [
-          Icon(Icons.admin_panel_settings_rounded, color: Color(0xFFE040FB), size: 22),
-          SizedBox(width: 8),
-          Text('Admin Panel', style: TextStyle(color: AppTheme.textPrimary, fontSize: 18, fontWeight: FontWeight.w700)),
-        ]),
-        actions: [
-          // Tombol Publikasi Update OTA — untuk developer/owner
-          if (widget.session.isDeveloper)
-            Tooltip(
-              message: 'Rilis Pembaruan Aplikasi (OTA)',
-              child: IconButton(
-                onPressed: _showPublishUpdateDialog,
-                icon: const Icon(Icons.system_update_rounded, color: AppTheme.accentTeal, size: 22),
-              ),
-            ),
-          // Tombol Kelola Role Custom — hanya untuk developer/owner
-          if (widget.session.isDeveloper)
-            Tooltip(
-              message: 'Kelola Role Custom',
-              child: IconButton(
-                onPressed: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => CustomRolesScreen(session: widget.session)),
-                ),
-                icon: const Icon(Icons.shield_rounded, color: Color(0xFFFFD700), size: 22),
-              ),
-            ),
-        ],
-        bottom: TabBar(
-          controller: _tabController,
-          indicatorColor: const Color(0xFFE040FB),
-          indicatorWeight: 3,
-          labelColor: const Color(0xFFE040FB),
-          unselectedLabelColor: AppTheme.textHint,
-          labelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-          tabs: const [
-            Tab(icon: Icon(Icons.people_rounded, size: 20), text: 'User'),
-            Tab(icon: Icon(Icons.description_rounded, size: 20), text: 'Laporan'),
-            Tab(icon: Icon(Icons.photo_library_rounded, size: 20), text: 'Foto'),
-          ],
-        ),
+  Widget _buildAdminSegmentedTabs() {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: AppTheme.surfaceRaised,
+        borderRadius: BorderRadius.circular(AppRadius.md),
       ),
-      body: Column(
-        children: [
-          _buildSupabaseStatusCard(),
-          Expanded(
-            child: TabBarView(
-              controller: _tabController,
-              children: [
-                _buildUsersTab(),
-                _buildReportsTab(),
-                _buildPhotosTab(),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ═══════════════════════════════════════════════
-  // TAB 1: KELOLA USER
-  // ═══════════════════════════════════════════════
-
-  Widget _buildUsersTab() {
-    if (_loadingUsers) return _buildLoading();
-    if (_users.isEmpty) return _buildEmpty('Tidak ada data user');
-
-    return RefreshIndicator(
-      color: const Color(0xFFE040FB),
-      onRefresh: _loadUsers,
-      child: ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: _users.length,
-        itemBuilder: (context, index) {
-          final user = _users[index];
-          final nama = user['nama'] as String? ?? 'Tanpa Nama';
-          final email = user['email'] as String? ?? '';
-          final username = user['username'] as String? ?? '';
-          final puskesmas = user['puskesmas'] as String? ?? '';
-          final role = user['role'] as String? ?? 'user';
-          final userId = user['id'] as String? ?? '';
-          final isCurrentUser = userId == widget.session.userId;
-
-          // Hitung level role untuk tampilan
-          final roleLevel = const {'user': 0, 'admin': 1, 'developer': 2, 'owner': 3}[role] ?? 0;
-
-          return Container(
-            margin: const EdgeInsets.only(bottom: 10),
-            decoration: BoxDecoration(
-              color: AppTheme.cardDark,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: roleLevel >= 3
-                    ? const Color(0xFFFFD700).withValues(alpha: 0.5) // owner: emas
-                    : roleLevel >= 2
-                        ? const Color(0xFF00B4DB).withValues(alpha: 0.4) // developer: ocean cyan blue
-                        : roleLevel >= 1
-                            ? const Color(0xFFE040FB).withValues(alpha: 0.3) // admin: purple
-                            : AppTheme.divider, // user: default
-              ),
-            ),
-            child: ListTile(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              leading: Container(
-                width: 44, height: 44,
-                decoration: BoxDecoration(
-                  gradient: roleLevel >= 3
-                      ? const LinearGradient(colors: [Color(0xFFFF8F00), Color(0xFFFFD700)])
-                      : roleLevel >= 2
-                          ? const LinearGradient(colors: [Color(0xFF0083B0), Color(0xFF00B4DB)])
-                          : roleLevel >= 1
-                              ? const LinearGradient(colors: [Color(0xFF9C27B0), Color(0xFFE040FB)])
-                              : AppTheme.primaryGradient,
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                alignment: Alignment.center,
-                child: Text(nama.isNotEmpty ? nama[0].toUpperCase() : '?',
-                    style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700)),
-              ),
-              title: Row(children: [
-                Expanded(child: Text(nama, style: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w600))),
-                _buildRoleBadge(role),
-                // Show custom role badge if assigned
-                if (user['custom_role_id'] != null && _customRolesMap.containsKey(user['custom_role_id'])) ...[
-                  const SizedBox(width: 4),
-                  Builder(builder: (_) {
-                    final cr = _customRolesMap[user['custom_role_id']]!;
-                    final crColor = Color(cr.colorValue);
-                    return Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: crColor.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: crColor.withValues(alpha: 0.4)),
-                      ),
-                      child: Row(mainAxisSize: MainAxisSize.min, children: [
-                        Icon(getCustomRoleIconData(cr.iconName), color: crColor, size: 10),
-                        const SizedBox(width: 3),
-                        Text(cr.name.toUpperCase(), style: TextStyle(color: crColor, fontSize: 9, fontWeight: FontWeight.w700)),
-                      ]),
-                    );
-                  }),
-                ],
-              ]),
-              subtitle: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                const SizedBox(height: 4),
-                if (username.isNotEmpty) Text('@$username', style: const TextStyle(color: AppTheme.accentTeal, fontSize: 12)),
-                Text(email, style: const TextStyle(color: AppTheme.textHint, fontSize: 12)),
-                if (puskesmas.isNotEmpty) Text('PKM $puskesmas', style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
-              ]),
-              trailing: isCurrentUser
-                  ? Tooltip(
-                      message: 'Akun Anda (${_roleLabel(role)})',
-                      child: const Icon(Icons.person_pin_rounded, color: AppTheme.accentTeal))
-                  // Hanya tampilkan popup jika sesi punya izin manage roles
-                  : widget.session.canManageRoles
-                      ? PopupMenuButton<String>(
-                          icon: const Icon(Icons.more_vert_rounded, color: AppTheme.textHint),
-                          color: AppTheme.cardDark,
-                          onSelected: (value) {
-                            if (value == 'edit') {
-                              _showEditUserDialog(userId, nama, email, puskesmas);
-                            } else if (value == 'reset_pw') {
-                              _resetUserPassword(email, nama);
-                            } else if (value == 'set_role') {
-                              _showSetRoleDialog(userId, nama, role);
-                            }
-                          },
-                          itemBuilder: (_) {
-                            final items = <PopupMenuEntry<String>>[
-                              const PopupMenuItem(value: 'edit', child: Row(children: [
-                                Icon(Icons.edit_rounded, color: AppTheme.accentTeal, size: 18), SizedBox(width: 8),
-                                Text('Edit Profil', style: TextStyle(color: AppTheme.textPrimary)),
-                              ])),
-                            ];
-                            // Tampilkan opsi ubah role hanya jika aktor bisa modifikasi target
-                            if (widget.session.canModifyRole(role)) {
-                              items.add(PopupMenuItem(value: 'set_role', child: Row(children: [
-                                Icon(Icons.manage_accounts_rounded,
-                                    color: roleLevel >= 1 ? AppTheme.warning : const Color(0xFFE040FB), size: 18),
-                                const SizedBox(width: 8),
-                                Text('Ubah Role (${ _roleLabel(role)})', style: const TextStyle(color: AppTheme.textPrimary)),
-                              ])));
-                            }
-                            items.add(const PopupMenuItem(value: 'reset_pw', child: Row(children: [
-                              Icon(Icons.lock_reset_rounded, color: AppTheme.warning, size: 18), SizedBox(width: 8),
-                              Text('Reset Password', style: TextStyle(color: AppTheme.textPrimary)),
-                            ])));
-                            return items;
-                          },
-                        )
-                      : // Admin dan user tidak punya tombol ubah role, hanya edit biasa
-                        PopupMenuButton<String>(
-                          icon: const Icon(Icons.more_vert_rounded, color: AppTheme.textHint),
-                          color: AppTheme.cardDark,
-                          onSelected: (value) {
-                            if (value == 'edit') {
-                              _showEditUserDialog(userId, nama, email, puskesmas);
-                            } else if (value == 'reset_pw') {
-                              _resetUserPassword(email, nama);
-                            }
-                          },
-                          itemBuilder: (_) => [
-                            const PopupMenuItem(value: 'edit', child: Row(children: [
-                              Icon(Icons.edit_rounded, color: AppTheme.accentTeal, size: 18), SizedBox(width: 8),
-                              Text('Edit Profil', style: TextStyle(color: AppTheme.textPrimary)),
-                            ])),
-                            const PopupMenuItem(value: 'reset_pw', child: Row(children: [
-                              Icon(Icons.lock_reset_rounded, color: AppTheme.warning, size: 18), SizedBox(width: 8),
-                              Text('Reset Password', style: TextStyle(color: AppTheme.textPrimary)),
-                            ])),
-                          ],
-                        ),
-            ),
+      child: AnimatedBuilder(
+        animation: _tabController,
+        builder: (context, _) {
+          final idx = _tabController.index;
+          return Row(
+            children: [
+              _buildTabPill(0, 'User', idx == 0),
+              _buildTabPill(1, 'Laporan', idx == 1),
+              _buildTabPill(2, 'Foto', idx == 2),
+            ],
           );
         },
       ),
     );
   }
 
-  /// Badge role berwarna sesuai hierarki.
+  Widget _buildTabPill(int index, String label, bool active) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: () {
+          _tabController.animateTo(index);
+          _loadTabData(index);
+        },
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          curve: AppMotion.decelerate,
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(
+            color: active ? AppTheme.surface : Colors.transparent,
+            borderRadius: BorderRadius.circular(11),
+            boxShadow: active
+                ? [
+                    BoxShadow(
+                      color: const Color(0xFF0B2A40).withValues(alpha: 0.08),
+                      blurRadius: 4,
+                      offset: const Offset(0, 1),
+                    ),
+                  ]
+                : null,
+          ),
+          child: Center(
+            child: Text(
+              label,
+              style: TextStyle(
+                color: active ? AppTheme.primaryDeep : AppTheme.textMuted,
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final usedMB = _totalStorageUsedBytes / (1024 * 1024);
+
+    return Scaffold(
+      backgroundColor: AppTheme.bg,
+      body: Container(
+        decoration: const BoxDecoration(gradient: AppTheme.backgroundGradient),
+        child: SafeArea(
+          child: Column(
+            children: [
+              // ── Header (AdminUser.dc.html) ──
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 12, 16, 8),
+                child: Row(
+                  children: [
+                    IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: const AppIcon(AppGlyph.back, color: AppTheme.text, size: 22),
+                      tooltip: 'Kembali',
+                    ),
+                    const SizedBox(width: 4),
+                    const Expanded(
+                      child: Text(
+                        'Panel admin',
+                        style: TextStyle(
+                          color: AppTheme.text,
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: _supabaseStatusMsg.isNotEmpty
+                          ? '$_supabaseStatusMsg (Ping: ${_supabaseLatencyMs}ms)'
+                          : 'Periksa Koneksi',
+                      onPressed: _checkingSupabase ? null : _checkSupabaseConnection,
+                      icon: _checkingSupabase
+                          ? const SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.accent),
+                            )
+                          : Container(
+                              width: 10,
+                              height: 10,
+                              decoration: BoxDecoration(
+                                color: _supabaseConnected == true ? AppTheme.success : AppTheme.error,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                    ),
+                    if (widget.session.isDeveloper) ...[
+                      IconButton(
+                        tooltip: 'Rilis Pembaruan Aplikasi (OTA)',
+                        onPressed: _showPublishUpdateDialog,
+                        icon: const AppIcon(AppGlyph.cloud, color: AppTheme.primaryDeep, size: 22),
+                      ),
+                      IconButton(
+                        tooltip: 'Kelola Role Custom',
+                        onPressed: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => CustomRolesScreen(session: widget.session)),
+                        ).then((_) => _loadTabData(_tabController.index)),
+                        icon: const AppIcon(AppGlyph.shield, color: AppTheme.primaryDeep, size: 22),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+
+              // ── 3 Stat Cards (AdminUser.dc.html line 33) ──
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: AppCard(
+                        padding: const EdgeInsets.all(14),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '${_users.length}',
+                              style: const TextStyle(
+                                color: AppTheme.text,
+                                fontSize: 26,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            const Text(
+                              'Pengguna',
+                              style: TextStyle(
+                                color: AppTheme.textFaint,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: AppCard(
+                        padding: const EdgeInsets.all(14),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '${_reports.length}',
+                              style: const TextStyle(
+                                color: AppTheme.text,
+                                fontSize: 26,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            const Text(
+                              'Laporan',
+                              style: TextStyle(
+                                color: AppTheme.textFaint,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: AppCard(
+                        padding: const EdgeInsets.all(14),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '${usedMB.toStringAsFixed(0)} MB',
+                              style: const TextStyle(
+                                color: AppTheme.text,
+                                fontSize: 26,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            const Text(
+                              'Foto',
+                              style: TextStyle(
+                                color: AppTheme.textFaint,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              if (_supabaseConnected == false || _supabaseIsPaused)
+                _buildSupabaseStatusCard(),
+
+              // ── Segmented Tabs: User | Laporan | Foto (AdminUser.dc.html line 32) ──
+              _buildAdminSegmentedTabs(),
+
+              // ── Tab Bar View ──
+              Expanded(
+                child: TabBarView(
+                  controller: _tabController,
+                  children: [
+                    AdminUserTab(
+                      session: widget.session,
+                      users: _users,
+                      customRolesMap: _customRolesMap,
+                      loading: _loadingUsers,
+                      onRefresh: _loadUsers,
+                      onShowEditUser: _showEditUserDialog,
+                      onSetRole: _showSetRoleDialog,
+                      onResetPassword: _resetUserPassword,
+                    ),
+                    _buildReportsTab(),
+                    _buildPhotosTab(),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildRoleBadge(String role) {
     Color color;
     String label;
@@ -898,17 +893,17 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
         label = 'DEV';
         break;
       case 'admin':
-        color = const Color(0xFFE040FB);
+        color = AppTheme.primaryDeep;
         label = 'ADMIN';
         break;
       default:
-        color = AppTheme.textHint;
+        color = AppTheme.textMuted;
         label = 'USER';
     }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.15),
+        color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Text(label, style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.w700)),
@@ -1937,13 +1932,8 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
   // ═══════════════════════════════════════════════
 
   Widget _buildLoading() => const Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-    CircularProgressIndicator(color: Color(0xFFE040FB)), SizedBox(height: 16),
+    CircularProgressIndicator(color: AppTheme.accent), SizedBox(height: 16),
     Text('Memuat data...', style: TextStyle(color: AppTheme.textSecondary)),
-  ]));
-
-  Widget _buildEmpty(String msg) => Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-    const Icon(Icons.inbox_rounded, size: 48, color: AppTheme.textHint), const SizedBox(height: 12),
-    Text(msg, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 14)),
   ]));
 
   Future<bool?> _confirmDialog(String title, String message) => showDialog<bool>(
