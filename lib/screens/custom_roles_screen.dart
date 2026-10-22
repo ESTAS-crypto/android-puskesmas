@@ -3,6 +3,7 @@ import '../models/custom_role.dart';
 import '../models/user_session.dart';
 import '../services/supabase_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/ui/ui.dart';
 
 class CustomRolesScreen extends StatefulWidget {
   final UserSession session;
@@ -35,424 +36,688 @@ class _CustomRolesScreenState extends State<CustomRolesScreen> {
 
   void _showSnack(String msg, {bool isError = false}) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(msg),
-      backgroundColor: isError ? AppTheme.error : AppTheme.success,
-      behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-    ));
+    AppToast.show(
+      context,
+      msg,
+      kind: isError ? AppToastKind.error : AppToastKind.success,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.primaryDark,
-      appBar: AppBar(
-        backgroundColor: AppTheme.primaryDark,
-        elevation: 0,
-        leading: IconButton(
-          onPressed: () => Navigator.pop(context),
-          icon: const Icon(Icons.arrow_back_ios_rounded, color: AppTheme.textPrimary, size: 20),
-        ),
-        title: const Row(children: [
-          Icon(Icons.shield_rounded, color: Color(0xFFFFD700), size: 22),
-          SizedBox(width: 8),
-          Text('Kelola Role Custom', style: TextStyle(color: AppTheme.textPrimary, fontSize: 18, fontWeight: FontWeight.w700)),
-        ]),
-        actions: [
-          IconButton(
-            onPressed: _loadRoles,
-            icon: const Icon(Icons.refresh_rounded, color: AppTheme.textHint),
+      backgroundColor: AppTheme.bg,
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFFD6ECFA), Color(0xFFF1F8FD)],
+            stops: [0.0, 0.45],
           ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showRoleDialog(null),
-        backgroundColor: const Color(0xFFFFD700),
-        foregroundColor: Colors.black,
-        icon: const Icon(Icons.add_rounded),
-        label: const Text('Buat Role', style: TextStyle(fontWeight: FontWeight.w600)),
-      ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator(color: Color(0xFFFFD700)))
-          : _roles.isEmpty
-              ? _buildEmpty()
-              : RefreshIndicator(
-                  color: const Color(0xFFFFD700),
-                  onRefresh: _loadRoles,
-                  child: ListView.builder(
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
-                    itemCount: _roles.length,
-                    itemBuilder: (_, i) => _buildRoleCard(_roles[i]),
-                  ),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              // ── Header ──
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                child: Row(
+                  children: [
+                    InkWell(
+                      borderRadius: BorderRadius.circular(14),
+                      onTap: () => Navigator.pop(context),
+                      child: Container(
+                        width: 44,
+                        height: 44,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.6),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: AppTheme.divider),
+                        ),
+                        child: const AppIcon(
+                          AppGlyph.back,
+                          size: 20,
+                          color: AppTheme.textPrimary,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Text(
+                        'Kelola role custom',
+                        style: TextStyle(
+                          color: AppTheme.textPrimary,
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: -0.3,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: 'Segarkan',
+                      onPressed: _loadRoles,
+                      icon: const AppIcon(
+                        AppGlyph.update,
+                        color: AppTheme.textSecondary,
+                        size: 20,
+                      ),
+                    ),
+                  ],
                 ),
+              ),
+
+              // ── Body ──
+              Expanded(
+                child: _loading
+                    ? const Center(
+                        child: CircularProgressIndicator(
+                          color: AppTheme.primaryDeep,
+                        ),
+                      )
+                    : RefreshIndicator(
+                        color: AppTheme.primaryDeep,
+                        onRefresh: _loadRoles,
+                        child: ListView(
+                          padding: const EdgeInsets.fromLTRB(20, 4, 20, 32),
+                          children: [
+                            // "Buat role" Primary Button
+                            AppButton(
+                              label: 'Buat role',
+                              icon: AppGlyph.plus,
+                              kind: AppButtonKind.primary,
+                              onPressed: () => _showRoleSheet(null),
+                            ),
+                            const SizedBox(height: 16),
+
+                            if (_roles.isEmpty)
+                              _buildEmpty()
+                            else
+                              ..._roles.map((role) => Padding(
+                                    padding: const EdgeInsets.only(bottom: 14),
+                                    child: _buildRoleCard(role),
+                                  )),
+                          ],
+                        ),
+                      ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
   Widget _buildEmpty() {
-    return Center(
-      child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-        Container(
-          width: 80, height: 80,
-          decoration: BoxDecoration(
-            color: const Color(0xFFFFD700).withValues(alpha: 0.12),
-            shape: BoxShape.circle,
-          ),
-          child: const Icon(Icons.shield_rounded, color: Color(0xFFFFD700), size: 40),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 48),
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 72,
+              height: 72,
+              decoration: BoxDecoration(
+                color: AppTheme.tint(AppTheme.primaryDeep, 0.10),
+                shape: BoxShape.circle,
+              ),
+              child: const Center(
+                child: AppIcon(
+                  AppGlyph.shield,
+                  color: AppTheme.primaryDeep,
+                  size: 36,
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Belum ada role custom',
+              style: TextStyle(
+                color: AppTheme.textPrimary,
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'Tekan tombol "Buat role" di atas untuk menambahkan role baru.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: AppTheme.textSecondary,
+                fontSize: 14,
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: 16),
-        const Text('Belum ada role custom', style: TextStyle(color: AppTheme.textPrimary, fontSize: 16, fontWeight: FontWeight.w600)),
-        const SizedBox(height: 6),
-        const Text('Tekan tombol + untuk membuat role baru', style: TextStyle(color: AppTheme.textHint, fontSize: 13)),
-      ]),
+      ),
     );
   }
 
   Widget _buildRoleCard(CustomRole role) {
     final color = Color(role.colorValue);
-    final icon = _getIconData(role.iconName);
+    final icon = getCustomRoleIconData(role.iconName);
     final permLabels = _buildPermLabels(role.permissions);
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppTheme.cardDark,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: color.withValues(alpha: 0.4)),
-        boxShadow: [BoxShadow(color: color.withValues(alpha: 0.08), blurRadius: 12, offset: const Offset(0, 4))],
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppTheme.divider),
+        boxShadow: const [
+          BoxShadow(
+            color: Color.fromRGBO(11, 42, 64, 0.06),
+            blurRadius: 2,
+            offset: Offset(0, 1),
+          ),
+          BoxShadow(
+            color: Color.fromRGBO(10, 100, 168, 0.08),
+            blurRadius: 20,
+            offset: Offset(0, 8),
+          ),
+        ],
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          // Header
-          Row(children: [
-            Container(
-              width: 46, height: 46,
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.18),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: color.withValues(alpha: 0.4)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header Row
+          Row(
+            children: [
+              Container(
+                width: 14,
+                height: 14,
+                decoration: BoxDecoration(
+                  color: color,
+                  shape: BoxShape.circle,
+                ),
               ),
-              child: Icon(icon, color: color, size: 24),
-            ),
-            const SizedBox(width: 12),
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(role.name, style: TextStyle(color: color, fontSize: 16, fontWeight: FontWeight.w700)),
-              Text('${permLabels.length} permission aktif', style: const TextStyle(color: AppTheme.textHint, fontSize: 11)),
-            ])),
-            PopupMenuButton<String>(
-              icon: const Icon(Icons.more_vert_rounded, color: AppTheme.textHint),
-              color: AppTheme.cardDark,
-              onSelected: (v) {
-                if (v == 'edit') _showRoleDialog(role);
-                if (v == 'delete') _confirmDelete(role);
-              },
-              itemBuilder: (_) => [
-                const PopupMenuItem(value: 'edit', child: Row(children: [
-                  Icon(Icons.edit_rounded, color: AppTheme.accentTeal, size: 18), SizedBox(width: 8),
-                  Text('Edit', style: TextStyle(color: AppTheme.textPrimary)),
-                ])),
-                const PopupMenuItem(value: 'delete', child: Row(children: [
-                  Icon(Icons.delete_outline_rounded, color: AppTheme.error, size: 18), SizedBox(width: 8),
-                  Text('Hapus', style: TextStyle(color: AppTheme.error)),
-                ])),
-              ],
-            ),
-          ]),
-          if (permLabels.isNotEmpty) ...[ 
-            const SizedBox(height: 10),
-            Wrap(spacing: 6, runSpacing: 6, children: permLabels.map((label) => Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: color.withValues(alpha: 0.3)),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      role.name,
+                      style: const TextStyle(
+                        color: AppTheme.textPrimary,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '${permLabels.length} permission aktif',
+                      style: const TextStyle(
+                        color: AppTheme.textSecondary,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              child: Text(label, style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.w600)),
-            )).toList()),
-          ],
-        ]),
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: color, size: 20),
+              ),
+            ],
+          ),
+
+          // Permission pills
+          if (permLabels.isNotEmpty) ...[
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: permLabels.map((label) {
+                  return Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0A64A8).withValues(alpha: 0.10),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      label,
+                      style: const TextStyle(
+                        color: Color(0xFF0A64A8),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+          ] else
+            const SizedBox(height: 12),
+
+          // Action row: Edit & Hapus buttons
+          Row(
+            children: [
+              Expanded(
+                child: AppButton(
+                  label: 'Edit',
+                  kind: AppButtonKind.tonal,
+                  onPressed: () => _showRoleSheet(role),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: AppButton(
+                  label: 'Hapus',
+                  kind: AppButtonKind.danger,
+                  onPressed: () => _confirmDelete(role),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
 
   List<String> _buildPermLabels(int perms) {
     final labels = <String>[];
-    if (perms & CustomRole.permViewAll != 0) labels.add('Lihat Semua Laporan');
-    if (perms & CustomRole.permExport != 0) labels.add('Export PDF/DOCX');
-    if (perms & CustomRole.permManageUsers != 0) labels.add('Kelola User');
-    if (perms & CustomRole.permDeleteReport != 0) labels.add('Hapus Laporan');
-    if (perms & CustomRole.permGlobalMode != 0) labels.add('Mode Global');
-    if (perms & CustomRole.permAdminPanel != 0) labels.add('Admin Panel');
+    if (perms & CustomRole.permViewAll != 0) labels.add('Lihat laporan');
+    if (perms & CustomRole.permExport != 0) labels.add('Cetak & Export');
+    if (perms & CustomRole.permManageUsers != 0) labels.add('Kelola user');
+    if (perms & CustomRole.permDeleteReport != 0) labels.add('Hapus laporan');
+    if (perms & CustomRole.permGlobalMode != 0) {
+      labels.add('Lihat semua puskesmas');
+    }
+    if (perms & CustomRole.permAdminPanel != 0) labels.add('Panel admin');
     return labels;
   }
 
   Future<void> _confirmDelete(CustomRole role) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppTheme.cardDark,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Row(children: [
-          const Icon(Icons.warning_rounded, color: AppTheme.error, size: 22),
-          const SizedBox(width: 8),
-          Text('Hapus Role "${role.name}"?', style: const TextStyle(color: AppTheme.textPrimary, fontSize: 15)),
-        ]),
-        content: const Text('Role yang dihapus tidak bisa dikembalikan. User dengan role ini akan kehilangan akses custom-nya.', style: TextStyle(color: AppTheme.textSecondary)),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Batal', style: TextStyle(color: AppTheme.textSecondary))),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.error, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-            child: const Text('Hapus'),
-          ),
-        ],
-      ),
+    final confirmed = await AppConfirmSheet.show(
+      context,
+      title: 'Hapus Role "${role.name}"?',
+      message:
+          'Role yang dihapus tidak bisa dikembalikan. Pengguna dengan role ini akan kehilangan akses khususnya.',
+      confirmLabel: 'Hapus',
+      cancelLabel: 'Batal',
+      isDangerous: true,
     );
-    if (confirm != true) return;
+    if (!confirmed) return;
+
     final error = await SupabaseService.deleteCustomRole(role.id);
     if (!mounted) return;
     if (error != null) {
       _showSnack(error, isError: true);
     } else {
-      _showSnack('Role "${role.name}" dihapus');
+      _showSnack('Role "${role.name}" berhasil dihapus');
       _loadRoles();
     }
   }
 
-  Future<void> _showRoleDialog(CustomRole? existing) async {
+  Future<void> _showRoleSheet(CustomRole? existing) async {
     final nameCtrl = TextEditingController(text: existing?.name ?? '');
-    int selectedColor = existing?.colorValue ?? 0xFFE040FB;
+    int selectedColor = existing?.colorValue ?? 0xFF0A64A8;
     String selectedIcon = existing?.iconName ?? 'person_rounded';
     int permissions = existing?.permissions ?? 0;
 
     final colorOptions = <int>[
-      0xFFE040FB, // violet
-      0xFF00E5FF, // cyan
-      0xFFFFD700, // gold
-      0xFF4CAF50, // green
-      0xFFFF6B6B, // red
-      0xFF448AFF, // blue
-      0xFFFF9800, // orange
-      0xFFAB47BC, // purple
+      0xFF0A64A8, // Biru laut (Primary)
+      0xFF2E9C6A, // Hijau Sehat (Emerald)
+      0xFFB06A00, // Kuning/Amber
+      0xFF6B5BD6, // Ungu / Violet
+      0xFF00BCD4, // Cyan
+      0xFFD32F2F, // Merah
+      0xFFE91E63, // Magenta
+      0xFF455A64, // Slate
     ];
 
     final iconOptions = <String>[
-      'person_rounded', 'supervisor_account', 'manage_accounts_rounded',
-      'admin_panel_settings_rounded', 'star_rounded', 'verified_rounded',
-      'security_rounded', 'local_hospital_rounded', 'school_rounded',
-      'work_rounded', 'groups_rounded', 'badge_rounded',
+      'person_rounded',
+      'supervisor_account',
+      'manage_accounts_rounded',
+      'admin_panel_settings_rounded',
+      'star_rounded',
+      'verified_rounded',
+      'security_rounded',
+      'local_hospital_rounded',
+      'school_rounded',
+      'work_rounded',
+      'groups_rounded',
+      'badge_rounded',
     ];
 
-    final permBits = [
-      CustomRole.permViewAll,
-      CustomRole.permExport,
-      CustomRole.permManageUsers,
-      CustomRole.permDeleteReport,
-      CustomRole.permGlobalMode,
-      CustomRole.permAdminPanel,
+    final permDefs = [
+      (CustomRole.permViewAll, 'Lihat laporan', 'Dapat melihat semua data laporan'),
+      (CustomRole.permExport, 'Cetak & Export', 'Dapat mencetak dan mengunduh PDF/DOCX'),
+      (CustomRole.permManageUsers, 'Kelola user', 'Dapat mengatur akun pengguna puskesmas'),
+      (CustomRole.permDeleteReport, 'Hapus laporan', 'Dapat menghapus data laporan'),
+      (CustomRole.permGlobalMode, 'Lihat semua puskesmas', 'Akses laporan lintas faskes (mode global)'),
+      (CustomRole.permAdminPanel, 'Panel admin', 'Akses penuh ke menu administrasi'),
     ];
-    final permNames = ['Lihat Semua Laporan', 'Export PDF/DOCX', 'Kelola User', 'Hapus Laporan', 'Mode Global', 'Admin Panel'];
 
-    await showDialog<void>(
+    await showModalBottomSheet<void>(
       context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
       builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialog) => Dialog(
-          backgroundColor: AppTheme.cardDark,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-          insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(20),
-            child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-              // Title
-              Row(children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(color: Color(selectedColor).withValues(alpha: 0.18), borderRadius: BorderRadius.circular(12)),
-                  child: Icon(_getIconData(selectedIcon), color: Color(selectedColor), size: 24),
-                ),
-                const SizedBox(width: 12),
-                Text(existing == null ? 'Buat Role Baru' : 'Edit Role', style: const TextStyle(color: AppTheme.textPrimary, fontSize: 17, fontWeight: FontWeight.w700)),
-              ]),
-              const SizedBox(height: 20),
-
-              // Nama role
-              _label('Nama Role'),
-              const SizedBox(height: 6),
-              TextField(
-                controller: nameCtrl,
-                style: const TextStyle(color: AppTheme.textPrimary),
-                decoration: InputDecoration(
-                  hintText: 'contoh: Supervisor, Koordinator...',
-                  hintStyle: const TextStyle(color: AppTheme.textHint, fontSize: 13),
-                  filled: true, fillColor: AppTheme.surfaceDark,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppTheme.divider)),
-                ),
+        builder: (ctx, setSheet) => Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            boxShadow: [
+              BoxShadow(
+                color: Color.fromRGBO(11, 42, 64, 0.14),
+                blurRadius: 30,
+                offset: Offset(0, -4),
               ),
-              const SizedBox(height: 18),
-
-              // Warna
-              _label('Warna Role'),
-              const SizedBox(height: 8),
-              Wrap(spacing: 10, runSpacing: 10, children: colorOptions.map((c) {
-                final isSelected = c == selectedColor;
-                return GestureDetector(
-                  onTap: () => setDialog(() => selectedColor = c),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 150),
-                    width: 36, height: 36,
+            ],
+          ),
+          padding: EdgeInsets.fromLTRB(
+            20,
+            12,
+            20,
+            24 + MediaQuery.of(ctx).viewInsets.bottom,
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Handle bar
+                Center(
+                  child: Container(
+                    width: 36,
+                    height: 4,
                     decoration: BoxDecoration(
-                      color: Color(c),
-                      shape: BoxShape.circle,
-                      border: isSelected ? Border.all(color: Colors.white, width: 3) : null,
-                      boxShadow: isSelected ? [BoxShadow(color: Color(c).withValues(alpha: 0.6), blurRadius: 8)] : null,
+                      color: AppTheme.divider,
+                      borderRadius: BorderRadius.circular(2),
                     ),
-                    child: isSelected ? const Icon(Icons.check_rounded, color: Colors.white, size: 18) : null,
                   ),
-                );
-              }).toList()),
-              const SizedBox(height: 18),
+                ),
+                const SizedBox(height: 16),
 
-              // Ikon
-              _label('Ikon Role'),
-              const SizedBox(height: 8),
-              Wrap(spacing: 8, runSpacing: 8, children: iconOptions.map((iName) {
-                final isSelected = iName == selectedIcon;
-                return GestureDetector(
-                  onTap: () => setDialog(() => selectedIcon = iName),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 150),
-                    width: 44, height: 44,
-                    decoration: BoxDecoration(
-                      color: isSelected ? Color(selectedColor).withValues(alpha: 0.2) : AppTheme.surfaceDark,
-                      borderRadius: BorderRadius.circular(12),
-                      border: isSelected ? Border.all(color: Color(selectedColor), width: 2) : Border.all(color: AppTheme.divider),
+                // Title
+                Row(
+                  children: [
+                    Container(
+                      width: 14,
+                      height: 14,
+                      decoration: BoxDecoration(
+                        color: Color(selectedColor),
+                        shape: BoxShape.circle,
+                      ),
                     ),
-                    child: Icon(_getIconData(iName), color: isSelected ? Color(selectedColor) : AppTheme.textHint, size: 22),
-                  ),
-                );
-              }).toList()),
-              const SizedBox(height: 18),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        existing == null ? 'Role baru' : 'Edit role',
+                        style: const TextStyle(
+                          color: AppTheme.textPrimary,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded,
+                          color: AppTheme.textSecondary),
+                      onPressed: () => Navigator.pop(ctx),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
 
-              // Permissions
-              _label('Permission Akses'),
-              const SizedBox(height: 6),
-              ...List.generate(permBits.length, (i) {
-                final bit = permBits[i];
-                final active = permissions & bit != 0;
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 6),
+                // Nama Role
+                const Text(
+                  'Nama role',
+                  style: TextStyle(
+                    color: AppTheme.textSecondary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                   decoration: BoxDecoration(
-                    color: active ? Color(selectedColor).withValues(alpha: 0.08) : AppTheme.surfaceDark,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: active ? Color(selectedColor).withValues(alpha: 0.4) : AppTheme.divider),
+                    color: const Color(0xFFEAF3FA),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: AppTheme.divider),
                   ),
-                  child: SwitchListTile(
-                    dense: true,
-                    title: Text(permNames[i], style: TextStyle(color: active ? Color(selectedColor) : AppTheme.textSecondary, fontSize: 13, fontWeight: FontWeight.w500)),
-                    value: active,
-                    activeThumbColor: Color(selectedColor),
-                    inactiveThumbColor: AppTheme.textHint,
-                    trackColor: WidgetStateProperty.resolveWith((states) {
-                      if (states.contains(WidgetState.selected)) return Color(selectedColor).withValues(alpha: 0.3);
-                      return AppTheme.divider;
-                    }),
-                    onChanged: (v) => setDialog(() {
-                      if (v) {
-                        permissions |= bit;
-                      } else {
-                        permissions &= ~bit;
-                      }
-                    }),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
+                  child: TextField(
+                    controller: nameCtrl,
+                    style: const TextStyle(
+                      color: AppTheme.textPrimary,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    decoration: const InputDecoration(
+                      hintText: 'contoh: Supervisor wilayah',
+                      hintStyle: TextStyle(
+                        color: AppTheme.textHint,
+                        fontSize: 15,
+                        fontWeight: FontWeight.normal,
+                      ),
+                      border: InputBorder.none,
+                    ),
                   ),
-                );
-              }),
-              const SizedBox(height: 20),
+                ),
+                const SizedBox(height: 18),
 
-              // Actions
-              Row(children: [
-                Expanded(child: OutlinedButton(
-                  onPressed: () => Navigator.pop(ctx),
-                  style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: AppTheme.divider),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
+                // Warna Label
+                const Text(
+                  'Warna label',
+                  style: TextStyle(
+                    color: AppTheme.textSecondary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
                   ),
-                  child: const Text('Batal', style: TextStyle(color: AppTheme.textSecondary)),
-                )),
-                const SizedBox(width: 10),
-                Expanded(child: ElevatedButton(
+                ),
+                const SizedBox(height: 8),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: colorOptions.map((c) {
+                      final isSelected = c == selectedColor;
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 12),
+                        child: GestureDetector(
+                          onTap: () => setSheet(() => selectedColor = c),
+                          child: Container(
+                            width: 34,
+                            height: 34,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Color(c),
+                              border: isSelected
+                                  ? Border.all(color: Colors.white, width: 3)
+                                  : null,
+                              boxShadow: isSelected
+                                  ? [
+                                      BoxShadow(
+                                        color: Color(c),
+                                        spreadRadius: 2,
+                                        blurRadius: 0,
+                                      ),
+                                    ]
+                                  : null,
+                            ),
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+                const SizedBox(height: 18),
+
+                // Ikon Role
+                const Text(
+                  'Ikon role',
+                  style: TextStyle(
+                    color: AppTheme.textSecondary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: iconOptions.map((iName) {
+                    final isSelected = iName == selectedIcon;
+                    return GestureDetector(
+                      onTap: () => setSheet(() => selectedIcon = iName),
+                      child: Container(
+                        width: 42,
+                        height: 42,
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? Color(selectedColor).withValues(alpha: 0.15)
+                              : const Color(0xFFEAF3FA),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: isSelected
+                                ? Color(selectedColor)
+                                : AppTheme.divider,
+                            width: isSelected ? 1.8 : 1.0,
+                          ),
+                        ),
+                        child: Icon(
+                          getCustomRoleIconData(iName),
+                          color: isSelected
+                              ? Color(selectedColor)
+                              : AppTheme.textSecondary,
+                          size: 20,
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 16),
+                const Divider(color: AppTheme.divider, height: 1),
+                const SizedBox(height: 14),
+
+                // Permissions switch rows
+                const Text(
+                  'Permission akses',
+                  style: TextStyle(
+                    color: AppTheme.textSecondary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                ...permDefs.map((def) {
+                  final bit = def.$1;
+                  final title = def.$2;
+                  final subtitle = def.$3;
+                  final active = permissions & bit != 0;
+
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                title,
+                                style: const TextStyle(
+                                  color: AppTheme.textPrimary,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              Text(
+                                subtitle,
+                                style: const TextStyle(
+                                  color: AppTheme.textSecondary,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Switch.adaptive(
+                          value: active,
+                          activeThumbColor: Color(selectedColor),
+                          activeTrackColor:
+                              Color(selectedColor).withValues(alpha: 0.35),
+                          onChanged: (v) => setSheet(() {
+                            if (v) {
+                              permissions |= bit;
+                            } else {
+                              permissions &= ~bit;
+                            }
+                          }),
+                        ),
+                      ],
+                    ),
+                  );
+                }),
+                const SizedBox(height: 24),
+
+                // Submit Button
+                AppButton(
+                  label: existing == null ? 'Simpan role' : 'Perbarui role',
+                  kind: AppButtonKind.primary,
                   onPressed: () async {
                     final name = nameCtrl.text.trim();
                     if (name.isEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Nama role tidak boleh kosong')));
+                      AppToast.show(
+                        context,
+                        'Nama role tidak boleh kosong',
+                        kind: AppToastKind.error,
+                      );
                       return;
                     }
                     Navigator.pop(ctx);
                     String? error;
                     if (existing == null) {
                       error = await SupabaseService.createCustomRole(
-                        name: name, colorValue: selectedColor,
-                        iconName: selectedIcon, permissions: permissions,
+                        name: name,
+                        colorValue: selectedColor,
+                        iconName: selectedIcon,
+                        permissions: permissions,
                         createdBy: widget.session.userId,
                       );
                     } else {
                       error = await SupabaseService.updateCustomRole(
-                        roleId: existing.id, name: name, colorValue: selectedColor,
-                        iconName: selectedIcon, permissions: permissions,
+                        roleId: existing.id,
+                        name: name,
+                        colorValue: selectedColor,
+                        iconName: selectedIcon,
+                        permissions: permissions,
                       );
                     }
                     if (!mounted) return;
                     if (error != null) {
                       _showSnack(error, isError: true);
                     } else {
-                      _showSnack(existing == null ? 'Role "$name" berhasil dibuat' : 'Role "$name" diperbarui');
+                      _showSnack(existing == null
+                          ? 'Role "$name" berhasil dibuat'
+                          : 'Role "$name" berhasil diperbarui');
                       _loadRoles();
                     }
                   },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Color(selectedColor),
-                    foregroundColor: Colors.black,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                  ),
-                  child: Text(existing == null ? 'Buat Role' : 'Simpan', style: const TextStyle(fontWeight: FontWeight.w700)),
-                )),
-              ]),
-            ]),
+                ),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
-
-  Widget _label(String text) {
-    return Text(text, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 0.5));
-  }
-
-  IconData _getIconData(String name) {
-    const map = <String, IconData>{
-      'person_rounded': Icons.person_rounded,
-      'supervisor_account': Icons.supervisor_account,
-      'manage_accounts_rounded': Icons.manage_accounts_rounded,
-      'admin_panel_settings_rounded': Icons.admin_panel_settings_rounded,
-      'star_rounded': Icons.star_rounded,
-      'verified_rounded': Icons.verified_rounded,
-      'security_rounded': Icons.security_rounded,
-      'local_hospital_rounded': Icons.local_hospital_rounded,
-      'school_rounded': Icons.school_rounded,
-      'work_rounded': Icons.work_rounded,
-      'groups_rounded': Icons.groups_rounded,
-      'badge_rounded': Icons.badge_rounded,
-    };
-    return map[name] ?? Icons.person_rounded;
-  }
 }
 
-/// Helper function to get IconData — used in other screens too.
+/// Helper function to get IconData — used across the app (Admin Panel, History, RoleBadge).
 IconData getCustomRoleIconData(String name) {
   const map = <String, IconData>{
     'person_rounded': Icons.person_rounded,
