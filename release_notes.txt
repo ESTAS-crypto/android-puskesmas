@@ -1,0 +1,11 @@
+[BARU]
+• Tampilan Baru Lebih Segar: Seluruh halaman (Beranda, Formulir, Riwayat) kini tampil lebih rapi, tulisan lebih besar dan jelas dibaca, serta tombol nyaman ditekan.
+• Catat Keluhan Lewat Suara: Cukup bicara ke mikrofon untuk mengisi keluhan pasien. Dilengkapi gelombang animasi dan tombol "Ulangi" jika ucapan kurang pas.
+• Bisa Geser Urutan: Posisi keluhan dan tindakan pasien sekarang bisa digeser naik-turun dengan mudah untuk mendahulukan hal yang paling penting.
+
+[PENINGKATAN]
+• Formulir Lebih Nyaman & Tertata: Lembar pemeriksaan pasien kini disusun rapi bertahap per kartu agar ibu-ibu tidak lelah saat mencatat kunjungan.
+• Lancar Dipakai Tanpa Sinyal: Tetap bisa mengisi laporan saat di rumah warga tanpa kuota/sinyal, laporan otomatis terkirim saat HP online kembali.
+
+[PERBAIKAN]
+• Lebih Ringan & Bebas Gangguan: Aplikasi dibuka lebih cepat, hemat memori HP, serta tampilan layar bersih bebas dari garis terpotong.

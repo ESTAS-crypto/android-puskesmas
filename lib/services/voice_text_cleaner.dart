@@ -16,10 +16,15 @@ class VoiceTextCleaner {
     'ratus', 'seribu', 'ribu',
   };
 
-  /// Pasangan "salah dengar" → "benar". KOSONG sengaja.
-  /// Isi berdasarkan kesalahan nyata yang Anda catat saat uji lapangan, contoh:
-  ///   'tensi darah': 'tensi'
-  static const Map<String, String> fixes = {};
+  /// Pasangan "salah dengar" → "benar".
+  /// Berisi pasangan kata yang sering salah ditranskripsi oleh pengenal suara Android/Google.
+  static const Map<String, String> fixes = {
+    'evant': 'Evan',
+    'evan at': 'Evan Atharasya',
+    'atharasya': 'Atharasya',
+    'adhara': 'Atharasya',
+    'adharasya': 'Atharasya',
+  };
 
   static String clean(String raw, VoiceKind kind) {
     final s = raw.trim();
@@ -30,7 +35,7 @@ class VoiceTextCleaner {
       case VoiceKind.number:
         return _normalizeNumbers(s, slash: true).replaceAll(' ', '');
       case VoiceKind.name:
-        return _titleCase(s.replaceAll(RegExp(r'[.,]+$'), ''));
+        return _titleCase(_applyFixes(s.replaceAll(RegExp(r'[.,]+$'), '')));
       case VoiceKind.address:
         return _address(_applyFixes(_normalizeNumbers(s)));
       case VoiceKind.text:

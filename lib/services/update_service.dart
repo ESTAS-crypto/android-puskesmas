@@ -50,8 +50,8 @@ class AppUpdateInfo {
 /// Service untuk menangani In-App Auto Update (OTA Update).
 class UpdateService {
   /// Versi fallback jika runtime platform gagal memberikan package info
-  static const String fallbackVersion = '2.7.6';
-  static const int fallbackVersionCode = 10;
+  static const String fallbackVersion = '2.8.0';
+  static const int fallbackVersionCode = 12;
 
   static String _runtimeVersion = fallbackVersion;
   static int _runtimeVersionCode = fallbackVersionCode;

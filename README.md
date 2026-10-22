@@ -1,84 +1,101 @@
 <div align="center">
 
-# 🏥 Laporan Kunjungan Rumah
-
-### Aplikasi Pencatatan Kunjungan Pasien untuk Kader & Petugas Puskesmas
-
-<br>
-
-[![Flutter](https://img.shields.io/badge/Flutter_3.8-02569B?style=for-the-badge&logo=flutter&logoColor=white)](https://flutter.dev/)
-[![Dart](https://img.shields.io/badge/Dart_3.8-0175C2?style=for-the-badge&logo=dart&logoColor=white)](https://dart.dev/)
-[![Supabase](https://img.shields.io/badge/Supabase-3FCF8E?style=for-the-badge&logo=supabase&logoColor=white)](https://supabase.com/)
-[![Google Sign-In](https://img.shields.io/badge/Google_Sign--In-4285F4?style=for-the-badge&logo=google&logoColor=white)](#-autentikasi)
-[![License](https://img.shields.io/badge/License-Private-E040FB?style=for-the-badge)](#)
+# 🏥 Laporan Kunjungan Rumah Puskesmas
+### *Mendukung Kader & Tenaga Kesehatan Menjangkau Setiap Warga hingga ke Pelosok*
 
 <br>
 
-<img src="https://img.shields.io/badge/status-Production_Ready-00BFA6?style=flat-square" alt="Status" />
-<img src="https://img.shields.io/badge/version-2.5.0-448AFF?style=flat-square" alt="Version" />
-<img src="https://img.shields.io/badge/platform-Android-34A853?style=flat-square&logo=android&logoColor=white" alt="Platform" />
+[![Versi](https://img.shields.io/badge/Versi-2.8.0-0A64A8?style=for-the-badge&logo=android&logoColor=white)](#-riwayat-pembaruan)
+[![Flutter](https://img.shields.io/badge/Flutter-3.47+-02569B?style=for-the-badge&logo=flutter&logoColor=white)](https://flutter.dev/)
+[![Offline First](https://img.shields.io/badge/Arsitektur-Offline--First-176B40?style=for-the-badge&logo=pwa&logoColor=white)](#-arsitektur-offline-first)
+[![Supabase](https://img.shields.io/badge/Backend-Supabase_Cloud-3FCF8E?style=for-the-badge&logo=supabase&logoColor=white)](https://supabase.com/)
+[![Target](https://img.shields.io/badge/Platform-Android_APK-34A853?style=for-the-badge&logo=android&logoColor=white)](#)
+
+<br>
+
+<p align="center">
+  <b>Aplikasi pencatatan kunjungan rumah (home visit) terpadu yang dirancang khusus untuk kenyamanan Ibu-Ibu Kader Posyandu dan Petugas Medis Puskesmas. Bebas dipakai tanpa sinyal internet, ramah pengguna, dan dilengkapi asisten suara medis pintar.</b>
+</p>
+
+---
 
 </div>
 
 <br>
 
+## 💡 Mengapa Aplikasi Ini Dibuat? (Latar Belakang & Tujuan)
+
+Di lapangan, **Kader Kesehatan Posyandu dan Petugas Puskesmas** adalah garda terdepan pelayanan kesehatan masyarakat. Mereka menyusuri gang, mengetuk pintu warga lansia, balita stunting, ibu hamil berisiko tinggi, serta pasien penyakit kronis di berbagai pelosok desa.
+
+Namun, selama ini mereka menghadapi kendala nyata:
+1. **Tumpukan Kertas & Buku Tebal:** Pencatatan manual rentan tercecer, mudah sobek, basah terkena hujan di jalan, atau rusak termakan waktu.
+2. **Ketiadaan Sinyal di Rumah Pasien (*Blank Spot*):** Banyak wilayah pelosok dan gang sempit yang tidak memiliki akses internet stabil saat pemeriksaan berlangsung.
+3. **Kerumitan Mengetik di Layar HP:** Ibu-ibu kader sering kali merasa lelah dan kesulitan jika harus mengetik nama obat, tensi darah, atau catatan keluhan panjang di keyboard sentuh yang kecil.
+4. **Beban Rekap Administrasi Bulanan:** Petugas kesehatan harus menghabiskan berhari-hari hanya untuk memindahkan catatan kertas ke komputer demi membuat laporan dinas bulanan.
+
+> **Misi Utama Aplikasi Ini:**  
+> Memberikan alat kerja digital yang **paling sederhana, ramah ibu-ibu, tidak pernah macet saat mati sinyal**, serta otomatis menyusun laporan medis rapi dalam sekejap — sehingga kader dan nakes dapat lebih berfokus pada kesehatan pasien, bukan pada rumitnya administrasi.
+
+<br>
+
 ---
 
-<br>
-
-## ✨ Tentang Aplikasi
-
-**Laporan Kunjungan Rumah** adalah aplikasi mobile berbasis Flutter yang dirancang khusus untuk **Kader Kesehatan** dan **Petugas Puskesmas** dalam mencatat, mengelola, dan melaporkan data kunjungan rumah pasien.
-
-Dibangun dengan arsitektur **Offline-First**, aplikasi ini mampu bekerja tanpa internet dan secara otomatis menyinkronkan data ke cloud saat koneksi tersedia — sempurna untuk digunakan di lapangan.
-
-<br>
-
-## 🎯 Fitur Utama
+## 🌟 Sorotan Fitur Unggulan
 
 <table>
 <tr>
-<td width="50%">
+<td width="50%" valign="top">
 
-### 📋 Pencatatan & Manajemen
-- 📝 **Formulir Pemeriksaan Lengkap** — Identitas pasien, keluhan, hasil pemeriksaan, dan tindak lanjut
-- 🗂️ **Riwayat Laporan** — Pencarian, filter, dan pengelolaan semua laporan
-- 🔍 **Pencarian Global** — Cari data lintas akun & puskesmas (admin)
-- 📷 **Dokumentasi Foto** — Lampirkan foto pemeriksaan per pasien
-- 🎤 **Speech-to-Text** — Input data melalui suara
-- 💾 **Auto-Save Draft** — Formulir otomatis tersimpan agar tidak hilang
+### 🎤 Asisten Suara Pintar (Voice Input)
+- **Bicara Tanpa Perlu Ngetik:** Kader cukup menekan ikon mikrofon dan mendiktekan keluhan atau data pasien.
+- **Paham Format Medis Indonesia:** Otomatis mengubah ucapan *"seratus tiga puluh per delapan puluh"* menjadi **`130/80 mmHg`**, memformat desimal suhu, NIK angka, dan nama pasien.
+- **Visualizer Gelombang Suara & Tombol Ulangi:** Tampilan animasi gelombang yang hidup serta tombol *"Ulangi"* sekali ketuk bila ada ucapan yang kurang pas.
 
 </td>
-<td width="50%">
+<td width="50%" valign="top">
 
-### ☁️ Cloud & Sinkronisasi
-- 🌐 **Offline-First** — Bekerja tanpa internet, sync otomatis saat online
-- 🔄 **Auto-Sync** — Sinkronisasi real-time ke Supabase Cloud
-- 🗑️ **Auto-Delete Cerdas** — Hapus otomatis data lama berdasarkan pengaturan admin
-- 📤 **Cloud Backup** — Data tersimpan aman di server
-- 🟢 **Status Koneksi** — Banner real-time menunjukkan status online/offline
+### 🌐 Arsitektur 100% Offline-First
+- **Tetap Bekerja Tanpa Kuota / Sinyal:** Seluruh isian form, riwayat kunjungan, dan foto pasien langsung tersimpan aman di memori lokal HP.
+- **Sinkronisasi Otomatis ke Cloud:** Begitu HP terhubung Wi-Fi atau mendapat sinyal internet, data otomatis disinkronkan ke Supabase Cloud tanpa perlu tombol manual.
+- **Indikator Realtime Sejuk:** Banner status koneksi ramah yang memberi tahu status sinkronisasi tanpa membuat panik pengguna.
 
 </td>
 </tr>
-<tr>
-<td width="50%">
 
-### 🔐 Keamanan & Autentikasi
-- 🔑 **Login Email/Password** — Autentikasi aman via Supabase Auth
-- 🔵 **Google Sign-In** — Login instan menggunakan akun Google
-- 👤 **Profil Kader Wajib** — Setup nama & puskesmas sebelum mulai
-- 🛡️ **Row-Level Security** — Data terlindungi di tingkat database
-- 🔒 **Reset Password** — Via OTP ke email terdaftar
+<tr>
+<td width="50%" valign="top">
+
+### 📋 Formulir Pemeriksaan Tertata & Drag-and-Drop
+- **Desain Kartu Bertahap:** Data pasien, tanda vital, keluhan, dan tindakan dipisah per kartu bersih agar tidak membingungkan.
+- **Geser Urutan (Reorderable):** Posisi keluhan dan rencana tindak lanjut bisa digeser naik-turun dengan mudah untuk mendahulukan prioritas darurat.
+- **Dokumentasi Foto Lapangan:** Lampirkan foto kondisi fisik pasien atau lingkungan rumah langsung dari kamera.
 
 </td>
-<td width="50%">
+<td width="50%" valign="top">
 
-### 📊 Admin Panel & Ekspor
-- 👥 **Kelola User** — Lihat, edit profil, ubah role, reset password
-- 📈 **Dashboard Laporan** — Statistik penggunaan & penyimpanan
-- 🖼️ **Kelola Foto** — Monitor storage & hapus file lama
-- 📄 **Export PDF** — Laporan profesional siap cetak
-- ⚙️ **Remote Config** — Atur auto-delete dari server
+### 📄 Ekspor PDF Resmi Sekali Ketuk
+- **Format Siap Cetak:** Menghasilkan lembar laporan kunjungan rapi sesuai tata naskah dinas kesehatan.
+- **Lengkap dengan Dokumentasi:** Menyertakan identitas puskesmas, tanggal periksa, tabel ringkasan pasien, tanda tangan petugas, dan lampiran foto.
+- **Bagikan Instan:** Kirim langsung ke WhatsApp grup puskesmas atau simpan ke Google Drive.
+
+</td>
+</tr>
+
+<tr>
+<td width="50%" valign="top">
+
+### 👥 Manajemen Peran & Hak Akses (Multi-Role)
+- **Struktur Bertingkat:** Hierarki wewenang rapi: `Owner` › `Developer` › `Admin` › `User / Kader`.
+- **Peran Kustom (Custom Roles):** Fleksibilitas menentukan hak akses bagi bidan desa, dokter penanggung jawab, maupun koordinator kader.
+- **Keamanan Berlapis:** Dilengkapi perlindungan Row-Level Security (RLS) di tingkat database PostgreSQL.
+
+</td>
+<td width="50%" valign="top">
+
+### 🚀 Pembaruan Aplikasi Otomatis (OTA Update)
+- **Update Ala Play Store:** HP kader otomatis mendeteksi jika pengembang atau admin merilis pembaruan versi baru.
+- **Unduh & Pasang Cepat:** Notifikasi pop-up elegan dengan catatan rilis yang mudah dipahami, progres unduhan, dan pemasangan otomatis.
+- **Pembersihan Cerdas (Auto-Cleanup):** Secara berkala membersihkan berkas sementara lama agar penyimpanan HP tetap lega.
 
 </td>
 </tr>
@@ -86,264 +103,149 @@ Dibangun dengan arsitektur **Offline-First**, aplikasi ini mampu bekerja tanpa i
 
 <br>
 
-## 🛠️ Tech Stack
+---
 
-<div align="center">
+## 🎨 Desain yang Memanusiakan Pengguna (*Human-Centered Design*)
 
-| Layer | Teknologi | Fungsi |
-|:---:|:---|:---|
-| 📱 | **Flutter 3.8** | Frontend framework |
-| 🎯 | **Dart 3.8** | Programming language |
-| ☁️ | **Supabase** | Backend, Auth, Database, Storage |
-| 🔵 | **Google Sign-In** | OAuth 2.0 authentication |
-| 💾 | **SharedPreferences** | Local data persistence |
-| 📄 | **pdf** | PDF document generation |
-| 🎨 | **Lottie** | Splash screen animation |
-| 🎤 | **speech_to_text** | Voice input |
-
-</div>
+Aplikasi ini didesain dari nol dengan memperhatikan kebutuhan fisik dan psikologis ibu-ibu kader di lapangan:
+- **Ukuran Sentuh Luas (Minimal 44×44 px):** Mencegah salah tekan tombol saat kader berjalan atau terburu-buru.
+- **Warna Sejuk Ramah Mata (*Healthcare Palette*):** Dominasi biru laut lembut (`#0A64A8`), toska segar (`#176B40`), dan putih bersih yang tidak menyilaukan saat digunakan di bawah terik matahari.
+- **Tipografi Jelas & Terbaca:** Ukuran font proporsional, kontras tinggi, dan istilah teknis diganti dengan bahasa sehari-hari yang santun dan akrab.
 
 <br>
 
-## 🏗️ Arsitektur
+---
 
-```
-┌─────────────────────────────────────────────────┐
-│                    Flutter App                   │
-│  ┌───────────┐  ┌───────────┐  ┌──────────────┐ │
-│  │  Screens  │  │  Widgets  │  │    Models    │ │
-│  └─────┬─────┘  └─────┬─────┘  └──────┬───────┘ │
-│        │              │               │          │
-│  ┌─────┴──────────────┴───────────────┴───────┐  │
-│  │              Services Layer                │  │
-│  │  ┌──────────────┐  ┌────────────────────┐  │  │
-│  │  │StorageService│  │  SupabaseService   │  │  │
-│  │  │  (Offline)   │  │   (Cloud Sync)     │  │  │
-│  │  └──────┬───────┘  └────────┬───────────┘  │  │
-│  └─────────┼───────────────────┼──────────────┘  │
-└────────────┼───────────────────┼─────────────────┘
-             │                   │
-     ┌───────┴───────┐  ┌───────┴────────┐
-     │SharedPrefs    │  │   Supabase     │
-     │(Local JSON)   │  │  ┌──────────┐  │
-     └───────────────┘  │  │PostgreSQL│  │
-                        │  │ Storage  │  │
-                        │  │  Auth    │  │
-                        │  └──────────┘  │
-                        └────────────────┘
-```
-
-<br>
-
-## 📂 Struktur Proyek
-
-```
-lib/
-├── main.dart                      # Entry point + Supabase init
-├── models/
-│   ├── report.dart                # Model laporan kunjungan
-│   ├── resident_exam.dart         # Model pemeriksaan pasien
-│   └── user_session.dart          # Model sesi pengguna
-├── screens/
-│   ├── splash_screen.dart         # Splash dengan animasi Lottie
-│   ├── login_screen.dart          # Login + Google Sign-In
-│   ├── google_profile_setup_screen.dart  # Setup profil pertama kali
-│   ├── dashboard_screen.dart      # Menu utama + auto-cleanup
-│   ├── report_form_screen.dart    # Formulir laporan baru
-│   ├── report_history_screen.dart # Riwayat + pencarian global
-│   ├── admin_panel_screen.dart    # Admin: kelola user/laporan/foto
-│   └── resident_exam_form_screen.dart   # Form pemeriksaan pasien
-├── services/
-│   ├── storage_service.dart       # Penyimpanan lokal (offline)
-│   └── supabase_service.dart      # Cloud sync, auth, admin ops
-├── widgets/
-│   ├── connectivity_banner.dart   # Banner status online/offline
-│   └── changelog_dialog.dart      # Dialog changelog versi baru
-└── theme/
-    └── app_theme.dart             # Design system & tema gelap
-```
-
-<br>
-
-## 🚀 Memulai
-
-### Prasyarat
-
-- ✅ Flutter SDK `>=3.8.0`
-- ✅ Android Studio / VS Code
-- ✅ Perangkat Android atau Emulator (min SDK 21)
-
-### Instalasi
-
-```bash
-# 1. Clone repository
-git clone https://github.com/ESTAS-crypto/android-puskesmas.git
-
-# 2. Masuk ke folder proyek
-cd android-puskesmas
-
-# 3. Install dependencies
-flutter pub get
-
-# 4. Jalankan aplikasi (mode debug)
-flutter run
-
-# 5. Build APK release (untuk distribusi)
-flutter build apk --release --split-per-abi
-```
-
-### Konfigurasi Supabase
-
-Aplikasi sudah terkonfigurasi dengan instance Supabase. Jika ingin menggunakan instance sendiri, ubah di `lib/main.dart`:
-
-```dart
-await Supabase.initialize(
-  url: 'YOUR_SUPABASE_URL',
-  anonKey: 'YOUR_SUPABASE_ANON_KEY',
-);
-```
-
-### Konfigurasi Google Sign-In
-
-1. Buat OAuth Client ID di [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
-2. Aktifkan Google Provider di **Supabase Dashboard → Authentication → Providers**
-3. Masukkan Web Client ID di `lib/services/supabase_service.dart`
-
-<br>
-
-## 📱 Alur Penggunaan
+## 🏗️ Alur Kerja Sistem & Arsitektur
 
 ```mermaid
-flowchart LR
-    A[🚀 Splash] --> B{Sesi Ada?}
-    B -- Ya --> D[📊 Dashboard]
-    B -- Tidak --> C[🔑 Login]
-    C -- Email --> D
-    C -- Google --> E{User Baru?}
-    E -- Ya --> F[👤 Setup Profil]
-    F --> D
-    E -- Tidak --> D
-    D --> G[📝 Buat Laporan]
-    D --> H[📋 Riwayat]
-    D --> I[📄 Export PDF]
-    D --> J[⚙️ Admin Panel]
+flowchart TD
+    subgraph HP_Kader["📱 HP Kader di Lapangan (Offline / Online)"]
+        A[Buka Aplikasi] --> B[Formulir Kunjungan Rumah]
+        B -->|Bicara| C[🎤 Voice Input Medis]
+        B -->|Ambil Foto| D[📷 Kamera Pasien]
+        B -->|Geser Prioritas| E[↕️ Reorder Keluhan]
+        C & D & E --> F[💾 Penyimpanan Lokal / Local Cache]
+    end
+
+    subgraph Sinkronisasi["⚡ Background Sync Service"]
+        F --> G{Ada Sinyal Internet?}
+        G -- Belum --> H[Tetap Tersimpan Aman di HP]
+        H -. Cek Berkala .-> G
+        G -- Tersambung --> I[Auto-Sync Background]
+    end
+
+    subgraph Cloud["☁️ Supabase Cloud Platform"]
+        I --> J[(PostgreSQL Database)]
+        I --> K[🗂️ Storage Bucket Foto]
+        J --> L[🛡️ Row Level Security]
+    end
+
+    subgraph Output["📊 Hasil & Laporan"]
+        J --> M[📄 Ekspor Dokumen PDF Resmi]
+        J --> N[📈 Panel Monitoring Admin Puskesmas]
+        N --> O[📲 Rilis Update Aplikasi OTA]
+    end
 ```
 
 <br>
 
-## 🧹 Sistem Auto-Delete
+---
 
-Aplikasi memiliki mekanisme pembersihan otomatis berlapis:
+## 📂 Struktur Direktori Proyek
 
-| Layer | Trigger | Target | Konfigurasi |
-|:---|:---|:---|:---|
-| 🟢 **Lokal (HP)** | Saat buka Dashboard | File foto & laporan di HP | Admin Panel → Auto-Delete Lokal |
-| 🔴 **Server (Cloud)** | Saat Admin buka app | Data & foto di Supabase | Admin Panel → Auto-Delete Server |
-
-> Data yang sudah melewati batas waktu yang ditentukan admin akan otomatis dihapus di background tanpa mengganggu performa aplikasi.
-
-<br>
-
-## 🔐 Autentikasi
-
-Aplikasi mendukung dua metode login:
-
-| Metode | Keterangan |
-|:---|:---|
-| 📧 **Email + Password** | Register dengan OTP verification, login dengan username atau email |
-| 🔵 **Google Sign-In** | One-tap login, setup nama kader wajib untuk user baru |
-
-<br>
-
-## 📦 Dependencies
-
-| Package | Versi | Fungsi |
-|:---|:---|:---|
-| `supabase_flutter` | ^2.8.0 | Backend cloud |
-| `google_sign_in` | ^6.2.1 | Autentikasi Google |
-| `shared_preferences` | ^2.3.3 | Penyimpanan lokal |
-| `speech_to_text` | ^7.0.0 | Input suara |
-| `pdf` | ^3.11.1 | Generate PDF |
-| `image_picker` | ^1.1.2 | Ambil foto |
-| `lottie` | ^3.3.0 | Animasi splash |
-| `share_plus` | ^10.1.4 | Bagikan file |
-| `google_fonts` | ^6.2.1 | Tipografi premium |
-| `pin_code_fields` | ^8.0.1 | Input OTP |
-| `intl` | ^0.19.0 | Format tanggal |
-
-<br>
-
-## 🗄️ Database Schema (Supabase)
-
-```sql
--- Tabel profil pengguna
-CREATE TABLE profiles (
-  id          UUID PRIMARY KEY REFERENCES auth.users(id),
-  username    TEXT UNIQUE,
-  email       TEXT,
-  nama        TEXT,
-  puskesmas   TEXT,
-  role        TEXT DEFAULT 'user'
-);
-
--- Tabel laporan kunjungan
-CREATE TABLE reports (
-  id          TEXT PRIMARY KEY,
-  user_id     UUID REFERENCES auth.users(id),
-  no          INTEGER,
-  nama_petugas TEXT,
-  puskesmas   TEXT,
-  bulan       TEXT,
-  tahun       TEXT,
-  created_at  TIMESTAMPTZ DEFAULT now()
-);
-
--- Tabel pemeriksaan pasien
-CREATE TABLE resident_exams (
-  id          TEXT PRIMARY KEY,
-  report_id   TEXT REFERENCES reports(id) ON DELETE CASCADE,
-  nama        TEXT,
-  nik         TEXT,
-  alamat      TEXT,
-  umur        INTEGER,
-  keluhan     TEXT,
-  pemeriksaan TEXT,
-  tindak_lanjut TEXT,
-  foto_path   TEXT,
-  created_at  TIMESTAMPTZ DEFAULT now()
-);
-
--- Tabel role kustom (Role-Based Access Control)
-CREATE TABLE custom_roles (
-  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name        TEXT NOT NULL,
-  color       BIGINT DEFAULT 4292952315,
-  color_value BIGINT,
-  icon        TEXT DEFAULT 'person_rounded',
-  icon_name   TEXT,
-  permissions INTEGER DEFAULT 0,
-  created_by  UUID REFERENCES auth.users(id),
-  created_at  TIMESTAMPTZ DEFAULT now()
-);
-
--- Pastikan Row Level Security (RLS) aktif pada semua tabel public!
--- Lihat script: supabase/fix_rls_custom_roles.sql
-ALTER TABLE public.custom_roles ENABLE ROW LEVEL SECURITY;
+```text
+lib/
+├── main.dart                          # Inisialisasi aplikasi, tema & Supabase
+├── models/                            # Struktur data aplikasi
+│   ├── report.dart                    # Model laporan kunjungan
+│   ├── resident_exam.dart             # Model data pemeriksaan pasien
+│   ├── user_session.dart              # Model sesi pengguna aktif
+│   └── custom_role.dart               # Model peran & perizinan
+├── screens/                           # Tampilan antarmuka layar
+│   ├── splash_screen.dart             # Layar pembuka aplikasi
+│   ├── login_screen.dart              # Layar masuk (Email & Google Sign-In)
+│   ├── dashboard_screen.dart          # Menu utama, status offline & statistik
+│   ├── report_form_screen.dart        # Form utama laporan kunjungan
+│   ├── resident_exam_form_screen.dart # Form pemeriksaan lengkap pasien
+│   ├── report_history_screen.dart     # Riwayat laporan & pencarian
+│   ├── success_screen.dart            # Konfirmasi sukses simpan/kirim
+│   ├── admin_panel_screen.dart        # Panel kontrol admin, user, & storage
+│   └── custom_roles_screen.dart       # Manajemen peran kustom
+├── services/                          # Logika bisnis & komunikasi data
+│   ├── storage_service.dart           # Engine offline-first & cache lokal
+│   ├── supabase_service.dart          # Cloud database, storage, & auth
+│   ├── speech_service.dart            # Pengenal suara mikrofon
+│   ├── voice_text_cleaner.dart        # Pembersih teks suara & konversi medis
+│   └── update_service.dart            # Otomasi pengecekan & unduh update OTA
+└── widgets/                           # Komponen UI bersama
+    ├── changelog_dialog.dart          # Pop-up "Apa yang baru" (Changelog)
+    ├── update_dialog.dart             # Dialog instalasi update OTA
+    ├── connectivity_banner.dart       # Indikator koneksi internet
+    └── ui/                            # Design system (tombol, kartu, ikon, input)
 ```
 
 <br>
 
-## 👨‍💻 Dikembangkan Oleh
+---
 
-<div align="center">
+## 🚀 Panduan Memulai (Developer Setup)
 
-| | |
-|:---:|:---|
-| 👤 | **ESTAS-crypto** |
-| 🔗 | [github.com/ESTAS-crypto](https://github.com/ESTAS-crypto) |
-| 📦 | [android-puskesmas](https://github.com/ESTAS-crypto/android-puskesmas) |
+### 1. Prasyarat Sistem
+- **Flutter SDK:** Versi `3.8.0` ke atas (Direkomendasikan channel `stable`)
+- **Android SDK:** Minimum API Level 21 (Android 5.0 Lollipop) atau lebih baru
+- **Editor:** Visual Studio Code atau Android Studio
 
-</div>
+### 2. Instalasi & Menjalankan Aplikasi
+```bash
+# Clone repositori
+git clone https://github.com/ESTAS-crypto/android-puskesmas.git
+
+# Masuk ke direktori
+cd android-puskesmas
+
+# Ambil seluruh dependencies
+flutter pub get
+
+# Jalankan di perangkat Android fisik / emulator
+flutter run
+```
+
+### 3. Build & Rilis APK Cepat
+Proyek ini dilengkapi dengan skrip otomatis [`build_app.py`](file:///c:/dev/laporan_kunjungan/build_app.py) yang melakukan build release, membaca catatan rilis dari [`release_notes.txt`](file:///c:/dev/laporan_kunjungan/release_notes.txt), dan langsung meng-upload APK ke server update Supabase:
+
+```bash
+# Jalankan Build Wizard terintegrasi
+python build_app.py
+```
+
+<br>
+
+---
+
+## 🗄️ Skema Database & Keamanan (Supabase Cloud)
+
+Arsitektur database mengedepankan integritas data medis dan privasi warga:
+- **`profiles`**: Identitas petugas, email, nama puskesmas, dan role pengguna.
+- **`reports`**: Induk laporan kunjungan per wilayah, bulan, dan tahun.
+- **`resident_exams`**: Rincian pemeriksaan setiap pasien (NIK, alamat, keluhan, tensi/vital sign, tindak lanjut, dan berkas foto).
+- **`custom_roles`**: Pengaturan hak akses granular untuk fleksibilitas institusi.
+- **`app_config`**: Konfigurasi jarak jauh (Remote Config), kebijakan auto-cleanup, dan metadata update OTA.
+- **Row-Level Security (RLS):** Petugas hanya dapat mengakses dan mengelola laporan sesuai hak puskesmas atau wilayah tugasnya.
+
+<br>
+
+---
+
+## 📋 Catatan Rilis & Riwayat Versi
+
+### Versi 2.8.0 (Terbaru)
+- **Baru:** Wajah baru seluruh antarmuka (Beranda, Formulir, Riwayat) yang lebih bersih, tombol luas, dan ramah ibu-ibu.
+- **Baru:** Asisten suara cerdas dengan kemampuan membaca tensi darah, nama, NIK, dan alamat pasien.
+- **Baru:** Fitur geser urutan (*drag & drop*) pada keluhan dan rencana tindak lanjut pasien.
+- **Peningkatan:** Alur isian pemeriksaan per kartu bertahap untuk mencegah kelelahan kader saat mengisi data.
+- **Peningkatan:** Ketahanan sistem offline saat tidak ada sinyal internet.
+- **Perbaikan:** Optimalisasi performa memori, animasi statistik panel admin yang halus, dan bebas garis layar terpotong.
 
 <br>
 
@@ -351,12 +253,12 @@ ALTER TABLE public.custom_roles ENABLE ROW LEVEL SECURITY;
 
 <div align="center">
 
-**Laporan Kunjungan Rumah** — Dibuat dengan ❤️ untuk petugas kesehatan Indonesia
+### 🇮🇩 Didedikasikan untuk Seluruh Kader Posyandu & Tenaga Kesehatan Puskesmas di Seluruh Pelosok Indonesia
+
+*Membawa kemudahan teknologi demi pelayanan kesehatan masyarakat yang lebih merata, cepat, dan bermartabat.*
 
 <br>
 
-<img src="https://img.shields.io/badge/Made_with-Flutter-02569B?style=flat-square&logo=flutter" />
-<img src="https://img.shields.io/badge/Powered_by-Supabase-3FCF8E?style=flat-square&logo=supabase" />
-<img src="https://img.shields.io/badge/🇮🇩-Indonesia-FF0000?style=flat-square" />
+Dikembangkan dengan dedikasi oleh [ESTAS-crypto](https://github.com/ESTAS-crypto)
 
 </div>

@@ -164,9 +164,39 @@ def publish_to_supabase(apk_path, version_name, version_code):
             print(f"⚠️ Menyesuaikan versi rilis dari v{version_name} ke v{file_ver} (sesuai file APK {file_name})")
             version_name = file_ver
 
-    notes = input(f"📝 Masukkan Catatan Rilis v{version_name} [Tekan Enter untuk default]: ").strip()
+    txt_path = "release_notes.txt"
+    notes = ""
+    if os.path.exists(txt_path):
+        try:
+            with open(txt_path, "r", encoding="utf-8") as f:
+                file_content = f.read().strip()
+            if file_content:
+                print(f"📄 Ditemukan file '{txt_path}' berisi catatan rilis:")
+                preview_lines = file_content.splitlines()
+                for line in preview_lines[:4]:
+                    print(f"   {line}")
+                if len(preview_lines) > 4:
+                    print(f"   ... ({len(preview_lines)} baris total)")
+                choice = input(f"📝 Gunakan catatan rilis dari '{txt_path}'? (Y/n / atau ketik path file .txt lain) [Default: Y]: ").strip()
+                if choice.lower() in ("", "y", "ya", "yes"):
+                    notes = file_content
+                elif choice.lower().endswith(".txt") and os.path.exists(choice):
+                    with open(choice, "r", encoding="utf-8") as f:
+                        notes = f.read().strip()
+                elif choice.lower() not in ("n", "no"):
+                    notes = choice
+        except Exception as e:
+            print(f"⚠️ Gagal membaca '{txt_path}': {e}")
+
     if not notes:
-        notes = f"Pembaruan versi {version_name} dengan peningkatan kinerja dan stabilitas."
+        user_input = input(f"📝 Masukkan Catatan Rilis v{version_name} (atau ketik nama file .txt / Enter untuk default): ").strip()
+        if user_input.lower().endswith(".txt") and os.path.exists(user_input):
+            with open(user_input, "r", encoding="utf-8") as f:
+                notes = f.read().strip()
+        elif user_input:
+            notes = user_input
+        else:
+            notes = f"Pembaruan versi {version_name} dengan peningkatan kinerja dan stabilitas."
 
     print(f"\n⏳ Meng-upload {file_name} ke Supabase Storage...")
     print("   Mohon tunggu (animasi upload sedang berjalan)...")

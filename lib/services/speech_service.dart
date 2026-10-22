@@ -21,7 +21,6 @@ class SpeechService {
   bool _ready = false;
   String? _localeId;
   String _last = '';
-  bool _delivered = false;
 
   void Function(String text)? _onResult;
   void Function(String message)? _onError;
@@ -78,11 +77,11 @@ class SpeechService {
     _onError = onError;
     _onDone = onDone;
     _last = '';
-    _delivered = false;
 
     await _speech.listen(
       onResult: (SpeechRecognitionResult r) {
         _last = r.recognizedWords;
+        debugPrint('[Speech] words: "${r.recognizedWords}", final: ${r.finalResult}');
         if (r.finalResult) {
           _deliver();
         } else {
@@ -90,8 +89,8 @@ class SpeechService {
         }
       },
       localeId: _localeId,
-      listenFor: const Duration(seconds: 30),
-      pauseFor: const Duration(seconds: 4),
+      listenFor: const Duration(seconds: 60),
+      pauseFor: const Duration(seconds: 7),
       onSoundLevelChange: (l) => level.value = ((l + 2) / 12).clamp(0.0, 1.0).toDouble(),
       listenOptions: stt.SpeechListenOptions(
         listenMode: stt.ListenMode.dictation,
@@ -103,15 +102,18 @@ class SpeechService {
   }
 
   void _deliver() {
-    if (_delivered) return;
     final words = _last.trim();
     if (words.isEmpty) return;
-    _delivered = true;
     _onResult?.call(words);
   }
 
   void _handleStatus(String status) {
-    if (status == 'done' || status == 'notListening') {
+    debugPrint('[Speech] status: $status');
+    if (status == 'notListening') {
+      level.value = 0;
+      // Jangan langsung memutus sesi di sini; recognizer Android masih dalam proses
+      // menghasilkan transkripsi final dari audio yang baru selesai didengar.
+    } else if (status == 'done' || status == 'doneNoResult') {
       level.value = 0;
       _deliver();
       _onDone?.call();
@@ -123,8 +125,7 @@ class SpeechService {
     level.value = 0;
     if (_last.trim().isNotEmpty) {
       _deliver();
-    } else if (!_delivered) {
-      _delivered = true;
+    } else {
       _onError?.call(friendly(e.errorMsg));
     }
     _onDone?.call();
@@ -132,7 +133,9 @@ class SpeechService {
 
   Future<void> stopListening() async {
     await _speech.stop();
+    level.value = 0;
     _deliver();
+    _onDone?.call();
   }
 
   void dispose() {

@@ -83,12 +83,23 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
     });
     final res = await SupabaseService.checkConnectionStatus();
     if (mounted) {
+      final isConn = res['connected'] as bool? ?? false;
+      final isPaused = res['isPaused'] as bool? ?? false;
+      // Jika data users/reports/photos sudah ter-load dari cloud, berarti Supabase jelas online & aktif!
+      final hasData = _users.isNotEmpty || _reports.isNotEmpty || _photos.isNotEmpty;
+      final effectiveConnected = isConn || hasData;
+      final effectivePaused = isPaused && !hasData;
+
       setState(() {
         _checkingSupabase = false;
-        _supabaseConnected = res['connected'] as bool? ?? false;
+        _supabaseConnected = effectiveConnected;
         _supabaseLatencyMs = res['latencyMs'] as int? ?? 0;
-        _supabaseStatusMsg = res['message'] as String? ?? '';
-        _supabaseIsPaused = res['isPaused'] as bool? ?? false;
+        _supabaseStatusMsg = effectiveConnected
+            ? (isConn
+                ? res['message'] as String? ?? 'Terkoneksi ke Supabase Cloud'
+                : 'Terkoneksi ke Supabase Cloud (Data Aktif)')
+            : (res['message'] as String? ?? 'Koneksi gagal');
+        _supabaseIsPaused = effectivePaused;
       });
     }
   }
@@ -105,7 +116,16 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
     final codeCtrl = TextEditingController(text: (currentConfig?.versionCode ?? UpdateService.currentVersionCode + 1).toString());
     final urlCtrl = TextEditingController(text: currentConfig?.downloadUrl ?? '');
     final notesCtrl = TextEditingController(
-      text: currentConfig?.releaseNotes ?? '• Peningkatan performa aplikasi\n• Perbaikan bug dan kestabilan sistem',
+      text: currentConfig?.releaseNotes ??
+          '[BARU]\n'
+          '• Tampilan baru lebih segar, rapi, tulisan lebih besar, dan tombol nyaman ditekan\n'
+          '• Catat keluhan lewat suara: cukup bicara ke mikrofon, ada tombol Ulangi jika salah\n'
+          '• Geser urutan: posisi keluhan & tindakan pasien bisa digeser naik-turun dengan mudah\n\n'
+          '[PENINGKATAN]\n'
+          '• Lembar isian pasien ditata bertahap per kartu agar lebih praktis dan tidak pusing\n'
+          '• Tetap lancar dipakai di rumah warga tanpa sinyal, laporan otomatis terkirim saat online\n\n'
+          '[PERBAIKAN]\n'
+          '• Aplikasi dibuka lebih cepat, hemat memori, dan bebas gangguan layar terpotong',
     );
     bool isMandatory = currentConfig?.isMandatory ?? false;
     bool isSaving = false;
@@ -411,7 +431,10 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
             schema: 'public',
             table: 'resident_exams',
             callback: (payload) {
-              if (mounted) _loadReports(silent: true);
+              if (mounted) {
+                _loadReports(silent: true);
+                _loadPhotos(silent: true);
+              }
             },
           )
           .onPostgresChanges(
@@ -454,6 +477,10 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
           _users = results[0];
           _customRolesMap = rolesMap;
           _loadingUsers = false;
+          if (_users.isNotEmpty) {
+            _supabaseConnected = true;
+            _supabaseIsPaused = false;
+          }
         });
       }
     } catch (_) {
@@ -471,6 +498,10 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
           _reports = reports;
           _totalExamCount = examCount;
           _loadingReports = false;
+          if (_reports.isNotEmpty) {
+            _supabaseConnected = true;
+            _supabaseIsPaused = false;
+          }
         });
       }
     } catch (_) {
@@ -484,13 +515,22 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
       final photos = await SupabaseService.adminListPhotos();
       int bytes = 0;
       for (final p in photos) {
-        if (p['size'] != null && p['size'] is int) bytes += p['size'] as int;
+        final s = p['size'];
+        if (s is num) {
+          bytes += s.toInt();
+        } else if (s is String) {
+          bytes += int.tryParse(s) ?? 0;
+        }
       }
       if (mounted) {
         setState(() {
           _photos = photos;
           _totalStorageUsedBytes = bytes;
           _loadingPhotos = false;
+          if (_photos.isNotEmpty) {
+            _supabaseConnected = true;
+            _supabaseIsPaused = false;
+          }
         });
       }
     } catch (_) {
@@ -543,7 +583,10 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Row(
+                Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 6,
+                  runSpacing: 4,
                   children: [
                     const Text(
                       'Status Cloud Supabase',
@@ -553,7 +596,6 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
                         fontWeight: FontWeight.w700,
                       ),
                     ),
-                    const SizedBox(width: 6),
                     StatusPill(
                       label: isChecking
                           ? 'Checking'
@@ -738,8 +780,8 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              '${_users.length}',
+                            _AnimatedCountText(
+                              value: _users.length,
                               style: const TextStyle(
                                 color: AppTheme.text,
                                 fontSize: 26,
@@ -770,8 +812,8 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              '${_reports.length}',
+                            _AnimatedCountText(
+                              value: _reports.length,
                               style: const TextStyle(
                                 color: AppTheme.text,
                                 fontSize: 26,
@@ -802,8 +844,10 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              '${usedMB.toStringAsFixed(0)} MB',
+                            _AnimatedCountText(
+                              value: usedMB,
+                              suffix: ' MB',
+                              allowDecimals: true,
                               style: const TextStyle(
                                 color: AppTheme.text,
                                 fontSize: 26,
@@ -2053,3 +2097,47 @@ class _PhotoPreviewDialog extends StatelessWidget {
     );
   }
 }
+
+/// Counter teks yang bertambah secara perlahan dan sangat smooth dari 0 ke target angka
+class _AnimatedCountText extends StatelessWidget {
+  final num value;
+  final String? suffix;
+  final TextStyle? style;
+  final bool allowDecimals;
+  const _AnimatedCountText({
+    required this.value,
+    this.suffix,
+    this.style,
+    this.allowDecimals = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      key: ValueKey('${value}_$suffix'),
+      tween: Tween<double>(begin: 0.0, end: value.toDouble()),
+      duration: const Duration(milliseconds: 1400),
+      curve: Curves.easeOutCubic,
+      builder: (context, current, _) {
+        String text;
+        if (allowDecimals && (value is double || current % 1 != 0)) {
+          if (current < 10 && current > 0) {
+            text = current.toStringAsFixed(1);
+            if (text.endsWith('.0')) {
+              text = text.substring(0, text.length - 2);
+            }
+          } else {
+            text = current.round().toString();
+          }
+        } else {
+          text = current.round().toString();
+        }
+        return Text(
+          suffix == null ? text : '$text$suffix',
+          style: style,
+        );
+      },
+    );
+  }
+}
+

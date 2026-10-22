@@ -71,7 +71,7 @@ class SupabaseService {
   static Future<Map<String, dynamic>> checkConnectionStatus() async {
     final stopwatch = Stopwatch()..start();
     try {
-      await _client.from('profiles').select('id').limit(1).timeout(const Duration(seconds: 5));
+      await _client.from('profiles').select('id').limit(1).timeout(const Duration(seconds: 12));
       stopwatch.stop();
       return {
         'connected': true,
@@ -82,17 +82,30 @@ class SupabaseService {
     } catch (e) {
       stopwatch.stop();
       final errStr = e.toString().toLowerCase();
-      final isPaused = errStr.contains('503') ||
-          errStr.contains('paused') ||
-          errStr.contains('timeout') ||
+      // Supabase project pause HANYA terjadi bila server membalas dengan status paused / project disabled
+      final isPaused = errStr.contains('paused') ||
+          (errStr.contains('503') && errStr.contains('project'));
+      final isTimeout = errStr.contains('timeout');
+      final isNetwork = errStr.contains('socketexception') ||
+          errStr.contains('network') ||
           errStr.contains('connection refused') ||
-          errStr.contains('socketexception');
+          errStr.contains('failed host lookup');
+
+      String msg;
+      if (isPaused) {
+        msg = 'Database Supabase Ter-pause oleh Cloud Provider';
+      } else if (isTimeout) {
+        msg = 'Koneksi timeout ke server Tokyo (${stopwatch.elapsedMilliseconds} ms)';
+      } else if (isNetwork) {
+        msg = 'Jaringan lambat / tidak dapat menjangkau server';
+      } else {
+        msg = 'Gagal terhubung: ${_translateError(e.toString())}';
+      }
+
       return {
         'connected': false,
         'latencyMs': stopwatch.elapsedMilliseconds,
-        'message': isPaused
-            ? 'Supabase Ter-pause / Unreachable (Server 503/Timeout)'
-            : 'Gagal terhubung: ${_translateError(e.toString())}',
+        'message': msg,
         'isPaused': isPaused,
       };
     }
@@ -1045,27 +1058,51 @@ class SupabaseService {
 
   /// Admin: List semua file di bucket photos.
   static Future<List<Map<String, dynamic>>> adminListPhotos() async {
-    try {
-      final files = await _client.storage.from('photos').list(
-        searchOptions: const SearchOptions(sortBy: SortBy(column: 'created_at', order: 'desc')),
-      );
-      // Filter placeholder files
-      final realFiles = files.where((f) => f.name != '.emptyFolderPlaceholder' && f.name.isNotEmpty).toList();
-      debugPrint('[SupabaseService] adminListPhotos: ${realFiles.length} files found');
-      for (final f in realFiles) {
-        debugPrint('  -> ${f.name} (id: ${f.id})');
+    for (int attempt = 1; attempt <= 2; attempt++) {
+      try {
+        final files = await _client.storage.from('photos').list(
+          path: '',
+          searchOptions: const SearchOptions(
+            limit: 1000,
+            sortBy: SortBy(column: 'created_at', order: 'desc'),
+          ),
+        ).timeout(const Duration(seconds: 15));
+
+        // Filter placeholder files
+        final realFiles = files.where((f) => f.name != '.emptyFolderPlaceholder' && f.name.isNotEmpty).toList();
+        debugPrint('[SupabaseService] adminListPhotos: ${realFiles.length} files found');
+        return realFiles.map((f) {
+          final meta = f.metadata;
+          int size = 0;
+          String createdAt = f.createdAt ?? '';
+          if (meta != null) {
+            final dynamic s = meta['size'] ?? meta['contentLength'];
+            if (s is num) {
+              size = s.toInt();
+            } else if (s is String) {
+              size = int.tryParse(s) ?? 0;
+            }
+            final dynamic lm = meta['lastModified'];
+            if (createdAt.isEmpty && lm != null) {
+              createdAt = lm.toString();
+            }
+          }
+          return <String, dynamic>{
+            'name': f.name,
+            'id': f.id,
+            'size': size,
+            'created_at': createdAt,
+            'url': _client.storage.from('photos').getPublicUrl(f.name),
+          };
+        }).toList();
+      } catch (e) {
+        debugPrint('[SupabaseService] adminListPhotos attempt $attempt error: $e');
+        if (attempt == 1) {
+          await Future.delayed(const Duration(milliseconds: 600));
+        }
       }
-      return realFiles.map((f) => <String, dynamic>{
-        'name': f.name,
-        'id': f.id,
-        'size': f.metadata?['size'] ?? 0,
-        'created_at': f.createdAt ?? f.metadata?['lastModified'] ?? '',
-        'url': _client.storage.from('photos').getPublicUrl(f.name),
-      }).toList();
-    } catch (e) {
-      debugPrint('[SupabaseService] adminListPhotos error: $e');
-      return [];
     }
+    return [];
   }
 
   /// Admin: Hapus foto dari storage.

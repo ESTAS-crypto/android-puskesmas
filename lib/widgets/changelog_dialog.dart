@@ -4,10 +4,46 @@ import 'ui/ui.dart';
 
 /// Modal bottom sheet "Apa yang baru" sesuai spesifikasi Changelog.dc.html.
 class ChangelogDialog {
-  static const String _currentVersion = '2.7.5';
+  static const String _currentVersion = '2.8.0';
   static const String _seenVersionKey = 'changelog_seen_version';
 
   static final List<Map<String, dynamic>> _changelog = [
+    {
+      'version': '2.8.0',
+      'date': '22 Oktober 2026',
+      'changes': [
+        {
+          'type': 'new',
+          'label': 'Baru',
+          'text': 'Tampilan Baru Lebih Segar: Seluruh halaman (Beranda, Formulir, Riwayat) kini tampil lebih rapi, tulisan lebih besar dan jelas dibaca, serta tombol nyaman ditekan.',
+        },
+        {
+          'type': 'new',
+          'label': 'Baru',
+          'text': 'Catat Keluhan Lewat Suara: Cukup bicara ke mikrofon untuk mengisi keluhan pasien. Dilengkapi gelombang animasi dan tombol "Ulangi" jika ucapan kurang pas.',
+        },
+        {
+          'type': 'new',
+          'label': 'Baru',
+          'text': 'Bisa Geser Urutan: Posisi keluhan dan tindakan pasien sekarang bisa digeser naik-turun dengan mudah untuk mendahulukan hal yang paling penting.',
+        },
+        {
+          'type': 'improve',
+          'label': 'Peningkatan',
+          'text': 'Formulir Lebih Nyaman & Tertata: Lembar pemeriksaan pasien kini disusun rapi bertahap per kartu agar ibu-ibu tidak lelah saat mencatat kunjungan.',
+        },
+        {
+          'type': 'improve',
+          'label': 'Peningkatan',
+          'text': 'Lancar Dipakai Tanpa Sinyal: Tetap bisa mengisi laporan saat di rumah warga tanpa kuota/sinyal, laporan otomatis terkirim saat HP online kembali.',
+        },
+        {
+          'type': 'fix',
+          'label': 'Perbaikan',
+          'text': 'Lebih Ringan & Bebas Gangguan: Aplikasi dibuka lebih cepat, hemat memori HP, serta tampilan layar bersih bebas dari garis terpotong.',
+        },
+      ],
+    },
     {
       'version': '2.7.5',
       'date': '17 Juli 2026',

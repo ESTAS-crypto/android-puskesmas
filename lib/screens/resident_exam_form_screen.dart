@@ -1,5 +1,7 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -234,18 +236,19 @@ class _ResidentExamFormScreenState extends State<ResidentExamFormScreen> {
     return count;
   }
 
-  // ── Voice Input Handling ──────────────────────────────────
+  // ── Voice Input Handling (Mockup Galat.dc.html cap 5) ───
   Future<void> _toggleVoice(String fieldName, TextEditingController ctrl,
       {VoiceKind kind = VoiceKind.text}) async {
-    if (_isListening && _activeField == fieldName) {
+    // Tutup sesi sebelumnya bila sedang aktif
+    if (_isListening) {
       await _speechService.stopListening();
       if (mounted) setState(() { _isListening = false; _activeField = null; });
-      return;
     }
-    if (_isListening) await _speechService.stopListening();
 
-    // Teks sebelum bicara; hasil suara ditulis langsung ke kolom (live) lalu dirapikan.
     final base = ctrl.text.trim();
+    String recognizedSpoken = '';
+    final sheetKey = GlobalKey<_VoiceListeningSheetState>();
+
     void put(String spoken) {
       final cleaned = VoiceTextCleaner.clean(spoken, kind);
       if (cleaned.isEmpty) return;
@@ -256,21 +259,96 @@ class _ResidentExamFormScreenState extends State<ResidentExamFormScreen> {
       ctrl.selection = TextSelection.collapsed(offset: merged.length);
     }
 
-    setState(() { _isListening = true; _activeField = fieldName; });
-    await _speechService.startListening(
-      onPartial: (p) { if (mounted) setState(() => put(p)); },
-      onResult: (t) { if (mounted) setState(() => put(t)); },
-      onError: (msg) {
-        if (!mounted) return;
-        setState(() { _isListening = false; _activeField = null; });
-        ScaffoldMessenger.of(context)
-          ..hideCurrentSnackBar()
-          ..showSnackBar(SnackBar(content: Text(msg)));
-      },
-      onDone: () {
-        if (mounted) setState(() { _isListening = false; _activeField = null; });
-      },
+    String hintText;
+    if (fieldName == 'nama') {
+      hintText = 'Ucapkan nama lengkap warga/pasien, misalnya "Evan Atharasya".';
+    } else if (fieldName == 'alamat') {
+      hintText = 'Ucapkan alamat lengkap, misalnya "RT 03 RW 02 Balas Klumprik".';
+    } else if (fieldName == 'nik') {
+      hintText = 'Ucapkan 16 digit NIK secara jelas.';
+    } else if (fieldName.contains('keluhan')) {
+      hintText = 'Ucapkan keluhan pasien, misalnya "pusing dan sulit tidur".';
+    } else if (fieldName.contains('tindak')) {
+      hintText = 'Ucapkan tindak lanjut, misalnya "edukasi pola makan dan istirahat".';
+    } else {
+      hintText = 'Ucapkan data dengan jelas ke mikrofon HP.';
+    }
+
+    setState(() {
+      _isListening = true;
+      _activeField = fieldName;
+    });
+
+    if (!mounted) return;
+
+    Future<void> restartListening() async {
+      await _speechService.stopListening();
+      recognizedSpoken = '';
+      ctrl.text = base;
+      ctrl.selection = TextSelection.collapsed(offset: base.length);
+      sheetKey.currentState?.updateText('');
+      sheetKey.currentState?.setListening(true);
+      await _speechService.startListening(
+        onPartial: (p) {
+          recognizedSpoken = p;
+          sheetKey.currentState?.updateText(VoiceTextCleaner.clean(p, kind));
+          put(p);
+        },
+        onResult: (t) {
+          recognizedSpoken = t;
+          sheetKey.currentState?.updateText(VoiceTextCleaner.clean(t, kind));
+          put(t);
+        },
+        onError: (msg) {
+          if (!mounted) return;
+          AppToast.show(context, msg, kind: AppToastKind.warning);
+          sheetKey.currentState?.setListening(false);
+        },
+        onDone: () {
+          sheetKey.currentState?.setListening(false);
+        },
+      );
+    }
+
+    final sheetFuture = showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) => _VoiceListeningSheet(
+        key: sheetKey,
+        title: 'Mendengarkan…',
+        hint: hintText,
+        speechService: _speechService,
+        onRetry: restartListening,
+        onFinish: (finalSpoken) {
+          if (finalSpoken.trim().isNotEmpty) {
+            put(finalSpoken);
+          }
+          _speechService.stopListening();
+          Navigator.pop(ctx);
+        },
+        onCancel: () {
+          _speechService.stopListening();
+          Navigator.pop(ctx);
+        },
+      ),
     );
+
+    await restartListening();
+
+    await sheetFuture;
+
+    // Bersihkan listener ketika modal ditutup
+    await _speechService.stopListening();
+    if (recognizedSpoken.trim().isNotEmpty) {
+      put(recognizedSpoken);
+    }
+    if (mounted) {
+      setState(() {
+        _isListening = false;
+        _activeField = null;
+      });
+    }
   }
 
   // ── Photo & Geotag Handling ──────────────────────────────
@@ -1159,52 +1237,80 @@ class _ResidentExamFormScreenState extends State<ResidentExamFormScreen> {
         ),
         const SizedBox(height: 14),
 
-        // Input List
-        ..._keluhanCtrls.asMap().entries.map((entry) {
-          final idx = entry.key;
-          final ctrl = entry.value;
-          final fieldId = 'keluhan_$idx';
-          final isActive = _isListening && _activeField == fieldId;
+        // Input List (Bisa digeser/reorder posisi keluhan seperti daftar pasien)
+        ReorderableListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          buildDefaultDragHandles: false,
+          itemCount: _keluhanCtrls.length,
+          onReorder: (oldIndex, newIndex) {
+            HapticFeedback.selectionClick();
+            setState(() {
+              if (newIndex > oldIndex) newIndex--;
+              final item = _keluhanCtrls.removeAt(oldIndex);
+              _keluhanCtrls.insert(newIndex, item);
+            });
+          },
+          itemBuilder: (context, idx) {
+            final ctrl = _keluhanCtrls[idx];
+            final fieldId = 'keluhan_$idx';
+            final isActive = _isListening && _activeField == fieldId;
 
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: Row(
-              children: [
-                Expanded(
-                  child: _styledField(
-                    label: 'Keluhan ${idx + 1}',
-                    controller: ctrl,
-                    hint: 'Tuliskan keluhan pasien…',
-                    suffixWidget: IconButton(
-                      onPressed: () => _toggleVoice(fieldId, ctrl),
-                      icon: Icon(
-                        isActive
-                            ? Icons.mic_rounded
-                            : Icons.mic_none_rounded,
-                        color: isActive
-                            ? AppTheme.error
-                            : const Color(0xFF0A64A8),
-                        size: 20,
+            return Padding(
+              key: ObjectKey(ctrl),
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _styledField(
+                      label: 'Keluhan ${idx + 1}',
+                      controller: ctrl,
+                      hint: 'Tuliskan keluhan pasien…',
+                      suffixWidget: IconButton(
+                        onPressed: () => _toggleVoice(fieldId, ctrl),
+                        icon: Icon(
+                          isActive
+                              ? Icons.mic_rounded
+                              : Icons.mic_none_rounded,
+                          color: isActive
+                              ? AppTheme.error
+                              : const Color(0xFF0A64A8),
+                          size: 20,
+                        ),
                       ),
                     ),
                   ),
-                ),
-                if (_keluhanCtrls.length > 1) ...[
-                  const SizedBox(width: 6),
-                  IconButton(
-                    tooltip: 'Hapus keluhan',
-                    onPressed: () => setState(() {
-                      _removeTrackedController(ctrl);
-                      _keluhanCtrls.removeAt(idx);
-                    }),
-                    icon: const Icon(Icons.close_rounded,
-                        color: AppTheme.error, size: 20),
-                  ),
+                  if (_keluhanCtrls.length > 1) ...[
+                    const SizedBox(width: 4),
+                    ReorderableDragStartListener(
+                      index: idx,
+                      child: const SizedBox(
+                        width: 38,
+                        height: 48,
+                        child: Center(
+                          child: AppIcon(
+                            AppGlyph.drag,
+                            color: AppTheme.textFaint,
+                            size: 20,
+                          ),
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: 'Hapus keluhan',
+                      onPressed: () => setState(() {
+                        _removeTrackedController(ctrl);
+                        _keluhanCtrls.removeAt(idx);
+                      }),
+                      icon: const Icon(Icons.close_rounded,
+                          color: AppTheme.error, size: 20),
+                    ),
+                  ],
                 ],
-              ],
-            ),
-          );
-        }),
+              ),
+            );
+          },
+        ),
 
         const SizedBox(height: 6),
         AppButton(
@@ -1303,52 +1409,80 @@ class _ResidentExamFormScreenState extends State<ResidentExamFormScreen> {
         ),
         const SizedBox(height: 14),
 
-        // Input List
-        ..._tindakLanjutCtrls.asMap().entries.map((entry) {
-          final idx = entry.key;
-          final ctrl = entry.value;
-          final fieldId = 'tindak_$idx';
-          final isActive = _isListening && _activeField == fieldId;
+        // Input List (Bisa digeser/reorder posisi tindak lanjut seperti daftar pasien)
+        ReorderableListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          buildDefaultDragHandles: false,
+          itemCount: _tindakLanjutCtrls.length,
+          onReorder: (oldIndex, newIndex) {
+            HapticFeedback.selectionClick();
+            setState(() {
+              if (newIndex > oldIndex) newIndex--;
+              final item = _tindakLanjutCtrls.removeAt(oldIndex);
+              _tindakLanjutCtrls.insert(newIndex, item);
+            });
+          },
+          itemBuilder: (context, idx) {
+            final ctrl = _tindakLanjutCtrls[idx];
+            final fieldId = 'tindak_$idx';
+            final isActive = _isListening && _activeField == fieldId;
 
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: Row(
-              children: [
-                Expanded(
-                  child: _styledField(
-                    label: 'Tindak lanjut ${idx + 1}',
-                    controller: ctrl,
-                    hint: 'Tuliskan rekomendasi tindakan…',
-                    suffixWidget: IconButton(
-                      onPressed: () => _toggleVoice(fieldId, ctrl),
-                      icon: Icon(
-                        isActive
-                            ? Icons.mic_rounded
-                            : Icons.mic_none_rounded,
-                        color: isActive
-                            ? AppTheme.error
-                            : const Color(0xFF0A64A8),
-                        size: 20,
+            return Padding(
+              key: ObjectKey(ctrl),
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _styledField(
+                      label: 'Tindak lanjut ${idx + 1}',
+                      controller: ctrl,
+                      hint: 'Tuliskan rekomendasi tindakan…',
+                      suffixWidget: IconButton(
+                        onPressed: () => _toggleVoice(fieldId, ctrl),
+                        icon: Icon(
+                          isActive
+                              ? Icons.mic_rounded
+                              : Icons.mic_none_rounded,
+                          color: isActive
+                              ? AppTheme.error
+                              : const Color(0xFF0A64A8),
+                          size: 20,
+                        ),
                       ),
                     ),
                   ),
-                ),
-                if (_tindakLanjutCtrls.length > 1) ...[
-                  const SizedBox(width: 6),
-                  IconButton(
-                    tooltip: 'Hapus tindak lanjut',
-                    onPressed: () => setState(() {
-                      _removeTrackedController(ctrl);
-                      _tindakLanjutCtrls.removeAt(idx);
-                    }),
-                    icon: const Icon(Icons.close_rounded,
-                        color: AppTheme.error, size: 20),
-                  ),
+                  if (_tindakLanjutCtrls.length > 1) ...[
+                    const SizedBox(width: 4),
+                    ReorderableDragStartListener(
+                      index: idx,
+                      child: const SizedBox(
+                        width: 38,
+                        height: 48,
+                        child: Center(
+                          child: AppIcon(
+                            AppGlyph.drag,
+                            color: AppTheme.textFaint,
+                            size: 20,
+                          ),
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: 'Hapus tindak lanjut',
+                      onPressed: () => setState(() {
+                        _removeTrackedController(ctrl);
+                        _tindakLanjutCtrls.removeAt(idx);
+                      }),
+                      icon: const Icon(Icons.close_rounded,
+                          color: AppTheme.error, size: 20),
+                    ),
+                  ],
                 ],
-              ],
-            ),
-          );
-        }),
+              ),
+            );
+          },
+        ),
 
         const SizedBox(height: 6),
         AppButton(
@@ -1733,3 +1867,357 @@ class _ResidentExamFormScreenState extends State<ResidentExamFormScreen> {
     );
   }
 }
+
+/// Bottom Sheet untuk input suara sesuai mockup Galat.dc.html (cap 5).
+/// Menampilkan mic berdenyut, visualizer 10 gelombang suara, dan teks realtime.
+class _VoiceListeningSheet extends StatefulWidget {
+  final String title;
+  final String hint;
+  final SpeechService speechService;
+  final Future<void> Function() onRetry;
+  final ValueChanged<String> onFinish;
+  final VoidCallback onCancel;
+
+  const _VoiceListeningSheet({
+    super.key,
+    required this.title,
+    required this.hint,
+    required this.speechService,
+    required this.onRetry,
+    required this.onFinish,
+    required this.onCancel,
+  });
+
+  @override
+  State<_VoiceListeningSheet> createState() => _VoiceListeningSheetState();
+}
+
+class _VoiceListeningSheetState extends State<_VoiceListeningSheet>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _pulseCtrl;
+  late final Animation<double> _pulseAnim;
+  String _liveText = '';
+  bool _isListening = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _liveText = '';
+    _pulseCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1000),
+    )..repeat(reverse: true);
+    _pulseAnim = Tween<double>(begin: 0.94, end: 1.08).animate(
+      CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut),
+    );
+  }
+
+  void updateText(String text) {
+    if (mounted) {
+      setState(() {
+        _liveText = text;
+      });
+    }
+  }
+
+  void setListening(bool listening) {
+    if (mounted) {
+      setState(() {
+        _isListening = listening;
+        if (!listening) {
+          _pulseCtrl.stop();
+        } else if (!_pulseCtrl.isAnimating) {
+          _pulseCtrl.repeat(reverse: true);
+        }
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _pulseCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+        boxShadow: [
+          BoxShadow(
+            color: Color.fromRGBO(11, 42, 64, 0.14),
+            blurRadius: 34,
+            offset: Offset(0, -6),
+          ),
+        ],
+      ),
+      padding: EdgeInsets.fromLTRB(
+        22,
+        14,
+        22,
+        24 + MediaQuery.of(context).padding.bottom,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Drag handle
+          Center(
+            child: Container(
+              width: 36,
+              height: 4,
+              decoration: BoxDecoration(
+                color: const Color(0xFFD3E4F1),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 18),
+
+          // Double ring pulsing mic avatar (Galat.dc.html cap 5)
+          // Ketuk mikrofon untuk jeda atau rekam ulang suara secara cepat
+          GestureDetector(
+            onTap: () {
+              HapticFeedback.selectionClick();
+              if (_isListening) {
+                widget.speechService.stopListening();
+                setListening(false);
+              } else {
+                updateText('');
+                widget.onRetry();
+              }
+            },
+            child: AnimatedBuilder(
+              animation: _pulseAnim,
+              builder: (context, _) {
+                final scale = _isListening ? _pulseAnim.value : 1.0;
+                return Container(
+                  width: 84 * scale,
+                  height: 84 * scale,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0A64A8).withValues(alpha: 0.10),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Center(
+                    child: Container(
+                      width: 60,
+                      height: 60,
+                      decoration: BoxDecoration(
+                        color: _isListening
+                            ? const Color(0xFF0A64A8)
+                            : const Color(0xFF0A64A8).withValues(alpha: 0.85),
+                        shape: BoxShape.circle,
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Color(0x330A64A8),
+                            blurRadius: 16,
+                            offset: Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Icon(
+                        _isListening
+                            ? Icons.mic_rounded
+                            : Icons.replay_rounded,
+                        color: Colors.white,
+                        size: 28,
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 14),
+
+          // Status Mendengarkan
+          Text(
+            _isListening ? 'Mendengarkan…' : 'Selesai mendengarkan',
+            style: const TextStyle(
+              color: Color(0xFF0B2A40),
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 6),
+
+          // Hint / guidance field
+          Text(
+            widget.hint,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: Color(0xFF3F5A70),
+              fontSize: 14,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 14),
+
+          // 10 Soundwave bars (Galat.dc.html cap 5)
+          RepaintBoundary(
+            child: SizedBox(
+              height: 46,
+              child: _VoiceSoundwaveBars(
+                level: widget.speechService.level,
+                isListening: _isListening,
+              ),
+            ),
+          ),
+          const SizedBox(height: 14),
+
+          // Live transcript preview box
+          Container(
+            width: double.infinity,
+            constraints: const BoxConstraints(minHeight: 52),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF1F8FD),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: const Color(0xFFD3E4F1)),
+            ),
+            child: Center(
+              child: Text(
+                _liveText.isNotEmpty
+                    ? _liveText
+                    : 'Bicara sekarang, kata-kata Anda akan muncul di sini…',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: _liveText.isNotEmpty
+                      ? const Color(0xFF0B2A40)
+                      : const Color(0xFF4A667E),
+                  fontSize: 16,
+                  fontWeight: _liveText.isNotEmpty
+                      ? FontWeight.w600
+                      : FontWeight.w400,
+                  fontStyle: _liveText.isNotEmpty
+                      ? FontStyle.normal
+                      : FontStyle.italic,
+                  height: 1.35,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 18),
+
+          // Tombol Aksi: Ulangi (rekam ulang jika tidak cocok) & Selesai
+          Row(
+            children: [
+              Expanded(
+                flex: 1,
+                child: AppButton(
+                  label: 'Ulangi',
+                  kind: AppButtonKind.tonal,
+                  icon: AppGlyph.update,
+                  onPressed: () {
+                    HapticFeedback.selectionClick();
+                    updateText('');
+                    widget.onRetry();
+                  },
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                flex: 1,
+                child: AppButton(
+                  label: 'Selesai',
+                  kind: AppButtonKind.primary,
+                  icon: AppGlyph.check,
+                  onPressed: () => widget.onFinish(_liveText),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Soundwave visualizer animasi 10 batang sesuai Galat.dc.html.
+/// Diisolasi dalam RepaintBoundary untuk performa 60fps tanpa repaint parent sheet.
+class _VoiceSoundwaveBars extends StatefulWidget {
+  final ValueListenable<double>? level;
+  final bool isListening;
+  const _VoiceSoundwaveBars({this.level, this.isListening = true});
+
+  @override
+  State<_VoiceSoundwaveBars> createState() => _VoiceSoundwaveBarsState();
+}
+
+class _VoiceSoundwaveBarsState extends State<_VoiceSoundwaveBars>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  static const _baseHeights = [
+    10.0, 22.0, 34.0, 18.0, 40.0, 26.0, 14.0, 30.0, 20.0, 12.0
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    );
+    if (widget.isListening) {
+      _ctrl.repeat(reverse: true);
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant _VoiceSoundwaveBars oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isListening != oldWidget.isListening) {
+      if (widget.isListening) {
+        _ctrl.repeat(reverse: true);
+      } else {
+        _ctrl.stop();
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final listenables = <Listenable>[_ctrl];
+    if (widget.level != null) listenables.add(widget.level!);
+
+    return AnimatedBuilder(
+      animation: Listenable.merge(listenables),
+      builder: (context, _) {
+        final t = widget.isListening ? _ctrl.value : 0.0;
+        final lvl = widget.isListening ? (widget.level?.value ?? 0.0) : 0.0;
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: List.generate(_baseHeights.length, (idx) {
+            final base = _baseHeights[idx];
+            // Modulasi ketinggian bergantian secara harmonis ditambah reaksi terhadap level suara
+            final wave = 0.35 + 0.65 * (idx.isEven ? t : (1.0 - t));
+            final boost = 1.0 + (lvl * 1.4);
+            final h = widget.isListening
+                ? (base * wave * boost).clamp(6.0, 44.0)
+                : 6.0;
+            return Container(
+              margin: const EdgeInsets.symmetric(horizontal: 2.5),
+              width: 5,
+              height: h,
+              decoration: BoxDecoration(
+                color: widget.isListening
+                    ? const Color(0xFF0A64A8)
+                    : const Color(0xFF0A64A8).withValues(alpha: 0.3),
+                borderRadius: BorderRadius.circular(3),
+              ),
+            );
+          }),
+        );
+      },
+    );
+  }
+}
+

@@ -24,6 +24,8 @@ void main() {
 
   test('name', () {
     expect(VoiceTextCleaner.clean('bu rahmi.', VoiceKind.name), 'Bu Rahmi');
+    expect(VoiceTextCleaner.clean('evant atharasya', VoiceKind.name), 'Evan Atharasya');
+    expect(VoiceTextCleaner.clean('evan at', VoiceKind.name), 'Evan Atharasya');
   });
 
   test('address', () {
