@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:open_file/open_file.dart';
 import 'package:share_plus/share_plus.dart';
@@ -19,6 +18,7 @@ import 'custom_roles_screen.dart';
 import '../widgets/ui/ui.dart';
 import 'admin/admin_user_tab.dart';
 import 'admin/admin_laporan_tab.dart';
+import 'admin/admin_foto_tab.dart';
 
 class AdminPanelScreen extends StatefulWidget {
   final UserSession session;
@@ -373,15 +373,6 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
 
 
 
-  int _unitToDays(int value, String unit) {
-    if (value <= 0) return 0;
-    switch (unit) {
-      case 'hari': return value;
-      case 'minggu': return value * 7;
-      case 'bulan': return value * 30;
-      default: return value * 30;
-    }
-  }
 
   // ═══════════════════════════════════════════════
   // DATA LOADING
@@ -790,7 +781,19 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
                       onDeleteReport: _deleteReport,
                       onDeleteOldReports: _deleteOldReports,
                     ),
-                    _buildPhotosTab(),
+                    AdminFotoTab(
+                      session: widget.session,
+                      photos: _photos,
+                      loading: _loadingPhotos,
+                      totalStorageUsedBytes: _totalStorageUsedBytes,
+                      photoDeleteValue: _photoDeleteValue,
+                      photoDeleteUnit: _photoDeleteUnit,
+                      onRefresh: _loadPhotos,
+                      onSavePhotoDelete: _savePhotoDeleteSetting,
+                      onDeletePhoto: _deletePhoto,
+                      onDeleteOldPhotos: _deleteOldPhotos,
+                      onPreviewPhoto: _showPhotoPreview,
+                    ),
                   ],
                 ),
               ),
@@ -1270,133 +1273,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
   // TAB 3: KELOLA FOTO + AUTO-DELETE
   // ═══════════════════════════════════════════════
 
-  Widget _buildPhotosTab() {
-    if (_loadingPhotos) return _buildLoading();
 
-    final deleteDays = _unitToDays(_photoDeleteValue, _photoDeleteUnit);
-    final oldPhotos = _photos.where((p) {
-      if (deleteDays <= 0) return false;
-      final ca = p['created_at'];
-      if (ca == null || ca.toString().isEmpty) return false;
-      try { return DateTime.now().difference(DateTime.parse(ca.toString())).inDays > deleteDays; } catch (_) { return false; }
-    }).toList();
-
-    return RefreshIndicator(
-      color: const Color(0xFFE040FB),
-      onRefresh: _loadPhotos,
-      child: CustomScrollView(
-        slivers: [
-          SliverToBoxAdapter(
-            child: _buildStorageCard(),
-          ),
-          SliverToBoxAdapter(
-            child: _buildAutoDeleteCard(
-              icon: Icons.photo_library_rounded,
-              title: 'Auto-Delete Foto',
-              value: _photoDeleteValue,
-              unit: _photoDeleteUnit,
-              oldCount: oldPhotos.length,
-              onSave: _savePhotoDeleteSetting,
-              onDeleteOld: () => _deleteOldPhotos(oldPhotos),
-            ),
-          ),
-          if (_photos.isEmpty)
-            const SliverFillRemaining(child: Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-              Icon(Icons.photo_library_rounded, size: 48, color: AppTheme.textHint), SizedBox(height: 12),
-              Text('Tidak ada foto di storage', style: TextStyle(color: AppTheme.textSecondary, fontSize: 14)),
-            ])))
-          else
-            SliverPadding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              sliver: SliverGrid(
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: MediaQuery.of(context).size.width > 600 ? 3 : 2,
-                  mainAxisSpacing: 12, crossAxisSpacing: 12, childAspectRatio: 0.75,
-                ),
-                delegate: SliverChildBuilderDelegate(
-                  (context, index) => _buildPhotoCard(_photos[index], deleteDays),
-                  childCount: _photos.length,
-                ),
-              ),
-            ),
-          const SliverToBoxAdapter(child: SizedBox(height: 20)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPhotoCard(Map<String, dynamic> photo, int deleteDays) {
-    final name = photo['name'] as String? ?? '';
-    final url = photo['url'] as String? ?? '';
-    final size = photo['size'];
-    final createdAt = photo['created_at'];
-    String sizeStr = '-';
-    if (size != null && size is int && size > 0) {
-      sizeStr = size > 1024 * 1024 ? '${(size / 1024 / 1024).toStringAsFixed(1)} MB' : '${(size / 1024).toStringAsFixed(0)} KB';
-    }
-    String dateStr = '-';
-    bool isOld = false;
-    if (createdAt != null && createdAt.toString().isNotEmpty) {
-      try {
-        final dt = DateTime.parse(createdAt.toString());
-        dateStr = '${dt.day}/${dt.month}/${dt.year}';
-        if (deleteDays > 0) isOld = DateTime.now().difference(dt).inDays > deleteDays;
-      } catch (_) {}
-    }
-
-    return Container(
-      decoration: BoxDecoration(
-        color: AppTheme.cardDark, borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: isOld ? AppTheme.error.withValues(alpha: 0.4) : AppTheme.divider),
-      ),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Expanded(child: Stack(children: [
-          GestureDetector(
-            onTap: url.isNotEmpty ? () => _showPhotoPreview(context, url, name) : null,
-            child: ClipRRect(
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
-              child: url.isNotEmpty
-                  ? Image.network(url, fit: BoxFit.cover, width: double.infinity, cacheWidth: 300,
-                      errorBuilder: (_, __, ___) => const Center(child: Icon(Icons.broken_image_rounded, color: AppTheme.textHint, size: 40)))
-                  : const Center(child: Icon(Icons.image_rounded, color: AppTheme.textHint, size: 40)),
-            ),
-          ),
-          if (url.isNotEmpty) Positioned(bottom: 6, right: 6, child: Container(
-            padding: const EdgeInsets.all(4),
-            decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(6)),
-            child: const Icon(Icons.zoom_in_rounded, color: Colors.white, size: 16),
-          )),
-          if (isOld) Positioned(top: 6, right: 6, child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-            decoration: BoxDecoration(color: AppTheme.error, borderRadius: BorderRadius.circular(6)),
-            child: const Text('LAMA', style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w700)),
-          )),
-        ])),
-        Padding(padding: const EdgeInsets.all(10), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(name.length > 18 ? '${name.substring(0, 15)}...' : name,
-              style: const TextStyle(color: AppTheme.textPrimary, fontSize: 11, fontWeight: FontWeight.w500)),
-          const SizedBox(height: 2),
-          Row(children: [
-            const Icon(Icons.calendar_today_rounded, size: 10, color: AppTheme.textHint), const SizedBox(width: 4),
-            Text(dateStr, style: const TextStyle(color: AppTheme.textHint, fontSize: 10)),
-            const Spacer(),
-            Text(sizeStr, style: const TextStyle(color: AppTheme.textHint, fontSize: 10)),
-          ]),
-          const SizedBox(height: 6),
-          SizedBox(width: double.infinity, height: 28, child: ElevatedButton.icon(
-            onPressed: () => _deletePhoto(name),
-            icon: const Icon(Icons.delete_outline_rounded, size: 14),
-            label: const Text('Hapus', style: TextStyle(fontSize: 11)),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.error.withValues(alpha: 0.1), foregroundColor: AppTheme.error,
-              elevation: 0, padding: EdgeInsets.zero,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            ),
-          )),
-        ])),
-      ]),
-    );
-  }
 
   void _showPhotoPreview(BuildContext ctx, String url, String title) {
     showDialog(
@@ -1432,181 +1309,8 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
   }
 
   // ═══════════════════════════════════════════════
-  // SHARED: AUTO-DELETE & STORAGE CARDS
-  // ═══════════════════════════════════════════════
-
-  Widget _buildStorageCard() {
-    const double maxBytes = 1024 * 1024 * 1024; // 1 GB (Supabase free tier limit)
-    final double percent = (_totalStorageUsedBytes / maxBytes).clamp(0.0, 1.0);
-    final usedMB = _totalStorageUsedBytes / (1024 * 1024);
-
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppTheme.cardDark,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.divider),
-      ),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(color: const Color(0xFF00BCD4).withValues(alpha: 0.15), borderRadius: BorderRadius.circular(10)),
-            child: const Icon(Icons.storage_rounded, color: Color(0xFF00BCD4), size: 20),
-          ),
-          const SizedBox(width: 12),
-          const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('Kapasitas Server', style: TextStyle(color: AppTheme.textPrimary, fontSize: 14, fontWeight: FontWeight.w700)),
-            Text('Batas gratis Supabase (1 GB)', style: TextStyle(color: AppTheme.textHint, fontSize: 11)),
-          ])),
-        ]),
-        const SizedBox(height: 16),
-        Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-          Text('${usedMB.toStringAsFixed(1)} MB terpakai', style: const TextStyle(color: AppTheme.textPrimary, fontSize: 13, fontWeight: FontWeight.w600)),
-          Text('${(percent * 100).toStringAsFixed(1)}%', style: TextStyle(color: percent > 0.9 ? AppTheme.error : const Color(0xFF00BCD4), fontSize: 12, fontWeight: FontWeight.w700)),
-        ]),
-        const SizedBox(height: 8),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(10),
-          child: LinearProgressIndicator(
-            value: percent,
-            minHeight: 10,
-            backgroundColor: AppTheme.surfaceDark,
-            valueColor: AlwaysStoppedAnimation<Color>(percent > 0.9 ? AppTheme.error : (percent > 0.7 ? const Color(0xFFFF9800) : const Color(0xFF00BCD4))),
-          ),
-        ),
-      ]),
-    );
-  }
-
-  Widget _buildAutoDeleteCard({
-    required IconData icon,
-    required String title,
-    required int value,
-    required String unit,
-    required int oldCount,
-    required Future<void> Function(int, String) onSave,
-    required VoidCallback onDeleteOld,
-  }) {
-    final valueCtrl = TextEditingController(text: value > 0 ? '$value' : '');
-    final units = ['hari', 'minggu', 'bulan'];
-
-    return StatefulBuilder(
-      builder: (context, setCardState) => Container(
-        margin: const EdgeInsets.all(16),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(colors: [Color(0xFF1E2D3D), Color(0xFF162232)]),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFE040FB).withValues(alpha: 0.2)),
-        ),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(children: [
-            Icon(Icons.auto_delete_rounded, color: const Color(0xFFE040FB), size: 20),
-            const SizedBox(width: 8),
-            Text(title, style: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w600, fontSize: 14)),
-          ]),
-          const SizedBox(height: 4),
-          const Text('Atur waktu otomatis hapus data lama', style: TextStyle(color: AppTheme.textHint, fontSize: 11)),
-          const SizedBox(height: 12),
-          // Input row: [angka] [unit selector] [tombol simpan]
-          // Input row: [angka] [unit selector] [tombol simpan]
-          Wrap(
-            spacing: 6,
-            runSpacing: 8,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              // Number input
-              SizedBox(
-                width: 60,
-                height: 36,
-                child: TextField(
-                  controller: valueCtrl,
-                  keyboardType: TextInputType.number,
-                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(color: AppTheme.textPrimary, fontSize: 13, fontWeight: FontWeight.w600),
-                  decoration: InputDecoration(
-                    hintText: '0',
-                    hintStyle: const TextStyle(color: AppTheme.textHint),
-                    filled: true, fillColor: AppTheme.surfaceDark,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
-                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppTheme.divider)),
-                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: Color(0xFFE040FB))),
-                  ),
-                ),
-              ),
-              // Unit chips
-              ...units.map((u) {
-                final isSelected = unit == u;
-                return GestureDetector(
-                  onTap: () {
-                    final val = int.tryParse(valueCtrl.text) ?? 0;
-                    onSave(val, u);
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: isSelected ? const Color(0xFFE040FB).withValues(alpha: 0.2) : AppTheme.surfaceDark,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: isSelected ? const Color(0xFFE040FB) : AppTheme.divider),
-                    ),
-                    child: Text(u.substring(0, 1).toUpperCase() + u.substring(1),
-                        style: TextStyle(color: isSelected ? const Color(0xFFE040FB) : AppTheme.textSecondary, fontSize: 11, fontWeight: FontWeight.w500)),
-                  ),
-                );
-              }),
-              // Save button
-              GestureDetector(
-                onTap: () {
-                  final val = int.tryParse(valueCtrl.text) ?? 0;
-                  onSave(val, unit);
-                  _showSnack(val > 0 ? 'Auto-delete: $val $unit' : 'Auto-delete nonaktif');
-                },
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(color: const Color(0xFFE040FB).withValues(alpha: 0.15), borderRadius: BorderRadius.circular(10)),
-                  child: const Icon(Icons.save_rounded, color: Color(0xFFE040FB), size: 18),
-                ),
-              ),
-            ],
-          ),
-          // Status & action
-          if (value > 0 && oldCount > 0) ...[
-            const SizedBox(height: 12),
-            SizedBox(width: double.infinity, child: ElevatedButton.icon(
-              onPressed: onDeleteOld,
-              icon: const Icon(Icons.delete_sweep_rounded, size: 18),
-              label: Text('Hapus $oldCount data lama sekarang'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.error.withValues(alpha: 0.15), foregroundColor: AppTheme.error,
-                elevation: 0, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-            )),
-          ],
-          if (value > 0 && oldCount == 0) ...[
-            const SizedBox(height: 8),
-            Text('✅ Tidak ada data lebih dari $value $unit', style: const TextStyle(color: AppTheme.textHint, fontSize: 12)),
-          ],
-          if (value <= 0) ...[
-            const SizedBox(height: 8),
-            const Text('⏸ Auto-delete nonaktif. Masukkan angka dan pilih satuan.', style: TextStyle(color: AppTheme.textHint, fontSize: 11)),
-          ],
-        ]),
-      ),
-    );
-  }
-
-  // ═══════════════════════════════════════════════
   // COMMON
   // ═══════════════════════════════════════════════
-
-  Widget _buildLoading() => const Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-    CircularProgressIndicator(color: AppTheme.accent), SizedBox(height: 16),
-    Text('Memuat data...', style: TextStyle(color: AppTheme.textSecondary)),
-  ]));
 
   Future<bool?> _confirmDialog(String title, String message) => showDialog<bool>(
     context: context,
