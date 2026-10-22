@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../models/resident_exam.dart';
 import '../services/speech_service.dart';
+import '../services/voice_text_cleaner.dart';
 import '../services/storage_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/ui/ui.dart';
@@ -57,7 +58,6 @@ class _ResidentExamFormScreenState extends State<ResidentExamFormScreen> {
   String? _fotoPath;
   bool _isListening = false;
   String? _activeField;
-  bool _speechAvailable = true;
   bool _locationPermissionDenied = false;
 
   // Quick suggestion chips
@@ -157,8 +157,7 @@ class _ResidentExamFormScreenState extends State<ResidentExamFormScreen> {
   }
 
   Future<void> _initSpeech() async {
-    final available = await _speechService.initialize();
-    if (mounted) setState(() => _speechAvailable = available);
+    await _speechService.initialize();
   }
 
   @override
@@ -236,160 +235,41 @@ class _ResidentExamFormScreenState extends State<ResidentExamFormScreen> {
   }
 
   // ── Voice Input Handling ──────────────────────────────────
-  Future<void> _toggleVoice(
-      String fieldName, TextEditingController ctrl) async {
-    if (!_speechAvailable) {
-      _showVoiceUnavailableDialog();
-      return;
-    }
-
+  Future<void> _toggleVoice(String fieldName, TextEditingController ctrl,
+      {VoiceKind kind = VoiceKind.text}) async {
     if (_isListening && _activeField == fieldName) {
       await _speechService.stopListening();
-      setState(() {
-        _isListening = false;
-        _activeField = null;
-      });
+      if (mounted) setState(() { _isListening = false; _activeField = null; });
       return;
     }
-
     if (_isListening) await _speechService.stopListening();
-    setState(() {
-      _isListening = true;
-      _activeField = fieldName;
-    });
 
-    _showListeningBottomSheet(fieldName, ctrl);
+    // Teks sebelum bicara; hasil suara ditulis langsung ke kolom (live) lalu dirapikan.
+    final base = ctrl.text.trim();
+    void put(String spoken) {
+      final cleaned = VoiceTextCleaner.clean(spoken, kind);
+      if (cleaned.isEmpty) return;
+      final merged = base.isEmpty
+          ? cleaned
+          : (kind == VoiceKind.digits ? '$base$cleaned' : '$base $cleaned');
+      ctrl.text = merged;
+      ctrl.selection = TextSelection.collapsed(offset: merged.length);
+    }
 
+    setState(() { _isListening = true; _activeField = fieldName; });
     await _speechService.startListening(
-      onResult: (text) {
+      onPartial: (p) { if (mounted) setState(() => put(p)); },
+      onResult: (t) { if (mounted) setState(() => put(t)); },
+      onError: (msg) {
         if (!mounted) return;
-        setState(() {
-          ctrl.text = ctrl.text.isEmpty ? text : '${ctrl.text} $text';
-          ctrl.selection =
-              TextSelection.fromPosition(TextPosition(offset: ctrl.text.length));
-        });
+        setState(() { _isListening = false; _activeField = null; });
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(SnackBar(content: Text(msg)));
       },
-      onError: (_) {
-        if (!mounted) return;
-        setState(() {
-          _isListening = false;
-          _activeField = null;
-        });
+      onDone: () {
+        if (mounted) setState(() { _isListening = false; _activeField = null; });
       },
-    );
-  }
-
-  void _showListeningBottomSheet(
-      String fieldName, TextEditingController ctrl) {
-    showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isDismissible: true,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setSheetState) => Container(
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-            boxShadow: [
-              BoxShadow(
-                color: Color.fromRGBO(11, 42, 64, 0.14),
-                blurRadius: 30,
-                offset: Offset(0, -4),
-              ),
-            ],
-          ),
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 36,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: AppTheme.divider,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              const SizedBox(height: 20),
-              // Mic pulsing avatar
-              Container(
-                width: 76,
-                height: 76,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF0A64A8).withValues(alpha: 0.12),
-                  shape: BoxShape.circle,
-                ),
-                child: Center(
-                  child: Container(
-                    width: 52,
-                    height: 52,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFF0A64A8),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.mic_rounded,
-                        color: Colors.white, size: 28),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 14),
-              const Text(
-                'Mendengarkan…',
-                style: TextStyle(
-                  color: AppTheme.textPrimary,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 6),
-              const Text(
-                'Ucapkan keluhan pasien, misalnya "pusing dan sulit tidur".',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: AppTheme.textSecondary,
-                  fontSize: 14,
-                ),
-              ),
-              const SizedBox(height: 14),
-              const RepaintBoundary(
-                child: SizedBox(
-                  height: 46,
-                  child: _VoiceSoundwaveBars(),
-                ),
-              ),
-              const SizedBox(height: 16),
-              AppButton(
-                label: 'Selesai',
-                kind: AppButtonKind.tonal,
-                onPressed: () {
-                  _speechService.stopListening();
-                  setState(() {
-                    _isListening = false;
-                    _activeField = null;
-                  });
-                  Navigator.pop(ctx);
-                },
-              ),
-            ],
-          ),
-        ),
-      ),
-    ).then((_) {
-      if (_isListening) {
-        _speechService.stopListening();
-        setState(() {
-          _isListening = false;
-          _activeField = null;
-        });
-      }
-    });
-  }
-
-  void _showVoiceUnavailableDialog() {
-    AppToast.show(
-      context,
-      'Input suara tidak tersedia di perangkat ini. Silakan ketik manual.',
-      kind: AppToastKind.warning,
     );
   }
 
@@ -836,7 +716,8 @@ class _ResidentExamFormScreenState extends State<ResidentExamFormScreen> {
               hint: 'Ketik nama warga…',
               required: true,
               suffixWidget: IconButton(
-                onPressed: () => _toggleVoice('nama', controller),
+                onPressed: () =>
+                    _toggleVoice('nama', controller, kind: VoiceKind.name),
                 icon: Icon(
                   isActive ? Icons.mic_rounded : Icons.mic_none_rounded,
                   color: isActive ? AppTheme.error : const Color(0xFF0A64A8),
@@ -917,9 +798,17 @@ class _ResidentExamFormScreenState extends State<ResidentExamFormScreen> {
                 controller: _alamatCtrl,
                 hint: 'mis. RT 03/RW 02',
                 suffixWidget: IconButton(
-                  onPressed: () => _toggleVoice('alamat', _alamatCtrl),
-                  icon: const Icon(Icons.mic_none_rounded,
-                      color: Color(0xFF0A64A8), size: 20),
+                  onPressed: () => _toggleVoice('alamat', _alamatCtrl,
+                      kind: VoiceKind.address),
+                  icon: Icon(
+                    _isListening && _activeField == 'alamat'
+                        ? Icons.mic_rounded
+                        : Icons.mic_none_rounded,
+                    color: _isListening && _activeField == 'alamat'
+                        ? AppTheme.error
+                        : const Color(0xFF0A64A8),
+                    size: 20,
+                  ),
                 ),
               ),
             ),
@@ -984,6 +873,19 @@ class _ResidentExamFormScreenState extends State<ResidentExamFormScreen> {
                 controller: _nikCtrl,
                 hint: '16 digit NIK',
                 keyboardType: TextInputType.number,
+                suffixWidget: IconButton(
+                  onPressed: () =>
+                      _toggleVoice('nik', _nikCtrl, kind: VoiceKind.digits),
+                  icon: Icon(
+                    _isListening && _activeField == 'nik'
+                        ? Icons.mic_rounded
+                        : Icons.mic_none_rounded,
+                    color: _isListening && _activeField == 'nik'
+                        ? AppTheme.error
+                        : const Color(0xFF0A64A8),
+                    size: 20,
+                  ),
+                ),
               ),
             ),
             const SizedBox(width: 10),
@@ -1828,67 +1730,6 @@ class _ResidentExamFormScreenState extends State<ResidentExamFormScreen> {
           child: Icon(icon, color: Colors.white, size: 20),
         ),
       ),
-    );
-  }
-}
-
-/// Soundwave visualizer animasi 10 batang sesuai Galat.dc.html.
-/// Diisolasi dalam RepaintBoundary untuk performa 60fps tanpa repaint parent sheet.
-class _VoiceSoundwaveBars extends StatefulWidget {
-  const _VoiceSoundwaveBars();
-
-  @override
-  State<_VoiceSoundwaveBars> createState() => _VoiceSoundwaveBarsState();
-}
-
-class _VoiceSoundwaveBarsState extends State<_VoiceSoundwaveBars>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _ctrl;
-  static const _baseHeights = [
-    10.0, 22.0, 34.0, 18.0, 40.0, 26.0, 14.0, 30.0, 20.0, 12.0
-  ];
-
-  @override
-  void initState() {
-    super.initState();
-    _ctrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 900),
-    )..repeat(reverse: true);
-  }
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _ctrl,
-      builder: (context, _) {
-        final t = _ctrl.value;
-        return Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: List.generate(_baseHeights.length, (idx) {
-            final base = _baseHeights[idx];
-            // Modulasi ketinggian bergantian secara harmonis
-            final factor = 0.4 + 0.6 * (idx.isEven ? t : (1.0 - t));
-            final h = (base * factor).clamp(6.0, 42.0);
-            return Container(
-              margin: const EdgeInsets.symmetric(horizontal: 2),
-              width: 5,
-              height: h,
-              decoration: BoxDecoration(
-                color: const Color(0xFF0A64A8),
-                borderRadius: BorderRadius.circular(3),
-              ),
-            );
-          }),
-        );
-      },
     );
   }
 }
