@@ -20,9 +20,9 @@ description: Gunakan saat mendesain ulang atau mengimplementasikan SATU layar/ko
 | Layar | Mockup | File Dart | Status |
 |---|---|---|---|
 | Splash | `mockups/splash.html` | `lib/screens/splash_screen.dart` | selesai (Fase 3) |
-| Masuk | `mockups/prototype.html`, `main-canvas/Login.dc.html` | `login_screen.dart` | ditulis (terang) |
-| Beranda | `main-canvas/Main.dc.html`, `status-canvas/BerandaOffline.dc.html` | `dashboard_screen.dart` | ditulis (terang) |
-| Laporan baru | `main-canvas/Form.dc.html` | `report_form_screen.dart` | ditulis (terang) |
+| Masuk | `mockups/prototype.html`, `main-canvas/Login.dc.html` | `login_screen.dart` | selesai (Fase 1 + Galat) |
+| Beranda | `main-canvas/Main.dc.html`, `status-canvas/BerandaOffline.dc.html` | `dashboard_screen.dart` | selesai (Fase 1) |
+| Laporan baru | `main-canvas/Form.dc.html` | `report_form_screen.dart` | selesai (Fase 1) |
 | Form pasien | `main-canvas/FormPasien.dc.html` | `resident_exam_form_screen.dart` | selesai (Fase 6) |
 | Riwayat | `main-canvas/Riwayat.dc.html` | `report_history_screen.dart` | selesai (Fase 4) |
 | Admin · User/Laporan/Foto | `main-canvas/AdminUser|AdminLaporan|AdminFoto.dc.html` | `admin_panel_screen.dart`, `admin_user_tab.dart`, `admin_laporan_tab.dart`, `admin_foto_tab.dart` | selesai (Fase 5.1-5.3) |
