@@ -24,7 +24,7 @@ description: Gunakan saat mendesain ulang atau mengimplementasikan SATU layar/ko
 | Beranda | `main-canvas/Main.dc.html`, `status-canvas/BerandaOffline.dc.html` | `dashboard_screen.dart` | ditulis (gelap) |
 | Laporan baru | `main-canvas/Form.dc.html` | `report_form_screen.dart` | ditulis (gelap) |
 | Form pasien | `main-canvas/FormPasien.dc.html` | `resident_exam_form_screen.dart` | BELUM |
-| Riwayat | `main-canvas/Riwayat.dc.html` | `report_history_screen.dart` | BELUM |
+| Riwayat | `main-canvas/Riwayat.dc.html` | `report_history_screen.dart` | selesai (Fase 4) |
 | Admin · User/Laporan/Foto | `main-canvas/AdminUser|AdminLaporan|AdminFoto.dc.html` | `admin_panel_screen.dart` | BELUM |
 | Role custom | `main-canvas/Roles.dc.html` | `custom_roles_screen.dart` | BELUM |
 | Layar sukses | `main-canvas/Sukses.dc.html`, `status-canvas/SuksesOffline.dc.html` | `success_screen.dart` | BELUM |
