@@ -304,6 +304,7 @@ class _AdminUserTabState extends State<AdminUserTab> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: AppCard(
+        onTap: () => widget.onShowEditUser(userId, nama, email, puskesmas),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         child: Row(
           children: [

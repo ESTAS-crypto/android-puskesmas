@@ -10,6 +10,7 @@ import '../models/resident_exam.dart';
 /// Strategi: Offline-First — semua operasi cloud bersifat fire-and-forget.
 class SupabaseService {
   static SupabaseClient get _client => Supabase.instance.client;
+  static SupabaseClient get client => _client;
 
   /// Ukuran maksimum file foto: 10 MB
   static const int _maxFileSize = 10 * 1024 * 1024;

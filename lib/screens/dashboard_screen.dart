@@ -303,6 +303,183 @@ class _DashboardScreenState extends State<DashboardScreen> {
   );
 }
 
+  void _showProfileModal() {
+    final s = widget.session;
+    final initial = s.nama.trim().isNotEmpty ? s.nama.trim()[0].toUpperCase() : '?';
+
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: AppTheme.surface,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
+          child: SafeArea(
+            top: false,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Drag handle
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: AppTheme.outline,
+                      borderRadius: BorderRadius.circular(99),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                // Avatar bulat besar
+                Container(
+                  width: 72,
+                  height: 72,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: AppTheme.tint(AppTheme.accent),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: AppTheme.accent.withValues(alpha: 0.25),
+                      width: 2,
+                    ),
+                  ),
+                  child: Text(
+                    initial,
+                    style: const TextStyle(
+                      color: AppTheme.accent,
+                      fontSize: 32,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                // Nama lengkap
+                Text(
+                  s.nama,
+                  style: const TextStyle(
+                    color: AppTheme.text,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.3,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 6),
+
+                // Role badge
+                RoleBadge(session: s),
+                const SizedBox(height: 20),
+
+                // Detail akun Card
+                AppCard(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  child: Column(
+                    children: [
+                      _profileInfoRow(
+                        icon: Icons.local_hospital_rounded,
+                        label: 'Puskesmas Tugas',
+                        value: s.puskesmas.isNotEmpty ? 'PKM ${s.puskesmas}' : 'Belum diatur',
+                      ),
+                      const Divider(height: 16, color: AppTheme.divider),
+                      _profileInfoRow(
+                        icon: Icons.email_outlined,
+                        label: 'Email Akun',
+                        value: s.email.isNotEmpty ? s.email : 'Akun Lokal / Offline',
+                      ),
+                      const Divider(height: 16, color: AppTheme.divider),
+                      _profileInfoRow(
+                        icon: Icons.calendar_today_rounded,
+                        label: 'Periode Aktif',
+                        value: s.bulanTahun,
+                      ),
+                      const Divider(height: 16, color: AppTheme.divider),
+                      _profileInfoRow(
+                        icon: Icons.shield_outlined,
+                        label: 'Tingkat Hak Akses',
+                        value: s.isDeveloper
+                            ? 'Developer (Akses Penuh Sistem)'
+                            : (s.isAdmin
+                                ? 'Admin (Panel Admin & Rekap)'
+                                : 'Petugas / Kader (Input Laporan)'),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                // Tombol aksi
+                Row(
+                  children: [
+                    Expanded(
+                      child: AppButton(
+                        label: 'Tutup',
+                        kind: AppButtonKind.ghost,
+                        height: 44,
+                        onPressed: () => Navigator.pop(ctx),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: AppButton(
+                        label: 'Keluar Akun',
+                        kind: AppButtonKind.danger,
+                        height: 44,
+                        onPressed: () {
+                          Navigator.pop(ctx);
+                          _logout();
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _profileInfoRow({
+    required IconData icon,
+    required String label,
+    required String value,
+  }) {
+    return Row(
+      children: [
+        Icon(icon, size: 20, color: AppTheme.textMuted),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: const TextStyle(color: AppTheme.textFaint, fontSize: 11),
+              ),
+              const SizedBox(height: 1),
+              Text(
+                value,
+                style: const TextStyle(
+                  color: AppTheme.text,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildHeader(String firstName) {
     final t = Theme.of(context).textTheme;
     final initial = firstName.isNotEmpty ? firstName[0].toUpperCase() : '?';
@@ -311,36 +488,47 @@ class _DashboardScreenState extends State<DashboardScreen> {
       children: [
         Row(
           children: [
-            Container(
-              width: 48,
-              height: 48,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: AppTheme.tint(AppTheme.accent),
-                shape: BoxShape.circle,
-              ),
-              child: Text(
-                initial,
-                style: const TextStyle(
-                  color: AppTheme.accent,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
+            Tooltip(
+              message: 'Lihat Profil',
+              child: InkWell(
+                borderRadius: BorderRadius.circular(24),
+                onTap: _showProfileModal,
+                child: Container(
+                  width: 48,
+                  height: 48,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: AppTheme.tint(AppTheme.accent),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Text(
+                    initial,
+                    style: const TextStyle(
+                      color: AppTheme.accent,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                 ),
               ),
             ),
             const SizedBox(width: 14),
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(_greeting(), style: t.bodyMedium),
-                  Text(
-                    firstName,
-                    style: t.titleLarge,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
+              child: InkWell(
+                borderRadius: BorderRadius.circular(8),
+                onTap: _showProfileModal,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(_greeting(), style: t.bodyMedium),
+                    Text(
+                      firstName,
+                      style: t.titleLarge,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
               ),
             ),
             AppIconButton(

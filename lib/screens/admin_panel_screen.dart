@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:open_file/open_file.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/report.dart';
 import '../models/resident_exam.dart';
 import '../models/user_session.dart';
@@ -58,6 +59,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
   int _supabaseLatencyMs = 0;
   String _supabaseStatusMsg = 'Memeriksa koneksi Supabase...';
   bool _supabaseIsPaused = false;
+  RealtimeChannel? _realtimeChannel;
 
   @override
   void initState() {
@@ -66,7 +68,8 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
     _tabController.addListener(() {
       if (!_tabController.indexIsChanging) _loadTabData(_tabController.index);
     });
-    _loadTabData(0);
+    _loadAllData();
+    _setupRealtimeSubscription();
     _loadAutoDeleteSettings();
     _loadLocalDeleteConfig();
     _checkSupabaseConnection();
@@ -302,6 +305,9 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
 
   @override
   void dispose() {
+    if (_realtimeChannel != null) {
+      SupabaseService.client.removeChannel(_realtimeChannel!);
+    }
     _tabController.dispose();
     super.dispose();
   }
@@ -380,52 +386,116 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
   // DATA LOADING
   // ═══════════════════════════════════════════════
 
+  Future<void> _loadAllData({bool silent = false}) async {
+    await Future.wait([
+      _loadUsers(silent: silent),
+      _loadReports(silent: silent),
+      _loadPhotos(silent: silent),
+    ]);
+  }
+
+  void _setupRealtimeSubscription() {
+    try {
+      _realtimeChannel = SupabaseService.client
+          .channel('public:admin_panel_realtime')
+          .onPostgresChanges(
+            event: PostgresChangeEvent.all,
+            schema: 'public',
+            table: 'reports',
+            callback: (payload) {
+              if (mounted) _loadReports(silent: true);
+            },
+          )
+          .onPostgresChanges(
+            event: PostgresChangeEvent.all,
+            schema: 'public',
+            table: 'resident_exams',
+            callback: (payload) {
+              if (mounted) _loadReports(silent: true);
+            },
+          )
+          .onPostgresChanges(
+            event: PostgresChangeEvent.all,
+            schema: 'public',
+            table: 'profiles',
+            callback: (payload) {
+              if (mounted) _loadUsers(silent: true);
+            },
+          )
+          .subscribe();
+    } catch (e) {
+      debugPrint('Realtime channel error: $e');
+    }
+  }
+
   Future<void> _loadTabData(int index) async {
     switch (index) {
-      case 0: if (_users.isEmpty) _loadUsers(); break;
-      case 1: if (_reports.isEmpty) _loadReports(); break;
-      case 2: if (_photos.isEmpty) _loadPhotos(); break;
+      case 0: _loadUsers(silent: _users.isNotEmpty); break;
+      case 1: _loadReports(silent: _reports.isNotEmpty); break;
+      case 2: _loadPhotos(silent: _photos.isNotEmpty); break;
     }
   }
 
-  Future<void> _loadUsers() async {
-    setState(() => _loadingUsers = true);
-    // Load users dan custom roles secara paralel
-    final results = await Future.wait([
-      SupabaseService.adminGetAllUsers(),
-      SupabaseService.getCustomRoles(),
-    ]);
-    if (mounted) {
-      final rolesData = results[1];
-      final rolesMap = <String, CustomRole>{};
-      for (final m in rolesData) {
-        final role = CustomRole.fromMap(m);
-        rolesMap[role.id] = role;
+  Future<void> _loadUsers({bool silent = false}) async {
+    if (!silent) setState(() => _loadingUsers = true);
+    try {
+      final results = await Future.wait([
+        SupabaseService.adminGetAllUsers(),
+        SupabaseService.getCustomRoles(),
+      ]);
+      if (mounted) {
+        final rolesData = results[1];
+        final rolesMap = <String, CustomRole>{};
+        for (final m in rolesData) {
+          final role = CustomRole.fromMap(m);
+          rolesMap[role.id] = role;
+        }
+        setState(() {
+          _users = results[0];
+          _customRolesMap = rolesMap;
+          _loadingUsers = false;
+        });
       }
-      setState(() {
-        _users = results[0];
-        _customRolesMap = rolesMap;
-        _loadingUsers = false;
-      });
+    } catch (_) {
+      if (mounted) setState(() => _loadingUsers = false);
     }
   }
 
-  Future<void> _loadReports() async {
-    setState(() => _loadingReports = true);
-    final reports = await SupabaseService.adminGetAllReports();
-    final examCount = await SupabaseService.adminCountExams();
-    if (mounted) setState(() { _reports = reports; _totalExamCount = examCount; _loadingReports = false; });
+  Future<void> _loadReports({bool silent = false}) async {
+    if (!silent) setState(() => _loadingReports = true);
+    try {
+      final reports = await SupabaseService.adminGetAllReports();
+      final examCount = await SupabaseService.adminCountExams();
+      if (mounted) {
+        setState(() {
+          _reports = reports;
+          _totalExamCount = examCount;
+          _loadingReports = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _loadingReports = false);
+    }
   }
 
-
-  Future<void> _loadPhotos() async {
-    setState(() => _loadingPhotos = true);
-    final photos = await SupabaseService.adminListPhotos();
-    int bytes = 0;
-    for (final p in photos) {
-      if (p['size'] != null && p['size'] is int) bytes += p['size'] as int;
+  Future<void> _loadPhotos({bool silent = false}) async {
+    if (!silent) setState(() => _loadingPhotos = true);
+    try {
+      final photos = await SupabaseService.adminListPhotos();
+      int bytes = 0;
+      for (final p in photos) {
+        if (p['size'] != null && p['size'] is int) bytes += p['size'] as int;
+      }
+      if (mounted) {
+        setState(() {
+          _photos = photos;
+          _totalStorageUsedBytes = bytes;
+          _loadingPhotos = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _loadingPhotos = false);
     }
-    if (mounted) setState(() { _photos = photos; _totalStorageUsedBytes = bytes; _loadingPhotos = false; });
   }
 
   Widget _buildSupabaseStatusCard() {
