@@ -3,9 +3,20 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import '../services/storage_service.dart';
 import '../services/supabase_service.dart';
+import '../theme/app_theme.dart';
+import '../theme/motion.dart';
+import 'ui/ui.dart';
 
-/// Widget yang menampilkan banner/popup animasi ketika status koneksi berubah.
-/// Otomatis muncul di atas layar saat offline dan saat kembali online.
+enum _BannerKind { off, sync, done, fail }
+
+/// Widget yang menampilkan banner koneksi interaktif sesuai spesifikasi
+/// "Laut & Langit" (Main.dc.html & status-prototype.html).
+///
+/// 4 status:
+/// - offline (amber lembut)
+/// - sinkronisasi (biru + progress bar)
+/// - selesai (hijau + auto-hide 4 detik)
+/// - gagal (amber + tombol Coba lagi)
 class ConnectivityBanner extends StatefulWidget {
   final Widget child;
   const ConnectivityBanner({super.key, required this.child});
@@ -19,9 +30,12 @@ class _ConnectivityBannerState extends State<ConnectivityBanner>
   bool _isOnline = true;
   bool _showBanner = false;
   bool _isFirstCheck = true;
-  int _pendingCount = 0; // ponytail: track pending sync count
-  String _syncMessage = ''; // ponytail: dynamic subtitle
-  Timer? _timer;
+  int _pendingCount = 0;
+  String _customSubtitle = '';
+  _BannerKind _kind = _BannerKind.off;
+
+  Timer? _checkTimer;
+  Timer? _autoHideTimer;
   late AnimationController _animCtrl;
   late Animation<Offset> _slideAnim;
 
@@ -30,16 +44,38 @@ class _ConnectivityBannerState extends State<ConnectivityBanner>
     super.initState();
     _animCtrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 400),
+      duration: AppMotion.medium,
+      reverseDuration: AppMotion.fast,
     );
     _slideAnim = Tween<Offset>(
-      begin: const Offset(0, -1),
+      begin: const Offset(0, -1.2),
       end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _animCtrl, curve: Curves.easeOutCubic));
+    ).animate(CurvedAnimation(
+      parent: _animCtrl,
+      curve: AppMotion.decelerate,
+      reverseCurve: AppMotion.accelerate,
+    ));
 
     _checkConnectivity();
-    // Cek koneksi setiap 5 detik
-    _timer = Timer.periodic(const Duration(seconds: 5), (_) => _checkConnectivity());
+    // Pengecekan koneksi berkala setiap 5 detik
+    _checkTimer = Timer.periodic(const Duration(seconds: 5), (_) => _checkConnectivity());
+  }
+
+  void _show() {
+    _autoHideTimer?.cancel();
+    if (!_showBanner) {
+      setState(() => _showBanner = true);
+    }
+    _animCtrl.forward();
+  }
+
+  void _hide() {
+    _autoHideTimer?.cancel();
+    _animCtrl.reverse().then((_) {
+      if (mounted) {
+        setState(() => _showBanner = false);
+      }
+    });
   }
 
   Future<void> _checkConnectivity() async {
@@ -55,62 +91,108 @@ class _ConnectivityBannerState extends State<ConnectivityBanner>
     if (!mounted) return;
 
     if (online != _isOnline) {
-      // ponytail: update pending count on transition
       final pending = await StorageService.getPendingSyncCount();
-      setState(() {
-        _isOnline = online;
-        _showBanner = true;
-        _pendingCount = pending;
-        _syncMessage = '';
-      });
-      _animCtrl.forward();
+      _isOnline = online;
 
-      // Saat kembali online: sync pending reports
-      if (online) {
-        _triggerAutoSync();
-        // Auto-hide banner setelah 4 detik (sedikit lebih lama untuk feedback)
-        Future.delayed(const Duration(seconds: 4), () {
-          if (mounted && _isOnline) {
-            _animCtrl.reverse().then((_) {
-              if (mounted) setState(() => _showBanner = false);
-            });
-          }
+      if (!online) {
+        // Sinyal hilang -> Mode offline
+        setState(() {
+          _kind = _BannerKind.off;
+          _pendingCount = pending;
+          _customSubtitle = '';
         });
+        _show();
+      } else {
+        // Sinyal kembali -> Mulai sinkronisasi
+        _pendingCount = pending;
+        if (pending > 0) {
+          setState(() {
+            _kind = _BannerKind.sync;
+            _customSubtitle = 'Menyinkronkan $pending laporan…';
+          });
+          _show();
+          await _triggerAutoSync();
+        } else {
+          setState(() {
+            _kind = _BannerKind.done;
+            _customSubtitle = 'Semua data sudah sinkron';
+          });
+          _show();
+          _scheduleAutoHide();
+        }
       }
     }
 
-    // Pertama kali cek, jangan tampilkan banner kecuali offline
+    // Pemeriksaan awal saat aplikasi pertama kali terbuka
     if (_isFirstCheck) {
       _isFirstCheck = false;
       if (!online) {
         final pending = await StorageService.getPendingSyncCount();
         setState(() {
-          _showBanner = true;
+          _kind = _BannerKind.off;
           _pendingCount = pending;
         });
-        _animCtrl.forward();
+        _show();
       }
     }
   }
 
-  /// ponytail: Sync hanya report yang pending, tampilkan hasil
-  Future<void> _triggerAutoSync() async {
+  Future<void> _triggerAutoSync({bool isRetry = false}) async {
     try {
-      if (!SupabaseService.isLoggedIn) return;
-      final synced = await StorageService.syncPendingReports();
-      if (mounted && synced > 0) {
-        setState(() => _syncMessage = '$synced laporan berhasil disinkronkan');
-      } else if (mounted) {
-        setState(() => _syncMessage = 'Semua data sudah sinkron');
+      if (isRetry) {
+        final pending = await StorageService.getPendingSyncCount();
+        setState(() {
+          _kind = _BannerKind.sync;
+          _pendingCount = pending;
+          _customSubtitle = 'Menyinkronkan $pending laporan…';
+        });
+        _show();
       }
+
+      if (!SupabaseService.isLoggedIn) {
+        if (mounted) {
+          setState(() {
+            _kind = _BannerKind.done;
+            _customSubtitle = 'Data tersimpan lokal di HP';
+          });
+          _scheduleAutoHide();
+        }
+        return;
+      }
+
+      final synced = await StorageService.syncPendingReports();
+      if (!mounted) return;
+
+      setState(() {
+        _kind = _BannerKind.done;
+        _pendingCount = 0;
+        _customSubtitle = synced > 0
+            ? '$synced laporan berhasil disinkronkan'
+            : 'Semua data sudah sinkron';
+      });
+      _scheduleAutoHide();
     } catch (_) {
-      if (mounted) setState(() => _syncMessage = 'Gagal sinkronisasi, akan dicoba lagi');
+      if (!mounted) return;
+      setState(() {
+        _kind = _BannerKind.fail;
+        _customSubtitle = 'Akan dicoba lagi otomatis.';
+      });
     }
+  }
+
+  void _scheduleAutoHide() {
+    _autoHideTimer?.cancel();
+    _autoHideTimer = Timer(const Duration(seconds: 4), () {
+      if (mounted && _isOnline && _kind == _BannerKind.done) {
+        _hide();
+      }
+    });
   }
 
   @override
   void dispose() {
-    _timer?.cancel();
+    _checkTimer?.cancel();
+    _autoHideTimer?.cancel();
     _animCtrl.dispose();
     super.dispose();
   }
@@ -122,87 +204,166 @@ class _ConnectivityBannerState extends State<ConnectivityBanner>
         widget.child,
         if (_showBanner)
           Positioned(
-            top: MediaQuery.of(context).padding.top,
-            left: 0,
-            right: 0,
+            top: MediaQuery.of(context).padding.top + 8,
+            left: 16,
+            right: 16,
             child: SlideTransition(
               position: _slideAnim,
-              child: Material(
-                color: Colors.transparent,
-                child: Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  decoration: BoxDecoration(
-                    color: _isOnline
-                        ? const Color(0xFF1B5E20).withValues(alpha: 0.95)
-                        : const Color(0xFFB71C1C).withValues(alpha: 0.95),
-                    borderRadius: BorderRadius.circular(14),
-                    boxShadow: [
-                      BoxShadow(
-                        color: (_isOnline ? Colors.green : Colors.red).withValues(alpha: 0.3),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        _isOnline ? Icons.wifi_rounded : Icons.wifi_off_rounded,
-                        color: Colors.white,
-                        size: 20,
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              _isOnline ? 'Kembali Online' : 'Mode Offline',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            Text(
-                              // ponytail: dynamic subtitle with pending count / sync result
-                              _isOnline
-                                  ? (_syncMessage.isNotEmpty ? _syncMessage : 'Menyinkronkan data...')
-                                  : _pendingCount > 0
-                                      ? '$_pendingCount laporan menunggu sinkronisasi'
-                                      : 'Data tersimpan di lokal, akan sync saat online',
-                              style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.8),
-                                fontSize: 11,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Container(
-                        width: 8,
-                        height: 8,
-                        decoration: BoxDecoration(
-                          color: _isOnline ? Colors.greenAccent : Colors.redAccent,
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: (_isOnline ? Colors.greenAccent : Colors.redAccent)
-                                  .withValues(alpha: 0.6),
-                              blurRadius: 6,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+              child: Semantics(
+                liveRegion: true,
+                child: _buildBannerCard(),
               ),
             ),
           ),
       ],
+    );
+  }
+
+  Widget _buildBannerCard() {
+    final (tileBg, glyph, iconColor, title, defaultSubtitle) = switch (_kind) {
+      _BannerKind.off => (
+          const Color.fromRGBO(176, 106, 0, 0.14),
+          AppGlyph.wifiOff,
+          AppTheme.warning,
+          'Mode offline',
+          'Data tersimpan di HP. Terkirim otomatis saat ada sinyal.',
+        ),
+      _BannerKind.sync => (
+          const Color.fromRGBO(10, 100, 168, 0.12),
+          AppGlyph.wifi,
+          AppTheme.accent,
+          'Kembali online',
+          _pendingCount > 0
+              ? 'Menyinkronkan $_pendingCount laporan…'
+              : 'Menyinkronkan data…',
+        ),
+      _BannerKind.done => (
+          const Color.fromRGBO(27, 127, 75, 0.12),
+          AppGlyph.check,
+          AppTheme.success,
+          'Semua data sudah terkirim',
+          _customSubtitle.isNotEmpty
+              ? _customSubtitle
+              : 'Data berhasil disinkronkan',
+        ),
+      _BannerKind.fail => (
+          const Color.fromRGBO(176, 106, 0, 0.14),
+          AppGlyph.warning,
+          AppTheme.warning,
+          'Belum berhasil mengirim',
+          'Akan dicoba lagi otomatis.',
+        ),
+    };
+
+    final subtitle = _customSubtitle.isNotEmpty ? _customSubtitle : defaultSubtitle;
+
+    return Material(
+      color: Colors.transparent,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: AppTheme.outline),
+          boxShadow: const [
+            BoxShadow(
+              color: Color.fromRGBO(11, 42, 64, 0.14),
+              blurRadius: 24,
+              offset: Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              children: [
+                // Tile ikon status
+                Container(
+                  width: 40,
+                  height: 40,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: tileBg,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: AppIcon(glyph, color: iconColor, size: 22),
+                ),
+                const SizedBox(width: 12),
+                // Judul & sub-judul
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        title,
+                        style: const TextStyle(
+                          color: AppTheme.text,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          height: 1.25,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        subtitle,
+                        style: const TextStyle(
+                          color: AppTheme.textFaint,
+                          fontSize: 13,
+                          height: 1.35,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+                // Trailing: Pill laporan pending atau Tombol Coba lagi
+                if (_kind == _BannerKind.off && _pendingCount > 0) ...[
+                  const SizedBox(width: 8),
+                  StatusPill(
+                    label: '$_pendingCount belum terkirim',
+                    color: AppTheme.warning,
+                  ),
+                ] else if (_kind == _BannerKind.fail) ...[
+                  const SizedBox(width: 4),
+                  TextButton(
+                    onPressed: () => _triggerAutoSync(isRetry: true),
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppTheme.accent,
+                      minimumSize: const Size(44, 44),
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      textStyle: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    child: const Text('Coba lagi'),
+                  ),
+                ],
+              ],
+            ),
+            // Bar progres saat sinkronisasi
+            if (_kind == _BannerKind.sync) ...[
+              const SizedBox(height: 10),
+              Container(
+                height: 6,
+                clipBehavior: Clip.antiAlias,
+                decoration: BoxDecoration(
+                  color: AppTheme.surfaceRaised,
+                  borderRadius: BorderRadius.circular(99),
+                ),
+                child: const LinearProgressIndicator(
+                  backgroundColor: Colors.transparent,
+                  valueColor: AlwaysStoppedAnimation<Color>(AppTheme.accent),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
     );
   }
 }

@@ -127,28 +127,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Future<void> _logout() async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Keluar dari akun?'),
-        content: const Text(
-            'Laporan yang sudah dibuat tetap tersimpan di perangkat ini.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Batal',
-                style: TextStyle(color: AppTheme.textSecondary)),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child:
-                const Text('Keluar', style: TextStyle(color: AppTheme.error)),
-          ),
-        ],
-      ),
+    final pending = await StorageService.getPendingSyncCount();
+    if (!mounted) return;
+
+    final confirm = await AppConfirmSheet.show(
+      context,
+      title: 'Keluar dari akun?',
+      message: pending > 0
+          ? 'Ada $pending laporan yang belum terkirim. Laporan tetap aman di HP, tetapi baru terkirim setelah Anda masuk lagi dan online.'
+          : 'Laporan yang sudah dibuat tetap tersimpan di perangkat ini.',
+      confirmLabel: pending > 0 ? 'Keluar juga' : 'Keluar',
+      cancelLabel: pending > 0 ? 'Tetap di sini' : 'Batal',
+      isDangerous: true,
+      pendingCount: pending,
     );
 
-    if (confirm == true) {
+    if (confirm) {
       await SupabaseService.signOut();
       await StorageService.clearSession();
       if (!mounted) return;
@@ -229,10 +223,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final reports = await StorageService.getReports();
     if (reports.isEmpty) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Belum ada laporan untuk diekspor. Buat laporan dulu.'),
-        ),
+      AppToast.show(
+        context,
+        'Belum ada laporan untuk diekspor. Buat laporan dulu.',
+        kind: AppToastKind.warning,
       );
       return;
     }

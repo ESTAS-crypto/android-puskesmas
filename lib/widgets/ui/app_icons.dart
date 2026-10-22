@@ -46,6 +46,8 @@ class AppGlyph {
   static const mail = 'mail';
   static const hospital = 'hospital';
   static const drag = 'drag';
+  static const wifi = 'wifi';
+  static const wifiOff = 'wifiOff';
 }
 
 /// Pengganti `Icon`. Menerima AppGlyph (String) atau IconData biasa.
@@ -111,4 +113,6 @@ const Map<String, String> _glyphs = {
   'mail': '<rect fill="{c}" fill-opacity=".18" stroke="none" x="3" y="5.5" width="18" height="13" rx="3"/><rect fill="none" stroke="{c}" stroke-width="2" x="3" y="5.5" width="18" height="13" rx="3"/><path fill="none" stroke="{c}" stroke-width="2" d="M4 8l8 5.5L20 8"/>',
   'hospital': '<rect fill="{c}" fill-opacity=".18" stroke="none" x="4" y="7" width="16" height="14" rx="2"/><rect fill="none" stroke="{c}" stroke-width="2" x="4" y="7" width="16" height="14" rx="2"/><path fill="none" stroke="{c}" stroke-width="2" d="M12 10v4M10 12h4M10 21v-3h4v3"/>',
   'drag': '<path fill="none" stroke="{c}" stroke-width="2.6" d="M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01"/>',
+  'wifi': '<path fill="none" stroke="{c}" stroke-width="2" d="M2 9a15 15 0 0120 0M5 12.5a10.5 10.5 0 0114 0M8.5 16a5.5 5.5 0 017 0M12 19.5h.01"/>',
+  'wifiOff': '<path fill="none" stroke="{c}" stroke-width="2" d="M2 9a15 15 0 013.5-2.4M8.5 5.2A15 15 0 0122 9M5 12.5a10.5 10.5 0 013.2-2.3M12 8.6a10.5 10.5 0 017 3.9M8.5 16a5.5 5.5 0 017 0M12 19.5h.01M3 3l18 18"/>',
 };

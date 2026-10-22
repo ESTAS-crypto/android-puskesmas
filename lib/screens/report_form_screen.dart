@@ -84,21 +84,17 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
     _saveDraft();
 
     final label = exam.nama.isNotEmpty ? exam.nama : 'Pasien';
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Text('$label dihapus dari laporan'),
-          action: SnackBarAction(
-            label: 'Urungkan',
-            onPressed: () {
-              if (!mounted) return;
-              setState(() => _exams.insert(math.min(at, _exams.length), exam));
-              _saveDraft();
-            },
-          ),
-        ),
-      );
+    AppToast.show(
+      context,
+      '$label dihapus dari laporan',
+      kind: AppToastKind.info,
+      actionLabel: 'Urungkan',
+      onAction: () {
+        if (!mounted) return;
+        setState(() => _exams.insert(math.min(at, _exams.length), exam));
+        _saveDraft();
+      },
+    );
   }
 
   Future<void> _saveDraft() async {
@@ -114,10 +110,10 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
 
   Future<void> _saveReport() async {
     if (_exams.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Tambahkan minimal 1 pasien sebelum menyimpan.'),
-        ),
+      AppToast.show(
+        context,
+        'Tambahkan minimal 1 pasien sebelum menyimpan.',
+        kind: AppToastKind.warning,
       );
       return;
     }
@@ -158,8 +154,10 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
       );
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: AppTheme.error),
+        AppToast.show(
+          context,
+          'Laporan belum berhasil disimpan. Coba lagi.',
+          kind: AppToastKind.error,
         );
       }
     } finally {

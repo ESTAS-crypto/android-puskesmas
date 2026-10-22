@@ -487,3 +487,208 @@ class StaggerIn extends StatelessWidget {
     );
   }
 }
+
+// ════════════════════════════════════════════════════════════
+//  AppToast — Pesan singkat mengambang di bawah (Pesan.dc.html)
+// ════════════════════════════════════════════════════════════
+enum AppToastKind { info, success, warning, error }
+
+class AppToast {
+  AppToast._();
+
+  static void show(
+    BuildContext context,
+    String message, {
+    AppToastKind kind = AppToastKind.info,
+    String? actionLabel,
+    VoidCallback? onAction,
+    Duration duration = const Duration(seconds: 4),
+  }) {
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    if (messenger == null) return;
+    messenger.hideCurrentSnackBar();
+
+    final (glyph, iconColor) = switch (kind) {
+      AppToastKind.info => (AppGlyph.report, const Color(0xFF8FD0FF)),
+      AppToastKind.success => (AppGlyph.check, const Color(0xFF7FE0A8)),
+      AppToastKind.warning => (AppGlyph.warning, const Color(0xFFFFD28A)),
+      AppToastKind.error => (AppGlyph.warning, const Color(0xFFFFB4AB)),
+    };
+
+    messenger.showSnackBar(
+      SnackBar(
+        duration: duration,
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: const Color(0xFF0B2A40),
+        elevation: 6,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+        ),
+        content: Row(
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: AppIcon(glyph, color: iconColor, size: 20),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                message,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                  height: 1.35,
+                ),
+              ),
+            ),
+            if (actionLabel != null && onAction != null) ...[
+              const SizedBox(width: 8),
+              TextButton(
+                onPressed: () {
+                  messenger.hideCurrentSnackBar();
+                  onAction();
+                },
+                style: TextButton.styleFrom(
+                  foregroundColor: const Color(0xFF8FD0FF),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                  minimumSize: const Size(44, 44),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  textStyle: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                child: Text(actionLabel),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ════════════════════════════════════════════════════════════
+//  AppConfirmSheet — Dialog konfirmasi bottom sheet (Konfirmasi.dc.html)
+// ════════════════════════════════════════════════════════════
+class AppConfirmSheet {
+  AppConfirmSheet._();
+
+  static Future<bool> show(
+    BuildContext context, {
+    required String title,
+    required String message,
+    required String confirmLabel,
+    String cancelLabel = 'Batal',
+    bool isDangerous = false,
+    int pendingCount = 0,
+  }) async {
+    final result = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+          boxShadow: [
+            BoxShadow(
+              color: Color.fromRGBO(11, 42, 64, 0.14),
+              blurRadius: 34,
+              offset: Offset(0, 14),
+            ),
+          ],
+        ),
+        padding: EdgeInsets.fromLTRB(
+          20,
+          16,
+          20,
+          24 + MediaQuery.of(ctx).padding.bottom,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Center(
+              child: Container(
+                width: 36,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 18),
+                decoration: BoxDecoration(
+                  color: AppTheme.outline,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            Text(
+              title,
+              style: const TextStyle(
+                color: AppTheme.text,
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                height: 1.3,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              message,
+              style: const TextStyle(
+                color: AppTheme.textMuted,
+                fontSize: 16,
+                height: 1.45,
+              ),
+            ),
+            if (pendingCount > 0) ...[
+              const SizedBox(height: 12),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: StatusPill(
+                  label: '$pendingCount belum terkirim',
+                  icon: AppGlyph.cloud,
+                  color: AppTheme.warning,
+                ),
+              ),
+            ],
+            const SizedBox(height: 20),
+            if (isDangerous && pendingCount > 0) ...[
+              AppButton(
+                label: cancelLabel == 'Batal' ? 'Tetap di sini' : cancelLabel,
+                kind: AppButtonKind.ghost,
+                onPressed: () => Navigator.pop(ctx, false),
+              ),
+              const SizedBox(height: 10),
+              AppButton(
+                label: confirmLabel,
+                kind: AppButtonKind.danger,
+                onPressed: () => Navigator.pop(ctx, true),
+              ),
+            ] else ...[
+              AppButton(
+                label: confirmLabel,
+                kind: isDangerous ? AppButtonKind.danger : AppButtonKind.primary,
+                onPressed: () => Navigator.pop(ctx, true),
+              ),
+              const SizedBox(height: 10),
+              AppButton(
+                label: cancelLabel,
+                kind: AppButtonKind.ghost,
+                onPressed: () => Navigator.pop(ctx, false),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+    return result ?? false;
+  }
+}
+
