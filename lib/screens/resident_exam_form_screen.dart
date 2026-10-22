@@ -330,14 +330,21 @@ class _ResidentExamFormScreenState extends State<ResidentExamFormScreen> {
               ),
               const SizedBox(height: 6),
               const Text(
-                'Ucapkan catatan pasien secara perlahan dan jelas.',
+                'Ucapkan keluhan pasien, misalnya "pusing dan sulit tidur".',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: AppTheme.textSecondary,
                   fontSize: 14,
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 14),
+              const RepaintBoundary(
+                child: SizedBox(
+                  height: 46,
+                  child: _VoiceSoundwaveBars(),
+                ),
+              ),
+              const SizedBox(height: 16),
               AppButton(
                 label: 'Selesai',
                 kind: AppButtonKind.tonal,
@@ -1801,6 +1808,67 @@ class _ResidentExamFormScreenState extends State<ResidentExamFormScreen> {
           child: Icon(icon, color: Colors.white, size: 20),
         ),
       ),
+    );
+  }
+}
+
+/// Soundwave visualizer animasi 10 batang sesuai Galat.dc.html.
+/// Diisolasi dalam RepaintBoundary untuk performa 60fps tanpa repaint parent sheet.
+class _VoiceSoundwaveBars extends StatefulWidget {
+  const _VoiceSoundwaveBars();
+
+  @override
+  State<_VoiceSoundwaveBars> createState() => _VoiceSoundwaveBarsState();
+}
+
+class _VoiceSoundwaveBarsState extends State<_VoiceSoundwaveBars>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  static const _baseHeights = [
+    10.0, 22.0, 34.0, 18.0, 40.0, 26.0, 14.0, 30.0, 20.0, 12.0
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _ctrl,
+      builder: (context, _) {
+        final t = _ctrl.value;
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: List.generate(_baseHeights.length, (idx) {
+            final base = _baseHeights[idx];
+            // Modulasi ketinggian bergantian secara harmonis
+            final factor = 0.4 + 0.6 * (idx.isEven ? t : (1.0 - t));
+            final h = (base * factor).clamp(6.0, 42.0);
+            return Container(
+              margin: const EdgeInsets.symmetric(horizontal: 2),
+              width: 5,
+              height: h,
+              decoration: BoxDecoration(
+                color: const Color(0xFF0A64A8),
+                borderRadius: BorderRadius.circular(3),
+              ),
+            );
+          }),
+        );
+      },
     );
   }
 }

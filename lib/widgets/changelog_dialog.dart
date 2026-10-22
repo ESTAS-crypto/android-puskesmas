@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../theme/app_theme.dart';
 import 'ui/ui.dart';
 
+/// Modal bottom sheet "Apa yang baru" sesuai spesifikasi Changelog.dc.html.
 class ChangelogDialog {
-  static const String _currentVersion = '2.7.6';
+  static const String _currentVersion = '2.7.5';
   static const String _seenVersionKey = 'changelog_seen_version';
 
   static final List<Map<String, dynamic>> _changelog = [
@@ -12,325 +12,385 @@ class ChangelogDialog {
       'version': '2.7.5',
       'date': '17 Juli 2026',
       'changes': [
-        {'icon': Icons.photo_camera_rounded, 'text': '📸 Foto pasien sekarang ikut muncul saat cetak laporan dari halaman Admin — tidak kosong lagi!', 'type': 'fix'},
-        {'icon': Icons.wifi_rounded, 'text': '📶 Kalau HP mati data lalu nyala lagi, laporan otomatis terkirim ke server — tidak perlu kirim ulang!', 'type': 'improve'},
-        {'icon': Icons.notifications_active_rounded, 'text': '🔔 Ada pemberitahuan berapa laporan yang belum terkirim dan berapa yang berhasil terkirim', 'type': 'new'},
-        {'icon': Icons.edit_note_rounded, 'text': '✏️ Admin bisa ubah data pasien langsung dari halaman Admin — tinggal ketuk tombol edit', 'type': 'new'},
+        {
+          'type': 'new',
+          'label': 'Baru',
+          'text': 'Admin bisa ubah data pasien langsung dari halaman Admin. Tinggal ketuk tombol edit.',
+        },
+        {
+          'type': 'new',
+          'label': 'Baru',
+          'text': 'Ada pemberitahuan berapa laporan yang belum terkirim dan yang berhasil terkirim.',
+        },
+        {
+          'type': 'improve',
+          'label': 'Peningkatan',
+          'text': 'Saat HP kembali online, laporan otomatis terkirim ke server. Tidak perlu kirim ulang.',
+        },
+        {
+          'type': 'fix',
+          'label': 'Perbaikan',
+          'text': 'Foto pasien kini ikut muncul saat cetak laporan dari halaman Admin.',
+        },
       ],
     },
     {
       'version': '2.7.0',
       'date': '19 Mei 2026',
       'changes': [
-        {'icon': Icons.manage_accounts_rounded, 'text': '🔑 Sistem role baru: Owner › Developer › Admin › User — setiap level punya batas wewenang sendiri', 'type': 'new'},
-        {'icon': Icons.shield_rounded, 'text': '🛡️ Admin sekarang tidak bisa mengubah role siapapun — hanya Developer/Owner yang bisa kelola role', 'type': 'new'},
-        {'icon': Icons.no_accounts_rounded, 'text': '🚫 Admin tidak bisa menurunkan atau menghapus akun yang rolenya lebih tinggi dari dirinya', 'type': 'new'},
-        {'icon': Icons.refresh_rounded, 'text': '🔄 Role akan otomatis diperbarui saat aplikasi dibuka — tidak perlu logout dulu!', 'type': 'fix'},
-        {'icon': Icons.badge_rounded, 'text': '🎨 Badge role kini berwarna berbeda: Emas (Owner), Cyan (Developer), Ungu (Admin)', 'type': 'improve'},
+        {
+          'type': 'new',
+          'label': 'Baru',
+          'text': 'Sistem role baru: Owner › Developer › Admin › User dengan batas wewenang bertingkat.',
+        },
+        {
+          'type': 'new',
+          'label': 'Baru',
+          'text': 'Admin tidak bisa mengubah role — hanya Developer dan Owner yang memiliki akses pengelolaan role.',
+        },
+        {
+          'type': 'fix',
+          'label': 'Perbaikan',
+          'text': 'Role otomatis diperbarui saat aplikasi dibuka tanpa perlu logout.',
+        },
       ],
     },
     {
       'version': '2.6.0',
       'date': '20 April 2026',
       'changes': [
-        {'icon': Icons.g_mobiledata_rounded, 'text': '✨ Sekarang bisa masuk pakai akun Gmail — tidak perlu buat akun baru lagi!', 'type': 'new'},
-        {'icon': Icons.badge_rounded, 'text': '📝 Masuk pertama kali lewat Google? Tinggal isi nama kader & puskesmas, lalu selesai!', 'type': 'new'},
-        {'icon': Icons.auto_delete_rounded, 'text': '🧹 Foto & laporan lama di HP otomatis terhapus sendiri — HP tidak bakal penuh!', 'type': 'new'},
-        {'icon': Icons.cloud_off_rounded, 'text': '☁️ Data lama di server juga ikut dibersihkan sendiri setiap kali admin buka aplikasi', 'type': 'new'},
-        {'icon': Icons.speed_rounded, 'text': '⚡ Aplikasi terasa lebih ringan & cepat saat dibuka', 'type': 'improve'},
-        {'icon': Icons.error_outline_rounded, 'text': '💬 Kalau ada masalah saat login, pesannya sekarang lebih mudah dimengerti', 'type': 'improve'},
-      ],
-    },
-    {
-      'version': '2.5.0',
-      'date': '27 Maret 2026',
-      'changes': [
-        {'icon': Icons.cloud_sync_rounded, 'text': '☁️ Data tersimpan ke internet — bisa dilihat dari HP mana saja!', 'type': 'new'},
-        {'icon': Icons.login_rounded, 'text': '🔐 Masuk bisa pakai nama pengguna atau alamat email — pilih yang paling ingat', 'type': 'new'},
-        {'icon': Icons.pin_rounded, 'text': '🔢 Lupa kata sandi? Bisa diubah lewat kode 6 angka yang dikirim ke email', 'type': 'new'},
-        {'icon': Icons.public_rounded, 'text': '🔍 Bisa cari data pasien dari semua petugas puskesmas (butuh internet)', 'type': 'new'},
-        {'icon': Icons.wifi_rounded, 'text': '📶 Ada tanda di layar apakah HP sedang terkoneksi internet atau tidak', 'type': 'new'},
-        {'icon': Icons.person_add_rounded, 'text': '👤 Daftar akun baru kini lebih aman — ada konfirmasi ke email', 'type': 'new'},
-        {'icon': Icons.search_rounded, 'text': '🔍 Cari pasien sekarang bisa pakai nomor NIK', 'type': 'improve'},
-      ],
-    },
-    {
-      'version': '2.4.0',
-      'date': '19 Maret 2026',
-      'changes': [
-        {'icon': Icons.badge_rounded, 'text': '🪪 Ditambahkan kolom Nomor NIK di data pasien', 'type': 'new'},
-        {'icon': Icons.share_rounded, 'text': '📤 Laporan bisa langsung dikirim ke WhatsApp atau aplikasi lain dari HP', 'type': 'new'},
-        {'icon': Icons.drag_handle_rounded, 'text': '↕️ Urutan keluhan & tindakan bisa diubah dengan cara digeser-geser', 'type': 'new'},
-        {'icon': Icons.edit_document, 'text': '✏️ Tulisan "Warga" sudah diganti menjadi "Pasien" di seluruh aplikasi', 'type': 'improve'},
-      ],
-    },
-    {
-      'version': '2.3.0',
-      'date': '15 Maret 2026',
-      'changes': [
-        {'icon': Icons.calendar_month_rounded, 'text': '📅 Setiap pasien bisa punya tanggal kunjungan yang berbeda dalam satu laporan', 'type': 'new'},
-        {'icon': Icons.search_rounded, 'text': '🔍 Riwayat laporan bisa dicari & disaring dengan mudah, walau tanpa internet', 'type': 'new'},
-        {'icon': Icons.auto_awesome_rounded, 'text': '✨ Nama pasien lama muncul otomatis saat diketik — menghemat waktu!', 'type': 'new'},
-        {'icon': Icons.save_rounded, 'text': '💾 Laporan yang belum selesai tersimpan otomatis — tidak perlu takut hilang', 'type': 'new'},
-        {'icon': Icons.description_rounded, 'text': '📄 Laporan PDF & Word lebih rapi — setiap pasien ada di halaman sendiri', 'type': 'improve'},
-        {'icon': Icons.speed_rounded, 'text': '⚡ Aplikasi lebih ringan dan tidak lemot', 'type': 'improve'},
-      ],
-    },
-    {
-      'version': '2.2.0',
-      'date': '11 Maret 2026',
-      'changes': [
-        {'icon': Icons.people_alt_rounded, 'text': '👥 Satu laporan sekarang bisa memuat banyak pasien sekaligus — tidak perlu laporan terpisah', 'type': 'new'},
-        {'icon': Icons.drag_handle_rounded, 'text': '↕️ Urutan nama pasien bisa diubah dengan cara digeser', 'type': 'new'},
-        {'icon': Icons.table_chart_rounded, 'text': '📋 Semua pasien otomatis masuk ke satu file PDF atau Word', 'type': 'improve'},
-        {'icon': Icons.cloud_done_rounded, 'text': '🔄 Data lama diperbarui otomatis agar tetap bisa dibuka di versi baru', 'type': 'fix'},
-      ],
-    },
-    {
-      'version': '2.1.0',
-      'date': '6 Maret 2026',
-      'changes': [
-        {'icon': Icons.add_circle_outline, 'text': '➕ Bisa tambahkan kolom pengukuran sendiri sesuai kebutuhan', 'type': 'new'},
-        {'icon': Icons.description_outlined, 'text': '📝 File Word sekarang bisa dibuka normal di HP Android', 'type': 'fix'},
-        {'icon': Icons.animation, 'text': '🚀 Tampilan awal aplikasi lebih cepat terbuka', 'type': 'improve'},
-      ],
-    },
-    {
-      'version': '2.0.0',
-      'date': '28 Februari 2026',
-      'changes': [
-        {'icon': Icons.rocket_launch, 'text': '🎉 Tampilan aplikasi dibuat ulang — lebih cantik & nyaman dipakai!', 'type': 'new'},
-        {'icon': Icons.picture_as_pdf, 'text': '📄 Laporan bisa dicetak ke file PDF atau Word langsung dari HP', 'type': 'new'},
-        {'icon': Icons.mic, 'text': '🎤 Bisa isi data cukup dengan berbicara ke HP — tidak perlu ketik!', 'type': 'new'},
-        {'icon': Icons.wifi_off, 'text': '📴 Tidak ada internet pun tetap bisa dipakai untuk catat kunjungan', 'type': 'new'},
+        {
+          'type': 'new',
+          'label': 'Baru',
+          'text': 'Dukungan masuk menggunakan akun Google (Gmail) sekali ketuk.',
+        },
+        {
+          'type': 'new',
+          'label': 'Baru',
+          'text': 'Pembersihan otomatis berkas lokal dan cloud yang telah melewati masa simpan.',
+        },
+        {
+          'type': 'improve',
+          'label': 'Peningkatan',
+          'text': 'Optimalisasi waktu muat aplikasi dan efisiensi konsumsi memori.',
+        },
       ],
     },
   ];
 
-  /// Check if changelog should auto-show (new version detected)
+  /// Cek apakah changelog perlu ditampilkan otomatis (versi baru terdeteksi)
   static Future<bool> shouldShowChangelog() async {
     final prefs = await SharedPreferences.getInstance();
     final seenVersion = prefs.getString(_seenVersionKey);
     return seenVersion != _currentVersion;
   }
 
-  /// Mark current version as seen
+  /// Tandai versi saat ini sudah dilihat
   static Future<void> markAsSeen() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_seenVersionKey, _currentVersion);
   }
 
-  /// Show the changelog dialog
+  /// Tampilkan bottom sheet Changelog (Changelog.dc.html)
   static Future<void> show(BuildContext context, {bool isAutoShow = false}) async {
-    await showDialog(
+    await showModalBottomSheet(
       context: context,
-      barrierDismissible: true,
-      builder: (ctx) => Dialog(
-        backgroundColor: Colors.transparent,
-        insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
-        child: Container(
-          constraints: const BoxConstraints(maxWidth: 400, maxHeight: 520),
-          decoration: BoxDecoration(
-            color: AppTheme.cardDark,
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: AppTheme.divider),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.4),
-                blurRadius: 30,
-                offset: const Offset(0, 10),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => const _ChangelogBottomSheet(),
+    );
+
+    if (isAutoShow) {
+      await markAsSeen();
+    }
+  }
+}
+
+class _ChangelogBottomSheet extends StatefulWidget {
+  const _ChangelogBottomSheet();
+
+  @override
+  State<_ChangelogBottomSheet> createState() => _ChangelogBottomSheetState();
+}
+
+class _ChangelogBottomSheetState extends State<_ChangelogBottomSheet> {
+  final Set<String> _expandedVersions = {};
+
+  @override
+  Widget build(BuildContext context) {
+    final latest = ChangelogDialog._changelog.first;
+    final older = ChangelogDialog._changelog.skip(1).toList();
+    final latestChanges = latest['changes'] as List<Map<String, dynamic>>;
+
+    return Container(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.88,
+      ),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        boxShadow: [
+          BoxShadow(
+            color: Color.fromRGBO(11, 42, 64, 0.16),
+            blurRadius: 34,
+            offset: Offset(0, -6),
+          ),
+        ],
+      ),
+      padding: EdgeInsets.fromLTRB(
+        20,
+        12,
+        20,
+        16 + MediaQuery.of(context).padding.bottom,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Drag handle
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(
+                color: const Color(0xFFD3E4F1),
+                borderRadius: BorderRadius.circular(9),
+              ),
+            ),
+          ),
+
+          // Header: Title + Pill
+          Row(
+            children: [
+              const Expanded(
+                child: Text(
+                  'Apa yang baru',
+                  style: TextStyle(
+                    color: Color(0xFF0B2A40),
+                    fontSize: 22,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.3,
+                  ),
+                ),
+              ),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
+                decoration: BoxDecoration(
+                  color: const Color.fromRGBO(27, 127, 75, 0.12),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: const Text(
+                  'Versi terbaru',
+                  style: TextStyle(
+                    color: Color(0xFF176B40),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ),
             ],
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Header
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  gradient: AppTheme.primaryGradient,
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Icon(Icons.new_releases_rounded, color: Colors.white, size: 24),
-                    ),
-                    const SizedBox(width: 12),
-                    const Expanded(
-                      child: Column(
+          const SizedBox(height: 4),
+
+          // Version & date subtitle
+          Text(
+            'v${latest['version']} · ${latest['date']}',
+            style: const TextStyle(
+              color: Color(0xFF3F5A70),
+              fontSize: 15,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 18),
+
+          // Scrollable list of changes
+          Flexible(
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Latest version items (Changelog.dc.html lines 36-39)
+                  for (final item in latestChanges) ...[
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 14),
+                      child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            'Yang Baru',
-                            style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700),
-                          ),
-                          Text(
-                            'Changelog & Update',
-                            style: TextStyle(color: Colors.white70, fontSize: 12),
+                          _buildTypePill(item['type'] as String, item['label'] as String),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              item['text'] as String,
+                              style: const TextStyle(
+                                color: Color(0xFF0B2A40),
+                                fontSize: 15.5,
+                                height: 1.45,
+                              ),
+                            ),
                           ),
                         ],
                       ),
                     ),
-                    IconButton(
-                      onPressed: () => Navigator.pop(ctx),
-                      icon: const Icon(Icons.close, color: Colors.white70, size: 20),
-                    ),
                   ],
-                ),
-              ),
 
-              // Content
-              Flexible(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: _changelog.map((version) {
-                      final isLatest = version['version'] == _currentVersion;
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Version header
-                            Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    gradient: isLatest ? AppTheme.primaryGradient : null,
-                                    color: isLatest ? null : AppTheme.surfaceDark,
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Text(
-                                    'v${version['version']}',
-                                    style: TextStyle(
-                                      color: isLatest ? Colors.white : AppTheme.textSecondary,
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                if (isLatest)
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                    decoration: BoxDecoration(
-                                      color: AppTheme.success.withValues(alpha: 0.15),
-                                      borderRadius: BorderRadius.circular(6),
-                                    ),
-                                    child: const Text(
-                                      'TERBARU',
-                                      style: TextStyle(color: AppTheme.success, fontSize: 10, fontWeight: FontWeight.w700),
-                                    ),
-                                  ),
-                                const Spacer(),
-                                Text(
-                                  version['date'] as String,
-                                  style: const TextStyle(color: AppTheme.textHint, fontSize: 11),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 10),
-                            // Changes list
-                            ...((version['changes'] as List<Map<String, dynamic>>).map((change) {
-                              Color iconColor;
-                              switch (change['type']) {
-                                case 'new':
-                                  iconColor = AppTheme.accentTeal;
-                                  break;
-                                case 'fix':
-                                  iconColor = AppTheme.warning;
-                                  break;
-                                case 'improve':
-                                  iconColor = AppTheme.accentBlue;
-                                  break;
-                                default:
-                                  iconColor = AppTheme.textSecondary;
-                              }
-                              return Padding(
-                                padding: const EdgeInsets.only(bottom: 8),
-                                child: Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Container(
-                                      width: 30,
-                                      height: 30,
-                                      decoration: BoxDecoration(
-                                        color: AppTheme.tint(iconColor),
-                                        borderRadius: BorderRadius.circular(9),
-                                      ),
-                                      child: Center(
-                                        child: AppIcon(
-                                          change['type'] == 'fix'
-                                              ? AppGlyph.bandage
-                                              : change['type'] == 'improve'
-                                                  ? AppGlyph.trendUp
-                                                  : AppGlyph.spark,
-                                          color: iconColor,
-                                          size: 18,
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 10),
-                                    Expanded(
-                                      child: Text(
-                                        (change['text'] as String).replaceFirst(RegExp(r'^[^\p{L}\p{N}]+', unicode: true), ''),
-                                        style: const TextStyle(color: AppTheme.textPrimary, fontSize: 13, height: 1.3),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            })),
-                            if (version != _changelog.last)
-                              Divider(color: AppTheme.divider, height: 20),
-                          ],
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                ),
+                  // Divider before older versions
+                  if (older.isNotEmpty) ...[
+                    const Divider(color: Color(0xFFD3E4F1), height: 28),
+                    for (final ver in older) ...[
+                      _buildOlderVersionTile(ver),
+                    ],
+                  ],
+                ],
               ),
-
-              // Bottom button
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                child: SizedBox(
-                  width: double.infinity,
-                  height: 44,
-                  child: ElevatedButton(
-                    onPressed: () async {
-                      await markAsSeen();
-                      if (ctx.mounted) Navigator.pop(ctx);
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.surfaceDark,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                    child: Text(
-                      isAutoShow ? 'Mengerti 👍' : 'Tutup',
-                      style: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w600),
-                    ),
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
+
+          const SizedBox(height: 16),
+
+          // Mengerti button
+          AppButton(
+            label: 'Mengerti',
+            kind: AppButtonKind.primary,
+            onPressed: () async {
+              await ChangelogDialog.markAsSeen();
+              if (context.mounted) Navigator.pop(context);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTypePill(String type, String label) {
+    Color bg;
+    Color fg;
+
+    switch (type) {
+      case 'new':
+        bg = const Color.fromRGBO(10, 100, 168, 0.10);
+        fg = const Color(0xFF0A64A8);
+        break;
+      case 'improve':
+        bg = const Color.fromRGBO(176, 106, 0, 0.14);
+        fg = const Color(0xFF8A5200);
+        break;
+      case 'fix':
+      default:
+        bg = const Color.fromRGBO(27, 127, 75, 0.12);
+        fg = const Color(0xFF176B40);
+        break;
+    }
+
+    return Container(
+      width: 96,
+      padding: const EdgeInsets.symmetric(vertical: 5),
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: fg,
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
         ),
       ),
     );
+  }
 
-    // If auto-show, mark as seen when dialog is dismissed
-    if (isAutoShow) {
-      await markAsSeen();
-    }
+  Widget _buildOlderVersionTile(Map<String, dynamic> ver) {
+    final v = ver['version'] as String;
+    final date = ver['date'] as String;
+    final changes = ver['changes'] as List<Map<String, dynamic>>;
+    final isExpanded = _expandedVersions.contains(v);
+
+    return Column(
+      children: [
+        InkWell(
+          onTap: () {
+            setState(() {
+              if (isExpanded) {
+                _expandedVersions.remove(v);
+              } else {
+                _expandedVersions.add(v);
+              }
+            });
+          },
+          borderRadius: BorderRadius.circular(10),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'v$v',
+                        style: const TextStyle(
+                          color: Color(0xFF0B2A40),
+                          fontSize: 17,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      Text(
+                        '$date · ${changes.length} perubahan',
+                        style: const TextStyle(
+                          color: Color(0xFF4A667E),
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  isExpanded
+                      ? Icons.keyboard_arrow_up_rounded
+                      : Icons.keyboard_arrow_down_rounded,
+                  color: const Color(0xFF3F5A70),
+                  size: 22,
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (isExpanded) ...[
+          Padding(
+            padding: const EdgeInsets.fromLTRB(8, 4, 8, 12),
+            child: Column(
+              children: [
+                for (final item in changes) ...[
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildTypePill(
+                            item['type'] as String, item['label'] as String),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            item['text'] as String,
+                            style: const TextStyle(
+                              color: Color(0xFF0B2A40),
+                              fontSize: 14,
+                              height: 1.4,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
   }
 }

@@ -448,21 +448,23 @@ class _UpdateDialogState extends State<UpdateDialog>
         const SizedBox(height: 16),
 
         // Bar (10px, radius 99, #EAF3FA, fill #0A64A8)
-        Container(
-          height: 10,
-          width: double.infinity,
-          decoration: BoxDecoration(
-            color: const Color(0xFFEAF3FA),
-            borderRadius: BorderRadius.circular(99),
-          ),
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child: FractionallySizedBox(
-              widthFactor: progressVal,
-              child: Container(
-                decoration: BoxDecoration(
-                  color: AppTheme.primaryDeep,
-                  borderRadius: BorderRadius.circular(99),
+        RepaintBoundary(
+          child: Container(
+            height: 10,
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: const Color(0xFFEAF3FA),
+              borderRadius: BorderRadius.circular(99),
+            ),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: FractionallySizedBox(
+                widthFactor: progressVal,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryDeep,
+                    borderRadius: BorderRadius.circular(99),
+                  ),
                 ),
               ),
             ),

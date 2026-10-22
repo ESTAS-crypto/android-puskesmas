@@ -402,7 +402,9 @@ class CountUp extends StatelessWidget {
       tween: Tween<double>(begin: 0, end: value.toDouble()),
       duration: AppMotion.of(context, AppMotion.slow),
       curve: AppMotion.decelerate,
-      builder: (_, v, __) => Text(v.round().toString(), style: style),
+      builder: (_, v, __) => RepaintBoundary(
+        child: Text(v.round().toString(), style: style),
+      ),
     );
   }
 }

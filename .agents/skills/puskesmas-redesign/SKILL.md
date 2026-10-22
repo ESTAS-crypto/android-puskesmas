@@ -29,12 +29,12 @@ description: Gunakan saat mendesain ulang atau mengimplementasikan SATU layar/ko
 | Role custom | `main-canvas/Roles.dc.html` | `custom_roles_screen.dart` | selesai (Fase 5.4) |
 | Layar sukses | `main-canvas/Sukses.dc.html`, `status-canvas/SuksesOffline.dc.html` | `success_screen.dart` | selesai (Fase 7) |
 | Setup profil Google | `main-canvas/Google.dc.html` | `google_profile_setup_screen.dart` | selesai (Fase 7) |
-| Changelog | `main-canvas/Changelog.dc.html` | `widgets/changelog_dialog.dart` | ikon saja |
+| Changelog | `main-canvas/Changelog.dc.html` | `widgets/changelog_dialog.dart` | selesai (Changelog.dc.html) |
 | Dialog update | `main-canvas/Update.dc.html` | `widgets/update_dialog.dart` | selesai (Fase 7) |
 | Banner koneksi | `status-canvas/Main.dc.html`, `status-prototype.html` | `widgets/connectivity_banner.dart` | selesai (Fase 2) |
 | Pesan singkat | `status-canvas/Pesan.dc.html` | semua `SnackBar` / `AppToast` | selesai (Fase 2) |
 | Konfirmasi | `status-canvas/Konfirmasi.dc.html` | semua `AlertDialog` / `AppConfirmSheet` | selesai (Fase 2) |
-| Galat & izin & suara | `status-canvas/Galat.dc.html` | login, foto, geotag, input suara | BELUM |
+| Galat & izin & suara | `status-canvas/Galat.dc.html` | login, foto, geotag, input suara | selesai (Galat.dc.html) |
 | Ikon & lencana | `main-canvas/Ikon.dc.html`, `assets/icons/` | `widgets/ui/app_icons.dart` | ada |
 
 ## Templat laporan akhir

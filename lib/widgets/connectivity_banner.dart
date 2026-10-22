@@ -207,11 +207,13 @@ class _ConnectivityBannerState extends State<ConnectivityBanner>
             top: MediaQuery.of(context).padding.top + 8,
             left: 16,
             right: 16,
-            child: SlideTransition(
-              position: _slideAnim,
-              child: Semantics(
-                liveRegion: true,
-                child: _buildBannerCard(),
+            child: RepaintBoundary(
+              child: SlideTransition(
+                position: _slideAnim,
+                child: Semantics(
+                  liveRegion: true,
+                  child: _buildBannerCard(),
+                ),
               ),
             ),
           ),

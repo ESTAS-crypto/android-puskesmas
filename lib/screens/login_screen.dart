@@ -871,16 +871,84 @@ class _LoginScreenState extends State<LoginScreen>
                               ],
                             ),
                           ),
-                          const SizedBox(height: 24),
-
-                          AppButton(
-                            label: _isRegisterMode ? 'Daftar' : 'Masuk',
-                            icon: _isRegisterMode
-                                ? AppGlyph.userAdd
-                                : AppGlyph.login,
-                            loading: _isLoading,
-                            onPressed: _submit,
-                          ),
+                          if (_cooldownSeconds > 0) ...[
+                            RepaintBoundary(
+                              child: Container(
+                                padding: const EdgeInsets.all(20),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.surface,
+                                  borderRadius: BorderRadius.circular(AppRadius.lg),
+                                  border: Border.all(color: AppTheme.outline),
+                                  boxShadow: AppTheme.cardShadow,
+                                ),
+                                child: Column(
+                                  children: [
+                                    SizedBox(
+                                      width: 80,
+                                      height: 80,
+                                      child: Stack(
+                                        alignment: Alignment.center,
+                                        children: [
+                                          SizedBox(
+                                            width: 80,
+                                            height: 80,
+                                            child: CircularProgressIndicator(
+                                              value: _cooldownSeconds / 30.0,
+                                              strokeWidth: 6,
+                                              color: AppTheme.primaryDeep,
+                                              backgroundColor: const Color(0xFFEAF3FA),
+                                            ),
+                                          ),
+                                          Text(
+                                            '$_cooldownSeconds',
+                                            style: const TextStyle(
+                                              color: Color(0xFF0B2A40),
+                                              fontSize: 24,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    Text(
+                                      'Tunggu $_cooldownSeconds detik',
+                                      style: const TextStyle(
+                                        color: Color(0xFF0B2A40),
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    const Text(
+                                      'Terlalu banyak percobaan. Ini untuk menjaga akun Anda.',
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        color: Color(0xFF3F5A70),
+                                        fontSize: 14,
+                                        height: 1.4,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            AppButton(
+                              label: 'Coba lagi dalam ${_cooldownSeconds}s',
+                              kind: AppButtonKind.primary,
+                              onPressed: null,
+                            ),
+                          ] else ...[
+                            AppButton(
+                              label: _isRegisterMode ? 'Daftar' : 'Masuk',
+                              icon: _isRegisterMode
+                                  ? AppGlyph.userAdd
+                                  : AppGlyph.login,
+                              loading: _isLoading,
+                              onPressed: _submit,
+                            ),
+                          ],
                         ],
                       ),
                     ),
