@@ -252,8 +252,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final firstName = nama.isEmpty ? 'Kader' : nama.split(' ').first;
 
     return Scaffold(
-      body: ConnectivityBanner(
-        child: SafeArea(
+      body: DecoratedBox(
+        decoration: const BoxDecoration(
+          gradient: AppTheme.backgroundGradient,
+        ),
+        child: ConnectivityBanner(
+          child: SafeArea(
           child: RefreshIndicator(
             onRefresh: _loadSummary,
             color: AppTheme.accent,
@@ -301,8 +305,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildHeader(String firstName) {
     final t = Theme.of(context).textTheme;

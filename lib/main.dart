@@ -21,9 +21,9 @@ void main() async {
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.light,
-      systemNavigationBarColor: AppTheme.primaryDark,
-      systemNavigationBarIconBrightness: Brightness.light,
+      statusBarIconBrightness: Brightness.dark,
+      systemNavigationBarColor: AppTheme.bg,
+      systemNavigationBarIconBrightness: Brightness.dark,
     ),
   );
   runApp(const LaporanKunjunganApp());
@@ -37,7 +37,7 @@ class LaporanKunjunganApp extends StatelessWidget {
     return MaterialApp(
       title: 'Laporan Kunjungan Rumah',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.darkTheme,
+      theme: AppTheme.lightTheme,
       home: const SplashScreen(),
     );
   }

@@ -632,8 +632,12 @@ class _LoginScreenState extends State<LoginScreen>
     var i = 0;
 
     return Scaffold(
-      body: SafeArea(
-        child: Center(
+      body: DecoratedBox(
+        decoration: const BoxDecoration(
+          gradient: AppTheme.backgroundGradient,
+        ),
+        child: SafeArea(
+          child: Center(
           child: SingleChildScrollView(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
             child: ConstrainedBox(
@@ -954,6 +958,7 @@ class _LoginScreenState extends State<LoginScreen>
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }

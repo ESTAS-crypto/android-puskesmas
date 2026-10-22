@@ -32,7 +32,7 @@ class _SplashScreenState extends State<SplashScreen>
     with TickerProviderStateMixin {
   static const double _total = 2.8; // detik
   static const _sky = Color(0xFFD6ECFA);
-  static const _exitColor = Color(0xFFDCEFFB);
+  static const _exitColor = AppTheme.bg;
 
   late final AnimationController _intro = AnimationController(
       vsync: this, duration: const Duration(milliseconds: 2800));

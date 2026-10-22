@@ -45,20 +45,29 @@ class _AppCardState extends State<AppCard> {
       side: BorderSide(color: widget.borderColor ?? AppTheme.outline),
     );
 
-    Widget card = Material(
-      color: widget.color ?? AppTheme.surface,
-      shape: shape,
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: widget.onTap == null
-            ? null
-            : () {
-                HapticFeedback.selectionClick();
-                widget.onTap!();
-              },
-        onLongPress: widget.onLongPress,
-        onHighlightChanged: interactive ? (v) => setState(() => _down = v) : null,
-        child: Padding(padding: widget.padding, child: widget.child),
+    final hasShadow = (widget.color == null || widget.color == AppTheme.surface) &&
+        (widget.borderColor == null || widget.borderColor != Colors.transparent);
+
+    Widget card = DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(widget.radius),
+        boxShadow: hasShadow ? AppTheme.cardShadow : null,
+      ),
+      child: Material(
+        color: widget.color ?? AppTheme.surface,
+        shape: shape,
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: widget.onTap == null
+              ? null
+              : () {
+                  HapticFeedback.selectionClick();
+                  widget.onTap!();
+                },
+          onLongPress: widget.onLongPress,
+          onHighlightChanged: interactive ? (v) => setState(() => _down = v) : null,
+          child: Padding(padding: widget.padding, child: widget.child),
+        ),
       ),
     );
 
