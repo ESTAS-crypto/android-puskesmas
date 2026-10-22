@@ -18,6 +18,7 @@ import '../models/custom_role.dart';
 import 'custom_roles_screen.dart';
 import '../widgets/ui/ui.dart';
 import 'admin/admin_user_tab.dart';
+import 'admin/admin_laporan_tab.dart';
 
 class AdminPanelScreen extends StatefulWidget {
   final UserSession session;
@@ -39,7 +40,6 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
   bool _loadingPhotos = false;
   int _totalStorageUsedBytes = 0;
   int _totalExamCount = 0;
-  bool _isExporting = false; // untuk export laporan dari admin panel
   Map<String, CustomRole> _customRolesMap = {}; // roleId -> CustomRole
 
   // Auto-delete settings (terpisah foto & laporan) — SERVER/CLOUD
@@ -371,102 +371,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
     }
   }
 
-  Widget _buildLocalDeleteCard() {
-    final valCtrl = TextEditingController(text: _localDeleteValue > 0 ? '$_localDeleteValue' : '');
-    String selectedUnit = _localDeleteUnit;
 
-    return StatefulBuilder(builder: (context, setLocal) {
-      return Container(
-        margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [const Color(0xFF4CAF50).withValues(alpha: 0.12), const Color(0xFF00BCD4).withValues(alpha: 0.08)],
-            begin: Alignment.topLeft, end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFF4CAF50).withValues(alpha: 0.3)),
-        ),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(color: const Color(0xFF4CAF50).withValues(alpha: 0.2), borderRadius: BorderRadius.circular(10)),
-              child: const Icon(Icons.phone_android_rounded, color: Color(0xFF4CAF50), size: 18),
-            ),
-            const SizedBox(width: 10),
-            const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('Auto-Delete Lokal (HP Petugas)', style: TextStyle(color: AppTheme.textPrimary, fontSize: 13, fontWeight: FontWeight.w700)),
-              Text('Hapus laporan & foto lama dari HP petugas', style: TextStyle(color: AppTheme.textHint, fontSize: 10)),
-            ])),
-          ]),
-          const SizedBox(height: 10),
-          Row(children: [
-            SizedBox(
-              width: 60,
-              child: TextField(
-                controller: valCtrl,
-                keyboardType: TextInputType.number,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: AppTheme.textPrimary, fontSize: 14, fontWeight: FontWeight.w600),
-                decoration: InputDecoration(
-                  hintText: '0', hintStyle: const TextStyle(color: AppTheme.textHint),
-                  filled: true, fillColor: AppTheme.surfaceDark,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 10),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              decoration: BoxDecoration(color: AppTheme.surfaceDark, borderRadius: BorderRadius.circular(10)),
-              child: DropdownButton<String>(
-                value: selectedUnit,
-                dropdownColor: AppTheme.cardDark,
-                style: const TextStyle(color: AppTheme.textPrimary, fontSize: 13),
-                underline: const SizedBox(),
-                items: ['hari', 'minggu', 'bulan'].map((u) => DropdownMenuItem(value: u, child: Text(u.toUpperCase()))).toList(),
-                onChanged: (v) { if (v != null) setLocal(() => selectedUnit = v); },
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  final val = int.tryParse(valCtrl.text) ?? 0;
-                  _saveLocalDeleteConfig(val, selectedUnit);
-                },
-                icon: const Icon(Icons.cloud_upload_rounded, size: 16),
-                label: const Text('Simpan', style: TextStyle(fontSize: 12)),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF4CAF50), foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                ),
-              ),
-            ),
-          ]),
-          if (_localDeleteValue > 0) ...[
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(color: const Color(0xFF4CAF50).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
-              child: Row(children: [
-                const Icon(Icons.info_outline_rounded, color: Color(0xFF4CAF50), size: 14),
-                const SizedBox(width: 6),
-                Expanded(child: Text(
-                  'Saat petugas online, laporan & foto lokal > $_localDeleteValue $_localDeleteUnit akan otomatis terhapus dari HP mereka.',
-                  style: const TextStyle(color: Color(0xFF4CAF50), fontSize: 10),
-                )),
-              ]),
-            ),
-          ],
-        ]),
-      );
-    });
-  }
 
   int _unitToDays(int value, String unit) {
     if (value <= 0) return 0;
@@ -868,7 +773,23 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
                       onSetRole: _showSetRoleDialog,
                       onResetPassword: _resetUserPassword,
                     ),
-                    _buildReportsTab(),
+                    AdminLaporanTab(
+                      session: widget.session,
+                      reports: _reports,
+                      loading: _loadingReports,
+                      totalExamCount: _totalExamCount,
+                      reportDeleteValue: _reportDeleteValue,
+                      reportDeleteUnit: _reportDeleteUnit,
+                      localDeleteValue: _localDeleteValue,
+                      localDeleteUnit: _localDeleteUnit,
+                      onRefresh: _loadReports,
+                      onSaveReportDelete: _saveReportDeleteSetting,
+                      onSaveLocalDelete: _saveLocalDeleteConfig,
+                      onShowDetail: _showReportDetail,
+                      onExport: _exportAdminReport,
+                      onDeleteReport: _deleteReport,
+                      onDeleteOldReports: _deleteOldReports,
+                    ),
                     _buildPhotosTab(),
                   ],
                 ),
@@ -1186,258 +1107,11 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
   // TAB 2: KELOLA LAPORAN + AUTO-DELETE
   // ═══════════════════════════════════════════════
 
-  Widget _buildDatabaseDashboard() {
-    final usedMB = _totalStorageUsedBytes / (1024 * 1024);
-    const double dbLimitMB = 500; // Supabase free tier DB limit
-    // Rough estimate: ~2KB per exam row
-    final dbUsedMB = (_totalExamCount * 2.0) / 1024 + (_reports.length * 0.5) / 1024;
-    final dbPercent = (dbUsedMB / dbLimitMB).clamp(0.0, 1.0);
-
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [const Color(0xFFE040FB).withValues(alpha: 0.08), const Color(0xFF00BCD4).withValues(alpha: 0.06)],
-          begin: Alignment.topLeft, end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.divider),
-      ),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        // Title
-        const Row(children: [
-          Icon(Icons.dashboard_rounded, color: Color(0xFFE040FB), size: 16),
-          SizedBox(width: 8),
-          Text('Ringkasan Database', style: TextStyle(color: AppTheme.textPrimary, fontSize: 13, fontWeight: FontWeight.w700)),
-        ]),
-        const SizedBox(height: 12),
-        // 3 stat tiles
-        Row(children: [
-          Expanded(child: _statTile(Icons.description_rounded, '${_reports.length}', 'Laporan', const Color(0xFFE040FB))),
-          const SizedBox(width: 8),
-          Expanded(child: _statTile(Icons.people_rounded, '$_totalExamCount', 'Data Pasien', const Color(0xFF00BCD4))),
-          const SizedBox(width: 8),
-          Expanded(child: _statTile(Icons.cloud_rounded, '${usedMB.toStringAsFixed(1)} MB', 'Foto Storage', const Color(0xFF4CAF50))),
-        ]),
-        const SizedBox(height: 12),
-        // DB progress
-        Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-          Text('Database: ${dbUsedMB.toStringAsFixed(2)} MB / ${dbLimitMB.toInt()} MB', style: const TextStyle(color: AppTheme.textHint, fontSize: 10)),
-          Text('${(dbPercent * 100).toStringAsFixed(2)}%', style: const TextStyle(color: AppTheme.textHint, fontSize: 10, fontWeight: FontWeight.w600)),
-        ]),
-        const SizedBox(height: 4),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(6),
-          child: LinearProgressIndicator(
-            value: dbPercent,
-            minHeight: 6,
-            backgroundColor: AppTheme.surfaceDark,
-            valueColor: AlwaysStoppedAnimation<Color>(dbPercent > 0.9 ? AppTheme.error : (dbPercent > 0.7 ? const Color(0xFFFF9800) : const Color(0xFFE040FB))),
-          ),
-        ),
-      ]),
-    );
-  }
-
-  Widget _statTile(IconData icon, String value, String label, Color color) {
-    return Container(
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(color: AppTheme.cardDark, borderRadius: BorderRadius.circular(12)),
-      child: Column(children: [
-        Icon(icon, color: color, size: 18),
-        const SizedBox(height: 4),
-        Text(value, style: const TextStyle(color: AppTheme.textPrimary, fontSize: 14, fontWeight: FontWeight.w700)),
-        Text(label, style: const TextStyle(color: AppTheme.textHint, fontSize: 9)),
-      ]),
-    );
-  }
-
-  Widget _buildReportsTab() {
-    if (_loadingReports) return _buildLoading();
-
-    final deleteDays = _unitToDays(_reportDeleteValue, _reportDeleteUnit);
-    final oldReports = _reports.where((r) {
-      if (deleteDays <= 0) return false;
-      final ca = r['created_at'] as String? ?? '';
-      if (ca.isEmpty) return false;
-      try { return DateTime.now().difference(DateTime.parse(ca)).inDays > deleteDays; } catch (_) { return false; }
-    }).toList();
-
-    return RefreshIndicator(
-      color: const Color(0xFFE040FB),
-      onRefresh: _loadReports,
-      child: CustomScrollView(
-        slivers: [
-          // ── Dashboard Summary ──
-          SliverToBoxAdapter(child: _buildDatabaseDashboard()),
-          // ── Pengaturan (collapsible) ──
-          SliverToBoxAdapter(
-            child: Container(
-              margin: const EdgeInsets.fromLTRB(16, 4, 16, 4),
-              decoration: BoxDecoration(color: AppTheme.cardDark, borderRadius: BorderRadius.circular(16), border: Border.all(color: AppTheme.divider)),
-              child: Theme(
-                data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-                child: ExpansionTile(
-                  tilePadding: const EdgeInsets.symmetric(horizontal: 14),
-                  leading: Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(color: const Color(0xFFE040FB).withValues(alpha: 0.15), borderRadius: BorderRadius.circular(8)),
-                    child: const Icon(Icons.settings_rounded, color: Color(0xFFE040FB), size: 16),
-                  ),
-                  title: const Text('Pengaturan Auto-Delete', style: TextStyle(color: AppTheme.textPrimary, fontSize: 13, fontWeight: FontWeight.w600)),
-                  subtitle: Text(
-                    'Server: ${_reportDeleteValue > 0 ? "$_reportDeleteValue $_reportDeleteUnit" : "Nonaktif"} • Lokal: ${_localDeleteValue > 0 ? "$_localDeleteValue $_localDeleteUnit" : "Nonaktif"}',
-                    style: const TextStyle(color: AppTheme.textHint, fontSize: 10),
-                  ),
-                  iconColor: AppTheme.textHint,
-                  collapsedIconColor: AppTheme.textHint,
-                  children: [
-                    const Divider(color: AppTheme.divider, height: 1),
-                    _buildAutoDeleteCard(
-                      icon: Icons.cloud_rounded,
-                      title: 'Auto-Delete Server',
-                      value: _reportDeleteValue,
-                      unit: _reportDeleteUnit,
-                      oldCount: oldReports.length,
-                      onSave: _saveReportDeleteSetting,
-                      onDeleteOld: () => _deleteOldReports(oldReports),
-                    ),
-                    _buildLocalDeleteCard(),
-                    const SizedBox(height: 8),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          // ── Daftar Laporan ──
-          SliverToBoxAdapter(child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-            child: Row(children: [
-              const Icon(Icons.list_alt_rounded, color: AppTheme.textHint, size: 16),
-              const SizedBox(width: 6),
-              Text('Daftar Laporan (${_reports.length})', style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12, fontWeight: FontWeight.w600)),
-            ]),
-          )),
-          if (_reports.isEmpty)
-            const SliverFillRemaining(child: Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-              Icon(Icons.inbox_rounded, size: 48, color: AppTheme.textHint), SizedBox(height: 12),
-              Text('Tidak ada laporan', style: TextStyle(color: AppTheme.textSecondary, fontSize: 14)),
-            ])))
-          else
-            SliverList(delegate: SliverChildBuilderDelegate(
-              (context, index) => _buildReportCard(_reports[index], deleteDays),
-              childCount: _reports.length,
-            )),
-          const SliverToBoxAdapter(child: SizedBox(height: 20)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildReportCard(Map<String, dynamic> report, int deleteDays) {
-    final reportId = report['id'] as String? ?? '';
-    final no = report['no'] as int? ?? 0;
-    final owner = report['user_nama'] as String? ?? 'Petugas';
-    final pkm = report['user_puskesmas'] as String? ?? '';
-    final createdAt = report['created_at'] as String? ?? '';
-    String dateDisplay = '';
-    bool isOld = false;
-    try {
-      final dt = DateTime.parse(createdAt);
-      dateDisplay = '${dt.day}/${dt.month}/${dt.year}';
-      if (deleteDays > 0) isOld = DateTime.now().difference(dt).inDays > deleteDays;
-    } catch (_) { dateDisplay = createdAt; }
-
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 0, 16, 10),
-      decoration: BoxDecoration(
-        color: AppTheme.cardDark,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: isOld ? AppTheme.error.withValues(alpha: 0.4) : AppTheme.divider),
-      ),
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        leading: Stack(children: [
-          Container(
-            width: 44, height: 44,
-            decoration: BoxDecoration(gradient: AppTheme.primaryGradient, borderRadius: BorderRadius.circular(14)),
-            alignment: Alignment.center,
-            child: Text('#$no', style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w700)),
-          ),
-          if (isOld) Positioned(top: -2, right: -2, child: Container(
-            padding: const EdgeInsets.all(2),
-            decoration: const BoxDecoration(color: AppTheme.error, shape: BoxShape.circle),
-            child: const Icon(Icons.schedule_rounded, color: Colors.white, size: 10),
-          )),
-        ]),
-        title: Text('Laporan #$no', style: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w600)),
-        subtitle: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const SizedBox(height: 4),
-          Row(children: [
-            const Icon(Icons.calendar_today_rounded, size: 12, color: AppTheme.textHint),
-            const SizedBox(width: 4),
-            Text(dateDisplay, style: const TextStyle(color: AppTheme.textHint, fontSize: 12)),
-            if (isOld) ...[
-              const SizedBox(width: 6),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                decoration: BoxDecoration(color: AppTheme.error.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(4)),
-                child: const Text('LAMA', style: TextStyle(color: AppTheme.error, fontSize: 9, fontWeight: FontWeight.w700)),
-              ),
-            ],
-          ]),
-          Row(children: [
-            const Icon(Icons.person_outline_rounded, size: 14, color: AppTheme.textHint), const SizedBox(width: 4),
-            Expanded(child: Text('$owner${pkm.isNotEmpty ? ' • PKM $pkm' : ''}', style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12))),
-          ]),
-        ]),
-        onTap: () => _showReportDetail(reportId, no),
-        trailing: _isExporting
-            ? const SizedBox(
-                width: 24, height: 24,
-                child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.accentTeal),
-              )
-            : PopupMenuButton<String>(
-                icon: const Icon(Icons.more_vert_rounded, color: AppTheme.textHint, size: 20),
-                color: AppTheme.cardDark,
-                onSelected: (value) {
-                  if (value == 'export_pdf') {
-                    _exportAdminReport(reportId, no, owner, pkm, 'pdf');
-                  } else if (value == 'export_docx') {
-                    _exportAdminReport(reportId, no, owner, pkm, 'docx');
-                  } else if (value == 'delete') {
-                    _deleteReport(reportId, no);
-                  }
-                },
-                itemBuilder: (_) => [
-                  const PopupMenuItem(value: 'export_pdf', child: Row(children: [
-                    Icon(Icons.picture_as_pdf_rounded, color: Color(0xFFFF5252), size: 18),
-                    SizedBox(width: 8),
-                    Text('Export PDF', style: TextStyle(color: AppTheme.textPrimary)),
-                  ])),
-                  const PopupMenuItem(value: 'export_docx', child: Row(children: [
-                    Icon(Icons.description_rounded, color: Color(0xFF448AFF), size: 18),
-                    SizedBox(width: 8),
-                    Text('Export DOCX', style: TextStyle(color: AppTheme.textPrimary)),
-                  ])),
-                  const PopupMenuDivider(),
-                  const PopupMenuItem(value: 'delete', child: Row(children: [
-                    Icon(Icons.delete_outline_rounded, color: AppTheme.error, size: 18),
-                    SizedBox(width: 8),
-                    Text('Hapus', style: TextStyle(color: AppTheme.error)),
-                  ])),
-                ],
-              ),
-      ),
-    );
-  }
 
   /// Export satu laporan dari admin panel ke PDF atau DOCX.
   Future<void> _exportAdminReport(
     String reportId, int no, String ownerNama, String ownerPkm, String format,
   ) async {
-    setState(() => _isExporting = true);
     try {
       // 1. Ambil data pasien dari Supabase
       final examMaps = await SupabaseService.adminGetReportExams(reportId);
@@ -1488,11 +1162,9 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
       }
 
       if (!mounted) return;
-      setState(() => _isExporting = false);
       _showAdminExportSuccess(path, format.toUpperCase());
     } catch (e) {
       if (!mounted) return;
-      setState(() => _isExporting = false);
       _showSnack('Gagal export: $e', isError: true);
     }
   }
