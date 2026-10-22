@@ -612,56 +612,50 @@ class _AdminLaporanTabState extends State<AdminLaporanTab> {
             Row(
               children: [
                 Expanded(
-                  child: SizedBox(
-                    height: 42,
-                    child: AppButton(
-                      label: 'Lihat',
-                      kind: AppButtonKind.tonal,
-                      onPressed: () => widget.onShowDetail(reportId, no),
-                    ),
+                  child: AppButton(
+                    label: 'Lihat',
+                    height: 40,
+                    kind: AppButtonKind.tonal,
+                    onPressed: () => widget.onShowDetail(reportId, no),
                   ),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: SizedBox(
-                    height: 42,
-                    child: AppButton(
-                      label: 'Cetak',
-                      kind: AppButtonKind.tonal,
-                      onPressed: () => _showExportSheet(report),
-                    ),
+                  child: AppButton(
+                    label: 'Cetak',
+                    height: 40,
+                    kind: AppButtonKind.tonal,
+                    onPressed: () => _showExportSheet(report),
                   ),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: SizedBox(
-                    height: 42,
-                    child: AppButton(
-                      label: 'Edit',
-                      kind: AppButtonKind.tonal,
-                      onPressed: () {
-                        if (widget.onEditReport != null) {
-                          widget.onEditReport!(report);
-                        } else {
-                          widget.onShowDetail(reportId, no);
-                        }
-                      },
-                    ),
+                  child: AppButton(
+                    label: 'Edit',
+                    height: 40,
+                    kind: AppButtonKind.tonal,
+                    onPressed: () {
+                      if (widget.onEditReport != null) {
+                        widget.onEditReport!(report);
+                      } else {
+                        widget.onShowDetail(reportId, no);
+                      }
+                    },
                   ),
                 ),
                 const SizedBox(width: 8),
                 Material(
                   color: AppTheme.surface,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(11),
                     side: const BorderSide(color: AppTheme.outline),
                   ),
                   clipBehavior: Clip.antiAlias,
                   child: InkWell(
                     onTap: () => widget.onDeleteReport(reportId, no),
                     child: const SizedBox(
-                      width: 42,
-                      height: 42,
+                      width: 40,
+                      height: 40,
                       child: Center(
                         child: AppIcon(
                           AppGlyph.trash,

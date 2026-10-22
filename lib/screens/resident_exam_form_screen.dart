@@ -32,6 +32,9 @@ class _ResidentExamFormScreenState extends State<ResidentExamFormScreen> {
 
   List<ResidentExam> _cachedResidents = [];
 
+  late final FocusNode _namaFocusNode;
+  final List<TextEditingController> _trackedControllers = [];
+
   late TextEditingController _namaCtrl;
   late TextEditingController _nikCtrl;
   late String _tanggal;
@@ -47,10 +50,8 @@ class _ResidentExamFormScreenState extends State<ResidentExamFormScreen> {
   late TextEditingController _likaCtrl;
   late TextEditingController _gulaDarahCtrl;
 
-  final List<TextEditingController> _keluhanCtrls = [TextEditingController()];
-  final List<TextEditingController> _tindakLanjutCtrls = [
-    TextEditingController()
-  ];
+  final List<TextEditingController> _keluhanCtrls = [];
+  final List<TextEditingController> _tindakLanjutCtrls = [];
   final List<Map<String, TextEditingController>> _customFieldCtrls = [];
 
   String? _fotoPath;
@@ -79,46 +80,66 @@ class _ResidentExamFormScreenState extends State<ResidentExamFormScreen> {
     'Istirahat cukup',
   ];
 
+  TextEditingController _createTrackedController([String text = '']) {
+    final ctrl = TextEditingController(text: text);
+    ctrl.addListener(_onFieldChanged);
+    _trackedControllers.add(ctrl);
+    return ctrl;
+  }
+
+  void _removeTrackedController(TextEditingController ctrl) {
+    ctrl.removeListener(_onFieldChanged);
+    _trackedControllers.remove(ctrl);
+    ctrl.dispose();
+  }
+
   @override
   void initState() {
     super.initState();
+    _namaFocusNode = FocusNode();
     final e = widget.existingExam;
-    _namaCtrl = TextEditingController(text: e?.nama ?? '');
-    _nikCtrl = TextEditingController(text: e?.nik ?? '');
+
+    _namaCtrl = _createTrackedController(e?.nama ?? '');
+    _nikCtrl = _createTrackedController(e?.nik ?? '');
     _tanggal = e?.tanggal ?? DateFormat('dd.MM.yy').format(DateTime.now());
-    _tanggalLahirCtrl = TextEditingController(text: e?.tanggalLahir ?? '');
-    _usiaCtrl = TextEditingController(text: e?.usia ?? '');
-    _alamatCtrl = TextEditingController(text: e?.alamat ?? '');
+    _tanggalLahirCtrl = _createTrackedController(e?.tanggalLahir ?? '');
+    _usiaCtrl = _createTrackedController(e?.usia ?? '');
+    _alamatCtrl = _createTrackedController(e?.alamat ?? '');
     _kategoriKeluargaCtrl =
-        TextEditingController(text: e?.kategoriKeluarga ?? '');
-    _bbCtrl = TextEditingController(text: e?.bb ?? '');
-    _tbCtrl = TextEditingController(text: e?.tb ?? '');
-    _lpCtrl = TextEditingController(text: e?.lingkarPinggang ?? '');
-    _tensiCtrl = TextEditingController(text: e?.tensi ?? '');
-    _lilaCtrl = TextEditingController(text: e?.lila ?? '');
-    _likaCtrl = TextEditingController(text: e?.lika ?? '');
-    _gulaDarahCtrl = TextEditingController(text: e?.gulaDarah ?? '');
+        _createTrackedController(e?.kategoriKeluarga ?? '');
+    _bbCtrl = _createTrackedController(e?.bb ?? '');
+    _tbCtrl = _createTrackedController(e?.tb ?? '');
+    _lpCtrl = _createTrackedController(e?.lingkarPinggang ?? '');
+    _tensiCtrl = _createTrackedController(e?.tensi ?? '');
+    _lilaCtrl = _createTrackedController(e?.lila ?? '');
+    _likaCtrl = _createTrackedController(e?.lika ?? '');
+    _gulaDarahCtrl = _createTrackedController(e?.gulaDarah ?? '');
     _fotoPath = e?.fotoPath;
 
-    if (e != null) {
-      _keluhanCtrls.clear();
+    _keluhanCtrls.clear();
+    if (e != null && e.keluhan.isNotEmpty) {
       for (final k in e.keluhan) {
-        _keluhanCtrls.add(TextEditingController(text: k));
+        _keluhanCtrls.add(_createTrackedController(k));
       }
-      if (_keluhanCtrls.isEmpty) _keluhanCtrls.add(TextEditingController());
+    } else {
+      _keluhanCtrls.add(_createTrackedController());
+    }
 
-      _tindakLanjutCtrls.clear();
+    _tindakLanjutCtrls.clear();
+    if (e != null && e.tindakLanjut.isNotEmpty) {
       for (final t in e.tindakLanjut) {
-        _tindakLanjutCtrls.add(TextEditingController(text: t));
+        _tindakLanjutCtrls.add(_createTrackedController(t));
       }
-      if (_tindakLanjutCtrls.isEmpty) {
-        _tindakLanjutCtrls.add(TextEditingController());
-      }
+    } else {
+      _tindakLanjutCtrls.add(_createTrackedController());
+    }
 
+    _customFieldCtrls.clear();
+    if (e != null) {
       for (final entry in e.customFields.entries) {
         _customFieldCtrls.add({
-          'label': TextEditingController(text: entry.key),
-          'value': TextEditingController(text: entry.value),
+          'label': _createTrackedController(entry.key),
+          'value': _createTrackedController(entry.value),
         });
       }
     }
@@ -129,14 +150,6 @@ class _ResidentExamFormScreenState extends State<ResidentExamFormScreen> {
     StorageService.getAllResidents().then((list) {
       if (mounted) setState(() => _cachedResidents = list);
     });
-
-    // Add listeners for dynamic progress calculation
-    _namaCtrl.addListener(_onFieldChanged);
-    _alamatCtrl.addListener(_onFieldChanged);
-    _bbCtrl.addListener(_onFieldChanged);
-    _tbCtrl.addListener(_onFieldChanged);
-    _tensiCtrl.addListener(_onFieldChanged);
-    _gulaDarahCtrl.addListener(_onFieldChanged);
   }
 
   void _onFieldChanged() {
@@ -150,50 +163,56 @@ class _ResidentExamFormScreenState extends State<ResidentExamFormScreen> {
 
   @override
   void dispose() {
-    _namaCtrl.removeListener(_onFieldChanged);
-    _alamatCtrl.removeListener(_onFieldChanged);
-    _bbCtrl.removeListener(_onFieldChanged);
-    _tbCtrl.removeListener(_onFieldChanged);
-    _tensiCtrl.removeListener(_onFieldChanged);
-    _gulaDarahCtrl.removeListener(_onFieldChanged);
-
-    _namaCtrl.dispose();
-    _nikCtrl.dispose();
-    _tanggalLahirCtrl.dispose();
-    _usiaCtrl.dispose();
-    _alamatCtrl.dispose();
-    _kategoriKeluargaCtrl.dispose();
-    _bbCtrl.dispose();
-    _tbCtrl.dispose();
-    _lpCtrl.dispose();
-    _tensiCtrl.dispose();
-    _lilaCtrl.dispose();
-    _likaCtrl.dispose();
-    _gulaDarahCtrl.dispose();
-    for (final c in _keluhanCtrls) {
+    _namaFocusNode.dispose();
+    for (final c in _trackedControllers) {
+      c.removeListener(_onFieldChanged);
       c.dispose();
-    }
-    for (final c in _tindakLanjutCtrls) {
-      c.dispose();
-    }
-    for (final m in _customFieldCtrls) {
-      m['label']?.dispose();
-      m['value']?.dispose();
     }
     _speechService.dispose();
     super.dispose();
   }
 
-  // ── Perhitungan Progres Pengisian ─────────────────────────
+  // ── Perhitungan Progres Pengisian Realtime ─────────────────
+  // Setiap pengisian field sekecil apapun langsung menambah persentase secara realtime
+  double get _fillProgress {
+    double score = 0;
+    const double maxScore = 100;
+
+    // 1. Identitas Pasien (Maks 40%)
+    if (_namaCtrl.text.trim().isNotEmpty) score += 15; // Nama pasien (wajib)
+    if (_alamatCtrl.text.trim().isNotEmpty) score += 7;
+    if (_usiaCtrl.text.trim().isNotEmpty) score += 5;
+    if (_tanggalLahirCtrl.text.trim().isNotEmpty) score += 4;
+    if (_nikCtrl.text.trim().isNotEmpty) score += 5;
+    if (_kategoriKeluargaCtrl.text.trim().isNotEmpty) score += 4;
+
+    // 2. Pemeriksaan Fisik (Maks 30%)
+    if (_tensiCtrl.text.trim().isNotEmpty) score += 8;
+    if (_bbCtrl.text.trim().isNotEmpty) score += 6;
+    if (_tbCtrl.text.trim().isNotEmpty) score += 6;
+    if (_gulaDarahCtrl.text.trim().isNotEmpty) score += 4;
+    if (_lpCtrl.text.trim().isNotEmpty) score += 3;
+    if (_lilaCtrl.text.trim().isNotEmpty || _likaCtrl.text.trim().isNotEmpty) score += 3;
+    for (final m in _customFieldCtrls) {
+      if ((m['value']?.text.trim().isNotEmpty ?? false)) score += 2;
+    }
+
+    // 3. Keluhan (Maks 10%)
+    if (_keluhanCtrls.any((c) => c.text.trim().isNotEmpty)) score += 10;
+
+    // 4. Tindak Lanjut (Maks 10%)
+    if (_tindakLanjutCtrls.any((c) => c.text.trim().isNotEmpty)) score += 10;
+
+    // 5. Foto Dokumentasi (Maks 10%)
+    if (_fotoPath != null && _fotoPath!.isNotEmpty) score += 10;
+
+    return (score / maxScore).clamp(0.0, 1.0);
+  }
+
   int get _filledSectionsCount {
     int count = 0;
     // 1. Identitas
-    if (_namaCtrl.text.trim().isNotEmpty &&
-        (_alamatCtrl.text.trim().isNotEmpty ||
-            _usiaCtrl.text.trim().isNotEmpty ||
-            _tanggalLahirCtrl.text.trim().isNotEmpty)) {
-      count++;
-    }
+    if (_namaCtrl.text.trim().isNotEmpty) count++;
     // 2. Pemeriksaan Fisik
     if (_bbCtrl.text.trim().isNotEmpty ||
         _tbCtrl.text.trim().isNotEmpty ||
@@ -208,17 +227,11 @@ class _ResidentExamFormScreenState extends State<ResidentExamFormScreen> {
       count++;
     }
     // 3. Keluhan
-    if (_keluhanCtrls.any((c) => c.text.trim().isNotEmpty)) {
-      count++;
-    }
+    if (_keluhanCtrls.any((c) => c.text.trim().isNotEmpty)) count++;
     // 4. Tindak Lanjut
-    if (_tindakLanjutCtrls.any((c) => c.text.trim().isNotEmpty)) {
-      count++;
-    }
+    if (_tindakLanjutCtrls.any((c) => c.text.trim().isNotEmpty)) count++;
     // 5. Foto
-    if (_fotoPath != null && _fotoPath!.isNotEmpty) {
-      count++;
-    }
+    if (_fotoPath != null && _fotoPath!.isNotEmpty) count++;
     return count;
   }
 
@@ -529,7 +542,7 @@ class _ResidentExamFormScreenState extends State<ResidentExamFormScreen> {
   @override
   Widget build(BuildContext context) {
     final filledCount = _filledSectionsCount;
-    final progressPercent = (filledCount / 5).clamp(0.0, 1.0);
+    final progressPercent = _fillProgress;
     final percentInt = (progressPercent * 100).round();
 
     return Scaffold(
@@ -622,12 +635,19 @@ class _ResidentExamFormScreenState extends State<ResidentExamFormScreen> {
                       const SizedBox(height: 8),
                       ClipRRect(
                         borderRadius: BorderRadius.circular(99),
-                        child: LinearProgressIndicator(
-                          value: progressPercent,
-                          minHeight: 10,
-                          backgroundColor: const Color(0xFFEAF3FA),
-                          valueColor: const AlwaysStoppedAnimation<Color>(
-                              Color(0xFF0A64A8)),
+                        child: TweenAnimationBuilder<double>(
+                          duration: const Duration(milliseconds: 300),
+                          curve: Curves.easeOutCubic,
+                          tween: Tween<double>(begin: 0, end: progressPercent),
+                          builder: (context, value, child) {
+                            return LinearProgressIndicator(
+                              value: value,
+                              minHeight: 10,
+                              backgroundColor: const Color(0xFFEAF3FA),
+                              valueColor: const AlwaysStoppedAnimation<Color>(
+                                  Color(0xFF0A64A8)),
+                            );
+                          },
                         ),
                       ),
                       const SizedBox(height: 16),
@@ -752,7 +772,7 @@ class _ResidentExamFormScreenState extends State<ResidentExamFormScreen> {
         // Nama Lengkap (Auto-complete)
         RawAutocomplete<ResidentExam>(
           textEditingController: _namaCtrl,
-          focusNode: FocusNode(),
+          focusNode: _namaFocusNode,
           displayStringForOption: (option) => option.nama,
           optionsBuilder: (textEditingValue) {
             if (textEditingValue.text.isEmpty) {
@@ -788,15 +808,15 @@ class _ResidentExamFormScreenState extends State<ResidentExamFormScreen> {
                 _gulaDarahCtrl.text = selection.gulaDarah;
               }
 
-              for (var c in _customFieldCtrls) {
-                c['label']?.dispose();
-                c['value']?.dispose();
+              for (final c in _customFieldCtrls) {
+                if (c['label'] != null) _removeTrackedController(c['label']!);
+                if (c['value'] != null) _removeTrackedController(c['value']!);
               }
               _customFieldCtrls.clear();
               for (final entry in selection.customFields.entries) {
                 _customFieldCtrls.add({
-                  'label': TextEditingController(text: entry.key),
-                  'value': TextEditingController(text: entry.value),
+                  'label': _createTrackedController(entry.key),
+                  'value': _createTrackedController(entry.value),
                 });
               }
             });
@@ -1123,8 +1143,10 @@ class _ResidentExamFormScreenState extends State<ResidentExamFormScreen> {
                   IconButton(
                     tooltip: 'Hapus parameter',
                     onPressed: () => setState(() {
-                      _customFieldCtrls[idx]['label']?.dispose();
-                      _customFieldCtrls[idx]['value']?.dispose();
+                      final label = _customFieldCtrls[idx]['label'];
+                      final value = _customFieldCtrls[idx]['value'];
+                      if (label != null) _removeTrackedController(label);
+                      if (value != null) _removeTrackedController(value);
                       _customFieldCtrls.removeAt(idx);
                     }),
                     icon: const Icon(Icons.close_rounded,
@@ -1142,8 +1164,8 @@ class _ResidentExamFormScreenState extends State<ResidentExamFormScreen> {
           icon: AppGlyph.plus,
           kind: AppButtonKind.tonal,
           onPressed: () => setState(() => _customFieldCtrls.add({
-                'label': TextEditingController(),
-                'value': TextEditingController(),
+                'label': _createTrackedController(),
+                'value': _createTrackedController(),
               })),
         ),
       ],
@@ -1199,7 +1221,7 @@ class _ResidentExamFormScreenState extends State<ResidentExamFormScreen> {
                   if (emptyIndex != -1) {
                     _keluhanCtrls[emptyIndex].text = k;
                   } else {
-                    _keluhanCtrls.add(TextEditingController(text: k));
+                    _keluhanCtrls.add(_createTrackedController(k));
                   }
                 });
               },
@@ -1270,7 +1292,7 @@ class _ResidentExamFormScreenState extends State<ResidentExamFormScreen> {
                   IconButton(
                     tooltip: 'Hapus keluhan',
                     onPressed: () => setState(() {
-                      ctrl.dispose();
+                      _removeTrackedController(ctrl);
                       _keluhanCtrls.removeAt(idx);
                     }),
                     icon: const Icon(Icons.close_rounded,
@@ -1287,7 +1309,7 @@ class _ResidentExamFormScreenState extends State<ResidentExamFormScreen> {
           label: 'Tambah keluhan',
           icon: AppGlyph.plus,
           kind: AppButtonKind.tonal,
-          onPressed: () => setState(() => _keluhanCtrls.add(TextEditingController())),
+          onPressed: () => setState(() => _keluhanCtrls.add(_createTrackedController())),
         ),
       ],
     );
@@ -1343,7 +1365,7 @@ class _ResidentExamFormScreenState extends State<ResidentExamFormScreen> {
                     _tindakLanjutCtrls[emptyIndex].text = t;
                   } else {
                     _tindakLanjutCtrls
-                        .add(TextEditingController(text: t));
+                        .add(_createTrackedController(t));
                   }
                 });
               },
@@ -1414,7 +1436,7 @@ class _ResidentExamFormScreenState extends State<ResidentExamFormScreen> {
                   IconButton(
                     tooltip: 'Hapus tindak lanjut',
                     onPressed: () => setState(() {
-                      ctrl.dispose();
+                      _removeTrackedController(ctrl);
                       _tindakLanjutCtrls.removeAt(idx);
                     }),
                     icon: const Icon(Icons.close_rounded,
@@ -1432,7 +1454,7 @@ class _ResidentExamFormScreenState extends State<ResidentExamFormScreen> {
           icon: AppGlyph.plus,
           kind: AppButtonKind.tonal,
           onPressed: () => setState(
-              () => _tindakLanjutCtrls.add(TextEditingController())),
+              () => _tindakLanjutCtrls.add(_createTrackedController())),
         ),
       ],
     );

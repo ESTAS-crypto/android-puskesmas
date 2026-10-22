@@ -106,6 +106,8 @@ class AppButton extends StatefulWidget {
   final bool loading;
   final AppButtonKind kind;
   final bool expand;
+  final double? height;
+  final EdgeInsetsGeometry? padding;
 
   const AppButton({
     super.key,
@@ -115,6 +117,8 @@ class AppButton extends StatefulWidget {
     this.loading = false,
     this.kind = AppButtonKind.primary,
     this.expand = true,
+    this.height,
+    this.padding,
   });
 
   @override
@@ -142,6 +146,14 @@ class _AppButtonState extends State<AppButton> {
     final (bg, fg, border) = _colors;
     final enabled = widget.onPressed != null && !widget.loading;
     final disabledLook = widget.onPressed == null && !widget.loading;
+    final btnHeight = widget.height ?? 50.0;
+    final isCompact = btnHeight <= 42.0;
+    final effectivePadding = widget.padding ??
+        EdgeInsets.symmetric(
+          horizontal: isCompact ? 10.0 : 18.0,
+          vertical: isCompact ? 0.0 : 10.0,
+        );
+    final fontSize = isCompact ? 13.5 : 15.0;
 
     final content = AnimatedSwitcher(
       duration: AppMotion.fast,
@@ -157,9 +169,9 @@ class _AppButtonState extends State<AppButton> {
       child: widget.loading
           ? SizedBox(
               key: const ValueKey('loading'),
-              width: 22,
-              height: 22,
-              child: CircularProgressIndicator(strokeWidth: 2.4, color: fg),
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2.2, color: fg),
             )
           : Row(
               key: const ValueKey('label'),
@@ -167,8 +179,8 @@ class _AppButtonState extends State<AppButton> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 if (widget.icon != null) ...[
-                  AppIcon(widget.icon!, size: 20, color: fg),
-                  const SizedBox(width: 8),
+                  AppIcon(widget.icon!, size: isCompact ? 16 : 20, color: fg),
+                  SizedBox(width: isCompact ? 6 : 8),
                 ],
                 Flexible(
                   child: Text(
@@ -176,7 +188,11 @@ class _AppButtonState extends State<AppButton> {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                        color: fg, fontSize: 15, fontWeight: FontWeight.w600),
+                      color: fg,
+                      fontSize: fontSize,
+                      fontWeight: FontWeight.w600,
+                      height: 1.2,
+                    ),
                   ),
                 ),
               ],
@@ -193,7 +209,7 @@ class _AppButtonState extends State<AppButton> {
         child: Material(
           color: bg,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppRadius.md),
+            borderRadius: BorderRadius.circular(isCompact ? 11 : AppRadius.md),
             side: border == null ? BorderSide.none : BorderSide(color: border),
           ),
           clipBehavior: Clip.antiAlias,
@@ -205,16 +221,11 @@ class _AppButtonState extends State<AppButton> {
                   }
                 : null,
             onHighlightChanged: (v) => setState(() => _down = v),
-            child: SizedBox(
-              height: 52,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                child: Center(
-                  widthFactor: 1.0,
-                  heightFactor: 1.0,
-                  child: content,
-                ),
-              ),
+            child: Container(
+              height: btnHeight,
+              padding: effectivePadding,
+              alignment: Alignment.center,
+              child: content,
             ),
           ),
         ),
